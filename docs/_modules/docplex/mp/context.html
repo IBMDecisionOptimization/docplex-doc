@@ -1,0 +1,375 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>docplex.mp.context &mdash; DOcplex Preview 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex Preview 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex Preview 1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.context</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.format</span> <span class="kn">import</span> <span class="n">ExchangeFormat</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_string</span>
+
+
+<span class="c"># some utility methods</span>
+<span class="k">def</span> <span class="nf">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">option</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="k">def</span> <span class="nf">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">option</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="n">_BOOLEAN_STATES</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;1&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s">&#39;yes&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s">&#39;true&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s">&#39;on&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                   <span class="s">&#39;0&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;no&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;false&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&#39;off&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
+
+<span class="k">def</span> <span class="nf">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_BOOLEAN_STATES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Not a boolean: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_BOOLEAN_STATES</span><span class="p">[</span><span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+
+
+
+<div class="viewcode-block" id="DOcloudContext"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext">[docs]</a><span class="k">class</span> <span class="nc">DOcloudContext</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The context to solve models on DOcloud.</span>
+<span class="sd">    </span>
+<span class="sd">    The context contains properties that alter the behavior of the DOcloud</span>
+<span class="sd">    connector.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        url: The DOcloud service URL.</span>
+<span class="sd">        api_key: The DOcloud service API key to use.</span>
+<span class="sd">        display_logs_after_run: If True, logs are downloaded and printed after</span>
+<span class="sd">            the model is run.</span>
+<span class="sd">        run_deterministic: Specific engine parameters are uploaded to keep the run deterministic.</span>
+<span class="sd">        verbose: Makes the connector verbose.</span>
+<span class="sd">        timeout: The timeout for requests.</span>
+<span class="sd">        waittime: The wait time to wait for jobs to finish.</span>
+<span class="sd">        verify: If True, verifies SSL certificates.</span>
+<span class="sd">        log_requests: When True, the REST requests are logged.</span>
+<span class="sd">        exchange_format: The exchange format to use.</span>
+<span class="sd">           When setting the format, you can use the following strings: &quot;lp&quot;.</span>
+<span class="sd">           When getting the format, the property type is docplex.mp.format.ExchangeFormat.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new DOcloud context.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">api_key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_logs_after_run</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_deterministic</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waittime</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verify</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c"># default is None so that we use defaults</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_requests</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump_dir</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span> <span class="k">as</span> <span class="n">shallow_copy</span>
+        <span class="k">return</span> <span class="n">shallow_copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+
+
+
+    <span class="k">def</span> <span class="nf">get_exchange_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span>
+    <span class="k">def</span> <span class="nf">set_exchange_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exchange_format</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">exchange_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span> <span class="o">=</span> <span class="n">ExchangeFormat</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">exchange_format</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">exchange_format</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_exchange_format</span><span class="p">,</span> <span class="n">set_exchange_format</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DOcloudContext.has_credentials"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.has_credentials">[docs]</a>    <span class="k">def</span> <span class="nf">has_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns True if this context has valid credentials.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&quot;DOcloud: URL is not a string: {0!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">))</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;http&quot;</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&quot;DOcloud: not a valid URL: {0!s}, expecting https://...&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">))</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&quot;API key is not a string: {0!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">))</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">quoted_url</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">{}</span><span class="se">\&quot;</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">quoted_key</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">{}</span><span class="se">\&quot;</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">)</span>
+        <span class="n">tout</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;context&lt;url={0}, auth={1}, timeout={2}&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">quoted_url</span><span class="p">,</span> <span class="n">quoted_key</span><span class="p">,</span> <span class="n">tout</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="DOcloudContext.read_from_rcfile"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.read_from_rcfile">[docs]</a>    <span class="k">def</span> <span class="nf">read_from_rcfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reads this context from the given ressource file.</span>
+<span class="sd">        </span>
+<span class="sd">        The specified ressource file contains `name=value` pairs. For example::</span>
+<span class="sd">        </span>
+<span class="sd">           url = &quot;https://docloud.service.com/job_manager/rest/v1&quot;</span>
+<span class="sd">           api_key = &quot;example api_key&quot;</span>
+<span class="sd">           </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">list_of_properties</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">current_name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">lineno</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">lineno</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">l</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">l</span>
+                <span class="c"># process case of continuation</span>
+                <span class="k">if</span> <span class="n">current_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">current_value</span> <span class="o">+=</span> <span class="n">s</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;#&quot;</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="n">spl</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spl</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="c"># try with &quot;:&quot;</span>
+                        <span class="n">spl</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spl</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Syntax error in line </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">lineno</span><span class="p">)</span>
+                    <span class="n">current_name</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">current_value</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="c"># continuation ?</span>
+                <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">:</span>
+                    <span class="n">list_of_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_name</span><span class="p">,</span> <span class="n">current_value</span><span class="p">))</span>
+                    <span class="n">current_name</span> <span class="o">=</span> <span class="bp">None</span>
+                    <span class="n">current_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="c"># cases where last line of file ends with &#39;\&#39;</span>
+            <span class="k">if</span> <span class="n">current_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">list_of_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_name</span><span class="p">,</span> <span class="n">current_value</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_from_list</span><span class="p">(</span><span class="n">list_of_properties</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">update_from_python_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">py_module</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">py_module</span><span class="o">.</span><span class="n">__dict__</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;__&quot;</span><span class="p">):</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+    
+<div class="viewcode-block" id="DOcloudContext.update_from_list"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.update_from_list">[docs]</a>    <span class="k">def</span> <span class="nf">update_from_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Updates this context from the list of properties specified as </span>
+<span class="sd">        (name, value) tuples.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+       
+        <span class="n">url</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;url&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;url&quot;</span><span class="p">)</span>
+       
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;api_key&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">api_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">api_key</span>
+            
+        <span class="n">display_logs_after_run</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;display_logs_after_run&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">display_logs_after_run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_logs_after_run</span> <span class="o">=</span> <span class="n">display_logs_after_run</span>
+            
+            
+        <span class="n">run_deterministic</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;run_deterministric&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run_deterministic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_deterministic</span> <span class="o">=</span> <span class="n">run_deterministic</span>
+        
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;verbose&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        
+        <span class="n">timeout</span> <span class="o">=</span> <span class="n">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;timeout&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+            
+        <span class="n">waittime</span> <span class="o">=</span> <span class="n">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;waittime&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">waittime</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">waittime</span> <span class="o">=</span> <span class="n">waittime</span>
+
+        <span class="n">debug_dump</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;debug_dump&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">debug_dump</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump</span> <span class="o">=</span> <span class="n">debug_dump</span>
+        
+        <span class="n">debug_dump_dir</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;debug_dump_dir&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">debug_dump_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump_dir</span> <span class="o">=</span> <span class="n">debug_dump_dir</span>
+
+        <span class="n">verify</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;verify&quot;</span><span class="p">)</span>
+        <span class="c"># defaults to True, and we need to test against None to differentiate from False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verify</span> <span class="o">=</span> <span class="n">verify</span> <span class="k">if</span> <span class="n">verify</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">True</span>
+
+        <span class="n">log_requests</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;log_requests&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">log_requests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_requests</span> <span class="o">=</span> <span class="n">log_requests</span>
+
+        <span class="n">xformat</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s">&quot;exchange_format&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">xformat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exchange_format</span> <span class="o">=</span> <span class="n">xformat</span>  <span class="c"># None or other stuff handled in property</span>
+
+</div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="DOcloudContext.make_from_config_parser"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.make_from_config_parser">[docs]</a>    <span class="k">def</span> <span class="nf">make_from_config_parser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">section_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reads this context from the given ConfigParser.</span>
+<span class="sd">        </span>
+<span class="sd">        Config is read from section &#39;DOcloudConnector&#39;.</span>
+<span class="sd">        </span>
+<span class="sd">        Recognized options have the same name as the attributes of ``DOcloudContext``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">configparser</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">ConfigParser</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;readFromConfigParser works only when configparser is installed&quot;</span><span class="p">)</span>
+        
+        <span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">()</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">update_from_list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">section_name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">context</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_default_context</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">api_key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">home</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s">&quot;~&quot;</span><span class="p">)</span>
+            <span class="n">rcfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home</span><span class="p">,</span> <span class="s">&quot;.docplexrc&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">rcfile</span><span class="p">):</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">read_from_rcfile</span><span class="p">(</span><span class="n">rcfile</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">context</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="DOcloudContext.make_context_from_python"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.make_context_from_python">[docs]</a>    <span class="k">def</span> <span class="nf">make_context_from_python</span><span class="p">(</span><span class="n">pyconfig_module_path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Builds this context from a Python initialization file.</span>
+
+<span class="sd">        Recognized options have the same name as the attributes of ``DOcloudContext``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
+
+            <span class="n">config_module</span> <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="n">pyconfig_module_path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;make_context_from_python: cannot import: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pyconfig_module_path</span><span class="p">))</span>
+        <span class="c">#</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">context</span><span class="o">.</span><span class="n">update_from_python_module</span><span class="p">(</span><span class="n">config_module</span><span class="p">)</span>
+
+
+ </div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex Preview 1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, IBM CPLEX.
+    </div>
+  </body>
+</html>
