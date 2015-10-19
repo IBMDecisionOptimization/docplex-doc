@@ -1,0 +1,190 @@
+
+
+
+Matchmaker
+==========
+
+The Matchmaker was an honored profession in past cultures, serving the
+valuable purpose of pairing off men and women in hopes of a long and
+successful relationship. The Matchmaker would carefully consider the
+characteristics of each partner to determine which pairs would be
+compatible.
+
+Figure 1 shows six men and six women each with varying hair color and
+eye color. A man or woman will only accept a partner that has at least
+one of these traits in common. For example, Man A and Woman 5 would make
+a matching pair because they have at least one trait in common (same
+hair color). However Man A and Woman 1 would not make a matching pair
+because they do not have any traits in common.
+
+Question: What pairings of men and women allow for everyone to have a
+partner with at least one trait in common? (There are several correct
+answers.)
+
+References
+~~~~~~~~~~
+
+-  The PuzzlOr - Matchmaker
+   (http://puzzlor.com/2011-06\_Matchmaker.html) .
+
+.. raw:: html
+
+   <center>
+
+.. raw:: html
+
+   </center>
+
+We begin with importing the library we going to use
+
+.. code:: python
+
+    !pip install docplex>=0.0.24
+
+
+.. parsed-literal::
+
+    Requirement already satisfied (use --upgrade to upgrade): docplex>=0.0.24 in /home/notebook/ka_env/lib/python2.7/site-packages
+    Requirement already satisfied (use --upgrade to upgrade): requests in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): six in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): docloud>=1.0.0 in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): futures in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): enum34 in /usr/local/lib/python2.7/dist-packages (from docloud>=1.0.0->docplex>=0.0.24)
+    Cleaning up...
+
+
+.. code:: python
+
+    from docplex.mp.model import Model
+
+Let's define now our man's and women's characteristics
+
+.. code:: python
+
+    color_hair = ['green','red','black'] # all the color of hair
+    color_eyes= ['green','bleu','red']   # all the color of eyes
+    
+    man = {'A':[2,1],'B':[1,2],'C':[1,3],'D':[2,1],'E':[3,1],'F':[1,2]}
+    female = {'1':[1,3],'2':[2,1],'3':[3,2],'4':[3,3],'5':[2,3],'6':[3,3]}
+
+Let's define now some useful variable for our model
+
+.. code:: python
+
+    #matrix of all the combinaison between a man and women
+    Comb = [['A1','A2','A3','A4','A5','A6'],
+            ['B1','B2','B3','B4','B5','B6'],
+            ['C1','C2','C3','C4','C5','C6'],
+            ['D1','D2','D3','D4','D5','D6'],
+            ['E1','E2','E3','E4','E5','E6'],
+            ['F1','F2','F3','F4','F5','F6']]
+    
+    #transpose the matrix below
+    tComb = [[Comb[j][i] for j in range(0, 6)] for i in range(0, 6)]
+    
+    #Matrix comb in other form
+    Comb2 = ['A1','A2','A3','A4','A5','A6',
+            'B1','B2','B3','B4','B5','B6',
+            'C1','C2','C3','C4','C5','C6',
+            'D1','D2','D3','D4','D5','D6',
+            'E1','E2','E3','E4','E5','E6',
+            'F1','F2','F3','F4','F5','F6']
+    
+    #Function test_match that test if a man and women match toghether
+    def test_match(a):
+        m = a[0]
+        f = a[1]
+        return int(man[m][0]==female[f][0]) + int( (man[m][1]==female[f][1]))
+
+Now let's define our model and solve it
+
+.. code:: python
+
+    from docplex.mp.environment import Environment
+    env = Environment()
+    env.print_information()
+
+
+.. parsed-literal::
+
+    * system is: Linux 64bit
+    * CPLEX wrapper is not available
+    * Numpy is present, version is 1.9.2
+    * Matplotlib is present, version is 1.4.3
+
+
+.. code:: python
+
+    from docplex.mp.context import DOcloudContext
+    context = DOcloudContext(url="PUT_YOUR_DOCLOUD_URL_HERE", 
+                             api_key="PUT_YOUR_DOCLOUD_KEY_HERE")
+
+.. code:: python
+
+    mdl = Model(docloud_context=context)
+    
+    Comb_vars = mdl.binary_var_dict(Comb2, name="is_match")
+    
+    
+    #contraint : every man have one women
+    for i in Comb:
+        mdl.add_constraint(mdl.sum(Comb_vars[h] for h in i) <= 1)
+    
+    #contraint : every women to have one man
+    for i in tComb:
+        mdl.add_constraint(mdl.sum(Comb_vars[h] for h in i) <= 1)
+        
+    #contraint : a man have a women if they match
+    for i in Comb:
+        mdl.add_constraint(mdl.sum(Comb_vars[h] * test_match(h) for h in i) >= 1)
+        
+    #for h in Comb2:
+    #    ind1 = mdl.add_indicator(Comb_vars[h],  Comb_vars[h] * test_match(h) >= 1 , active_value=1 )
+    
+            
+    # our objective is to find the maximum couples
+    mdl.maximize(mdl.sum(Comb_vars[h]* test_match(h) for h in Comb2))
+    
+    #mdl.print_information()
+    #mdl.prettyprint()
+    
+    ok = mdl.solve()
+    
+    mdl.print_solution()
+
+
+.. parsed-literal::
+
+    Warning: CPLEX DLL not found, will solve on DOcloud
+    1> "is_match_A5" = 1
+    2> "is_match_B1" = 1
+    3> "is_match_C4" = 1
+    4> "is_match_D2" = 1
+    5> "is_match_E6" = 1
+    6> "is_match_F3" = 1
+
+
+Let's add a nice print to our result
+
+.. code:: python
+
+    if not ok:
+        print("Matchmaker model fails")
+    else:
+            total_points = mdl.objective_value
+            couples = [h for h in Comb2 if float(Comb_vars[h]) ==1]
+            print("we need to match thoses couples:")
+            for i in couples:
+                print("the man {} with the women {}" .format(i[0],i[1]))
+
+
+.. parsed-literal::
+
+    we need to match thoses couples:
+    the man A with the women 5
+    the man B with the women 1
+    the man C with the women 4
+    the man D with the women 2
+    the man E with the women 6
+    the man F with the women 3
+

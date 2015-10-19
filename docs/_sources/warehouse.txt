@@ -1,0 +1,533 @@
+
+The Warehouse Problem
+=====================
+
+The Warehouse Problem is a well-know optimization case found in many
+textbooks. The problem consists, given a set of candidate warehouse
+*locations* and a set of *stores* to decide which warehouse to open and
+which warehouse will server which store.
+
+Input Data
+----------
+
+Data is provided as follows:
+
+-  For each warehouse, we require a tuple (name, capacity, fixed-cost),
+   where *name* is the unique name of the warehouse, *capacity* is the
+   maximum number of stores it can supply and *fixed*\ cost\_ is the
+   cost incurred by opening the warehouse.
+-  For each couple (warehouse, store) a *supply*\ cost\_ which estimates
+   the cost of supplying this store by this warehouse.
+
+A compact way of representing the data is a Python *dictionary*: for
+each warehouse tuple, list all supply costs for all stores.
+
+Business Decisions
+------------------
+
+The problem consists in deciding which warehouse will be open and for
+each store, by which warehouse it will be supplied.
+
+Business Constraints
+--------------------
+
+Decisions must satisfy the following (simplified) business constraints:
+
+1. Unicity: each store is supplied by one unique warehouse
+2. A store can only be supplied by an *open* warehouse
+3. Capacity: the number of stores supplied by a warehouse must be less
+   than its capacity
+
+Business Objective
+------------------
+
+The goal is to minimize the total cost incurred by the decisions, which
+is made of two costs:
+
+-  The *Total Opening Cost* is the sum of opening costs ranging over all
+   open warehouses.
+-  The *Total Supply Cost* is the sum of supply costs for all the chosen
+   (warehouse, store) pairs
+
+To begin with, let's load a python file containing a small warehouse
+dataset:
+
+.. code:: python
+
+    WAREHOUSES = {
+        ('Bonn', 1, 20): [20, 28, 74, 2, 46, 42, 1, 10, 93, 47],
+        ('Bordeaux', 4, 35): [24, 27, 97, 55, 96, 22, 5, 73, 35, 65],
+        ('London', 2, 32): [11, 82, 71, 73, 59, 29, 73, 13, 63, 55],
+        ('Paris', 1, 37): [25, 83, 96, 69, 83, 67, 59, 43, 85, 71],
+        ('Rome', 2, 25): [30, 74, 70, 61, 54, 59, 56, 96, 46, 95],
+        ('Brussels', 2, 28): [30, 74, 70, 61, 34, 59, 56, 96, 46, 95]
+    }
+    
+    print(WAREHOUSES)
+    print("#candidate warehouses=%d" % len(WAREHOUSES))
+    print("#stores to supply=%d" % len(list(WAREHOUSES.values())[0]))
+
+
+.. parsed-literal::
+
+    {('London', 2, 32): [11, 82, 71, 73, 59, 29, 73, 13, 63, 55], ('Bordeaux', 4, 35): [24, 27, 97, 55, 96, 22, 5, 73, 35, 65], ('Paris', 1, 37): [25, 83, 96, 69, 83, 67, 59, 43, 85, 71], ('Bonn', 1, 20): [20, 28, 74, 2, 46, 42, 1, 10, 93, 47], ('Brussels', 2, 28): [30, 74, 70, 61, 34, 59, 56, 96, 46, 95], ('Rome', 2, 25): [30, 74, 70, 61, 54, 59, 56, 96, 46, 95]}
+    #candidate warehouses=6
+    #stores to supply=10
+
+
+Each key in the dictionary is a tuple with three fields: the name ( a
+string), the capacity (a positive integer) and the fixed cost(also
+positive). Each value is a list of length 10 (the umber of stores to
+supply). the k\_th element of the list being the supply cost from the
+warehouse to the k\_th store. For example,
+
+-  London warehouse can supply at most two stores
+-  London warehouse has an opening cost of 30
+-  The cost incurred by supplying the first store from London is 11
+
+The math model
+--------------
+
+Solving with DOCplex
+--------------------
+
+Now let's solve this problem with DOCplex. First, we define named tuples
+to store information relative to warehouses and stores in a clear and
+convenient manner.
+
+.. code:: python
+
+    from collections import namedtuple
+    
+    class TWareHouse(namedtuple("TWarehouse1", ["id", "capacity", "fixed_cost"])):
+        def __str__(self):
+            return self.id
+    
+    class TStore(namedtuple("TStore1", ["id"])):
+        def __str__(self):
+            return 'store_%d' % self.id
+
+Second, we compute the set of warehouse and store tuples. The use of
+*itervalues* from the *six* module is a technicality to ensure
+portability across Python 2 and Python3. We chose to model stores by an
+integer range from 1 to nb\_stores for convenience.
+
+.. code:: python
+
+    from six import itervalues
+    
+    nb_stores = 0 if not WAREHOUSES else len(next(itervalues(WAREHOUSES)))
+    warehouses = [TWareHouse(*wrow) for wrow in WAREHOUSES.keys()]
+    # we'll use the warehouses dicitonary as a two-entry dictionary
+    supply_costs = WAREHOUSES
+    # we count stores from 1 to NSTORES included for covenience
+    stores = [TStore(idx) for idx in range(1, nb_stores + 1)]
+
+The model
+---------
+
+First we need one instance of model to store our modeling artefacts
+
+.. code:: python
+
+    !pip install docplex>=0.0.24
+
+
+.. parsed-literal::
+
+    Requirement already satisfied (use --upgrade to upgrade): docplex>=0.0.24 in /home/notebook/ka_env/lib/python2.7/site-packages
+    Requirement already satisfied (use --upgrade to upgrade): requests in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): six in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): docloud>=1.0.0 in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): futures in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): enum34 in /usr/local/lib/python2.7/dist-packages (from docloud>=1.0.0->docplex>=0.0.24)
+    Cleaning up...
+
+
+.. code:: python
+
+    from docplex.mp.environment import Environment
+    env = Environment()
+    env.print_information()
+
+
+.. parsed-literal::
+
+    * system is: Linux 64bit
+    * CPLEX wrapper is not available
+    * Numpy is present, version is 1.9.2
+    * Matplotlib is present, version is 1.4.3
+
+
+.. code:: python
+
+    from docplex.mp.context import DOcloudContext
+    context = DOcloudContext(url="PUT_YOUR_DOCLOUD_URL_HERE", 
+                             api_key="PUT_YOUR_DOCLOUD_KEY_HERE")
+
+.. code:: python
+
+    from docplex.mp.model import Model
+    warehouse_model = Model(docloud_context=context)
+
+
+.. parsed-literal::
+
+    Warning: CPLEX DLL not found, will solve on DOcloud
+
+
+Defining decision variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In DOCplex, decision variables are related to objects of the business
+model. In our case, we have two decisions to take: which warehouse is
+open and, for each store, from which warehouse is it supplied.
+
+First, we create one binary (yes/no) decision variable for each
+warehouse: the variable will be equal to 1 if and only if the warehouse
+is open. We use the **binary\_var\_dict** method of th emodel object to
+create a dictionary from warehouses to variables. The first argument
+states that keys of the dcitionary will be our warehouse objects; the
+second argument is a a simple string \*'open', that is used to generate
+names for variables, by suffixing 'open' with the string representation
+of warehouse objects (in other terms the output of the **str()** Python
+function. This is the reason why we redefined the method ****str****
+method of class TWarehouse in the beginning.
+
+.. code:: python
+
+     open_vars = warehouse_model.binary_var_dict(keys=warehouses, name='open')
+
+Second, we define one binary variable for each **pair** or (warehouse,
+store). This is done using the method **binary\_var\_matrix**; in this
+case keys to variables are all (warehouse, store) pairs.
+
+The naming scheme applies to both components of pairs,for example the
+variable deciding whether the London warehouse supplies store 1 will be
+named supply\_London\_store\_1.
+
+.. code:: python
+
+    supply_vars = warehouse_model.binary_var_matrix(warehouses, stores, 'supply')
+
+At this step, we can check how many variables we have defined. as we
+have 5 warehouses and 10 stores, we expect to have defined 5\*10 + 5 =
+55 variables.
+
+.. code:: python
+
+    warehouse_model.print_information()
+
+
+.. parsed-literal::
+
+    Model: anonymous_model
+     - number of variables: 66
+     -   binary=66, integer=0, continuous=0
+     - number of constraints: 0
+     -   LE=0, EQ=0, GE=0, RNG=0
+     - parameters : defaults
+
+
+As expected, we have not defined any constraints yet.
+
+Defining constraints
+--------------------
+
+The first constraint states that each store is supplied by exactly one
+warehouse. In other terms, the sum of supply variables for a given
+store, ranging over all warehouses, must be equal to 1. Printing model
+information, we check that this code defines 10 constraints
+
+.. code:: python
+
+    for s in stores:
+        warehouse_model.add_constraint(warehouse_model.sum(supply_vars[w, s] for w in warehouses) == 1)
+    warehouse_model.print_information()
+
+
+.. parsed-literal::
+
+    Model: anonymous_model
+     - number of variables: 66
+     -   binary=66, integer=0, continuous=0
+     - number of constraints: 10
+     -   LE=0, EQ=10, GE=0, RNG=0
+     - parameters : defaults
+
+
+The second constraints states that a store can be suppplied only by an open warehouse. To model this, we use a little trick of logic, converting this logical implication (w supplies s) => w is open into an inequality between binary variables, as in:
+
+.. code:: python
+
+    for s in stores:
+        for w in warehouses: 
+            warehouse_model.add_constraint(supply_vars[w, s] <= open_vars[w])
+
+whenever a supply var from warehouse **w** equals one, its open variable
+will also be equal to one. Conversely, when the open variable is zero,
+all supply variable for this warehouse will be zero. This constraint
+does not prevent having an open warehouse supplying no stores. Though
+this could be taken care of by adding an extra constraint, this is not
+necessary as such cases will be automatically eliminated by searching
+for the minimal cost (see the objective section).
+
+The third constraint states the capacity limitation on each warehouse.
+Note the overloading of the logical operator **<=** to express the
+constraint.
+
+.. code:: python
+
+    for w in warehouses:
+        warehouse_model.add_constraint(warehouse_model.sum(supply_vars[w, s] for s in stores) <= w.capacity)
+
+At this point we can summarize the variables and constraint we have
+defined in the model.
+
+.. code:: python
+
+    warehouse_model.print_information()
+
+
+.. parsed-literal::
+
+    Model: anonymous_model
+     - number of variables: 66
+     -   binary=66, integer=0, continuous=0
+     - number of constraints: 76
+     -   LE=66, EQ=10, GE=0, RNG=0
+     - parameters : defaults
+
+
+Defining the Objective
+----------------------
+
+The objective is to minimize the total costs. There are two costs:
+
+-  the opening cost which is incurred each time a warehouse is open
+-  the supply cost which is incurred by the assignments of warehouses to
+   stores
+
+We define two linear expressions to model these two costs and state that
+our objective is to minimize the sum.
+
+.. code:: python
+
+    total_opening_cost = warehouse_model.sum(open_vars[w] * w.fixed_cost for w in warehouses)
+    total_opening_cost.name = "Total Opening Cost"
+    
+    def _get_supply_cost(warehouse, store):
+        ''' A nested function to return the supply costs from a warehouse and a store'''
+        return supply_costs[warehouse][store.id - 1]
+    
+    total_supply_cost = warehouse_model.sum([supply_vars[w,s] * _get_supply_cost(w, s) for w in warehouses for s in stores])
+    total_supply_cost.name = "Total Supply Cost"
+    
+    warehouse_model.minimize(total_opening_cost + total_supply_cost)
+
+The model is now complete and we can solve it and get the final optimal
+objective
+
+Solving the model
+-----------------
+
+.. code:: python
+
+    ok = warehouse_model.solve()
+    assert ok
+    obj = warehouse_model.objective_value
+    print("optimal objective is %g" % obj)
+
+
+.. parsed-literal::
+
+    optimal objective is 433
+
+
+But there's more: we can precise the value of those two costs, by
+evaluating the value of the two expressions. Here we see that the
+opening cost is 140 and the supply cost is 293.
+
+.. code:: python
+
+    opening_cost_obj = total_opening_cost.solution_value
+    supply_cost_obj = total_supply_cost.solution_value
+    print("total opening cost=%g" % opening_cost_obj)
+    print("total supply cost=%g" % supply_cost_obj)
+    
+    # store results for later on...
+    results=[]
+    results.append((opening_cost_obj, supply_cost_obj))
+
+
+.. parsed-literal::
+
+    total opening cost=140
+    total supply cost=293
+
+
+Displaying results
+------------------
+
+We can leverage the graphic toolkit **maptplotlib** to display the
+results. First, let's draw a pie chart of opening cost vs. supply costs
+to clearly see the respective impact of both costs.
+
+.. code:: python
+
+    from docplex.mp.environment import Environment
+    env = Environment
+    
+    if env.has_matplotlib:
+        import matplotlib.pyplot as plt
+        %matplotlib inline
+    
+    def display_costs(costs, labels, colors):
+        if env.has_matplotlib:
+            plt.axis("equal")
+            plt.pie(costs, labels=labels, colors=colors, autopct="%1.1f%%")
+            plt.show()
+        else:
+            print("warning: no display")
+        
+    display_costs(costs=[opening_cost_obj, supply_cost_obj], 
+                  labels=["Opening Costs", "Supply Costs"], 
+                  colors=["gold", "lightBlue"])
+
+
+
+.. image:: output_37_0.png
+
+
+We can also display the breakdown of supply costs per warehouse. First,
+compute the sum of supply cost values for each warehouse: we need to sum
+the actual supply cost from w to s for those pairs (w, s) whose variable
+is true (here we test the value to be >=0.9, testing equality to 1 would
+not be robust because of numerical precision issues)
+
+.. code:: python
+
+    supply_cost_by_warehouse = [ sum(_get_supply_cost(w,s) for s in stores if supply_vars[w,s].solution_value >= 0.9) for w in warehouses]
+    wh_labels = [w.id for w in warehouses]
+    display_costs(supply_cost_by_warehouse, wh_labels, None)
+
+
+
+.. image:: output_39_0.png
+
+
+Exploring the Pareto frontier
+-----------------------------
+
+remember we solved the model by minimizing the **sum** of the two costs,
+getting an optimal solution with total cost of 383, with opening costs =
+120 and supply costs = 263.
+
+In some cases, it might be intersting to wonder what is the absolute
+minimum of any of these two costs: what if we'd like to minimize opening
+costs **first**, and **then** the supply cost (of course keeping the
+best opeing cost we obtained in first phase.
+
+This is very easy to achieve with DOCplex, using the
+"solve\_lexicographic" method on the model. This method takes two
+arguments: the first one is a list of expressions, the second one a list
+of **senses** (Minimize or Maximize), the default being to Minimize each
+expression.
+
+In this section we will explore hat happens when we minimize opening
+costs **then** supply costs and conversely when we minimize supply costs
+and **then** opening costs.
+
+Minimizing total opening cost and then total supply cost
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code:: python
+
+    opening_first_then_supply = [ total_opening_cost, total_supply_cost]
+    warehouse_model.solve_lexicographic(goals=opening_first_then_supply)
+    
+    opening1 = total_opening_cost.solution_value
+    supply1 = total_supply_cost.solution_value
+    results.append( (opening1, supply1))
+
+
+.. parsed-literal::
+
+    * lexicographic ok, #passes=2, results=[120.0, 352.00000000000045]
+       - Total Opening Cost =120.0000
+       - Total Supply Cost =352.0000
+
+
+From this we can see that the model has sucessfully solved twice and
+that the absolute minimum of opening cost is 120, and for this value,
+the minimum supply cost is 263. Remember that in our first attempt we
+minimized the combined sum and obtained (120,263, but now we know 120 is
+the best we can achieve. The supply cost is now 352 , for a total
+combined cost of 472 which is indeed greater than the value of 433 we
+found when optimizing the combined sum.
+
+Minimizing total supply cost and then total opening cost
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now let's do the reverse: minimize supply cost and then opening cost.
+What if the goal of minimizing total supply cost supersedes the second
+goal of optimizing total opening cost? The code is straightforward:
+
+.. code:: python
+
+    supply_first_then_opening = [ total_supply_cost, total_opening_cost]
+    warehouse_model.solve_lexicographic(goals=supply_first_then_opening)
+    opening2 = total_opening_cost.solution_value
+    supply2 = total_supply_cost.solution_value
+    
+    results.append( (opening2, supply2))
+
+
+.. parsed-literal::
+
+    * lexicographic ok, #passes=2, results=[288.0, 152.0]
+       - Total Supply Cost =288.0000
+       - Total Opening Cost =152.0000
+
+
+Here, we obtain (152, 288), supply costs is down from 352 to 288 but
+opening cost raises from 120 to 150. We can check that the combined sum
+is 288+152 = 440, which is grater than the optimal of 433 we found at
+the beginning.
+
+Pareto Diagram
+~~~~~~~~~~~~~~
+
+We can plot these three points on a (opening, supply) plane:
+
+.. code:: python
+
+    def display_pareto(res):
+        if env.has_matplotlib:
+            plt.cla()
+            plt.xlabel('Opening Costs')
+            plt.ylabel('Supply Costs')
+            colors = ['g', 'r', 'b']
+            markers = ['o', '<', '>']
+            nb_res = len(res)
+            pts = []
+            for i, r in enumerate(res):
+                opening, supply = r
+                p = plt.scatter(opening, supply, color=colors[i%3], s=50+10*i, marker=markers[i%3])
+                pts.append(p)
+            plt.legend(pts,
+                   ('Sum', 'Opening_first', 'Supply_first'),
+                   scatterpoints=1,
+                   loc='lower left',
+                   ncol=3,
+                   fontsize=8)
+            plt.show()
+        else:
+            print("Warning: no display")
+    
+    display_pareto(results)
+
+
+
+.. image:: output_46_0.png
+

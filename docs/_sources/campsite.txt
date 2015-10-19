@@ -1,0 +1,196 @@
+
+Campsite
+========
+
+Selecting the ideal camping site requires careful consideration of many
+factors such as the proximity to water, availability of firewood, and
+protection from the elements. Your potential camping sites are shown in
+the corresponding map. The map consists of 64 sites each with varying
+characteristics including water, wood, swamp, and mosquitoes.
+
+The quality of a site is determined by a points system. A site that
+contains water receives +3 points and a site that is near water receives
++1 point. A site that contains wood receives +2 points and a site that
+is near wood receives +1 point. A site that contains swamp is -2 points
+and a site that is near swamp is -1 point. A site that contains
+mosquitoes receives -3 points and a site that is near mosquitoes is -2
+points. “Near” is defined as adjacent sites including diagonals.
+
+For example, site B5 is worth 1 point (based on +3 on water, +1 near
+wood, -2 near mosquitoes, -1 near swamp). Note that you only count
+points once for each type of characteristic.
+
+Question: Where is the best campsite?
+
+References
+~~~~~~~~~~
+
+-  The PuzzlOr - Campsite (http://puzzlor.com/2015-06\_Campsite.html) .
+
+.. raw:: html
+
+   <center>
+
+.. raw:: html
+
+   </center>
+
+.. code:: python
+
+    !pip install docplex>=0.0.24
+
+
+.. parsed-literal::
+
+    Requirement already satisfied (use --upgrade to upgrade): docplex>=0.0.24 in /home/notebook/ka_env/lib/python2.7/site-packages
+    Requirement already satisfied (use --upgrade to upgrade): requests in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): six in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): docloud>=1.0.0 in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): futures in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex>=0.0.24)
+    Requirement already satisfied (use --upgrade to upgrade): enum34 in /usr/local/lib/python2.7/dist-packages (from docloud>=1.0.0->docplex>=0.0.24)
+    Cleaning up...
+
+
+First things first, we specialize a namedtuple class to model 2D points:
+
+.. code:: python
+
+    from collections import namedtuple
+    
+    class Point(namedtuple("TPoint", ["x", "y"])):
+        def __str__(self):
+            return "P<%g,%g>" % (self.x, self.y)
+        def coords(self):
+            return (self.x, self.y)
+
+Now we define the site of water, wood, swamp and mosquitoes present on
+our map
+
+.. code:: python
+
+    water = [Point(x=1,y=3),Point(x=2,y=5),Point(x=3,y=5),Point(x=4,y=2),Point(x=4,y=4),Point(x=4,y=8),Point(x=5,y=2),Point(x=5,y=3),Point(x=6,y=2),Point(x=7,y=3),Point(x=7,y=5)]
+    wood = [Point(x=1,y=7),Point(x=3,y=4),Point(x=5,y=5),Point(x=7,y=3),Point(x=8,y=3),Point(x=8,y=4),Point(x=8,y=8)]
+    swamp = [Point(x=1,y=5),Point(x=1,y=6),Point(x=2,y=1),Point(x=3,y=5),Point(x=4,y=2),Point(x=4,y=7),Point(x=6,y=2),Point(x=7,y=4),Point(x=7,y=8),Point(x=8,y=3)]
+    mosquitoes = [Point(x=1,y=3),Point(x=1,y=6),Point(x=2,y=2),Point(x=3,y=5),Point(x=3,y=8),Point(x=7,y=1),Point(x=7,y=3),Point(x=8,y=6)]
+
+Now lets define a fonction that calculate the distance between two
+points
+
+.. code:: python
+
+    import math
+    
+    def euclidean_distance(p1, p2):
+        dx = p1.x - p2.x
+        dy = p1.y - p2.y
+        return (dx * dx  +  dy * dy)
+
+Let's define a fonction that give us the nearest site to our point
+
+.. code:: python
+
+    def nearest_site(p1):
+        result = {}
+        for i in [water, wood, swamp, mosquitoes]:
+            if i == water: vardi = 'water'
+            if i == wood: vardi = 'wood'
+            if i == swamp: vardi = 'swamp'
+            if i == mosquitoes: vardi = 'mosquitoes'
+            for j in range(len(i)):
+                if j == 0: result[vardi] = i[j] 
+                else:
+                    if euclidean_distance(i[j], p1)< euclidean_distance(result[vardi], p1):
+                        result[vardi] = i[j]
+    
+        return result
+
+Let's now define the number of point on a defined site
+
+.. code:: python
+
+    def how_many_point(p1):
+        point=0
+        neighborhood = nearest_site(p1)
+        for i in ['water', 'wood', 'swamp', 'mosquitoes']:
+            if euclidean_distance(p1,neighborhood[i])==0:
+                if i == 'water': point= point+ 3
+                if i == 'wood': point= point+2
+                if i == 'swamp':point= point-2
+                if i == 'mosquitoes': point= point-3
+            elif euclidean_distance(p1,neighborhood[i])<=2:
+                if i == 'water': point= point+1
+                if i == 'wood': point= point+1
+                if i == 'swamp': point= point-1
+                if i == 'mosquitoes': point= point-2
+        return point
+
+Lets map our point on every site on a matrix
+
+.. code:: python
+
+    points = [Point(x,y) for (x,y) in [(i,j) for i in range(1,8) for j in range(1,8)]]
+    def generate_matrix(point):
+        matrix = {p: how_many_point(p) for p in point}
+        return matrix
+    matrix = generate_matrix(points)
+
+.. code:: python
+
+    from docplex.mp.environment import Environment
+    env = Environment()
+    env.print_information()
+
+
+.. parsed-literal::
+
+    * system is: Linux 64bit
+    * CPLEX wrapper is not available
+    * Numpy is present, version is 1.9.2
+    * Matplotlib is present, version is 1.4.3
+
+
+Let's now build the model that will choose the best site
+
+.. code:: python
+
+    from docplex.mp.context import DOcloudContext
+    context = DOcloudContext(url="PUT_YOUR_DOCLOUD_URL_HERE", 
+                             api_key="PUT_YOUR_DOCLOUD_KEY_HERE")
+    #context.verbose = True
+
+.. code:: python
+
+    from docplex.mp.model import Model
+    
+    mdl = Model("best_campsite", docloud_context=context)
+    
+    cord_vars = mdl.binary_var_dict(points, name="cord")
+    
+    mdl.add_constraint(mdl.sum(cord_vars[h]  for h in points) == 1)
+    
+    mdl.maximize(mdl.sum(cord_vars[h] * matrix[h]  for h in points))
+    
+    ok = mdl.solve()
+
+
+.. parsed-literal::
+
+    Warning: CPLEX DLL not found, will solve on DOcloud
+    * #non-compliant LP names: 49, e.g. |cord_P<1,1>|
+    
+
+
+.. code:: python
+
+    if not ok:
+        print("Campsite model fails")
+    else:
+            total_points = mdl.objective_value
+            best_site = [h for h in points if float(cord_vars[h]) ==1]
+            print("the best site is {} and its score is {}" .format(best_site,total_points))
+
+
+.. parsed-literal::
+
+    the best site is [TPoint(x=5, y=5)] and its score is 3.0
+
