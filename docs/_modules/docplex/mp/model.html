@@ -75,7 +75,7 @@
 
 <span class="kn">from</span> <span class="nn">docplex.mp.params.parameters</span> <span class="kn">import</span> <span class="n">Parameter</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.worker.worker_env</span> <span class="kn">import</span> <span class="n">__solve_hook</span> <span class="k">as</span> <span class="n">worker_hook</span>
+<span class="kn">import</span> <span class="nn">docplex.mp.worker.worker_env</span> <span class="kn">as</span> <span class="nn">wk_env</span>
 
 
 <span class="k">class</span> <span class="nc">_SolveHook</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -473,6 +473,9 @@
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        parameters: Contains the list of CPLEX parameters with their current values.</span>
+
+<span class="sd">    Note:</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@staticmethod</span>
@@ -985,7 +988,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">__notify_new_var</span><span class="p">(</span><span class="n">allvars</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">indices</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
         <span class="c"># increment global sequence container</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__allvars</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">allvars</span><span class="p">)</span>
-        <span class="n">max_var_index</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c"># max index is last index</span>
+        <span class="n">max_var_index</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c"># max index is last index</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_var_scope</span><span class="o">.</span><span class="n">notify_new_index</span><span class="p">(</span><span class="n">max_var_index</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__notify_new_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">var_index</span><span class="p">):</span>
@@ -1940,7 +1943,6 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s">&quot;Adding trivially infeasible {1}, rank: {0}&quot;</span><span class="p">,</span> <span class="n">ct_rank</span><span class="p">,</span> <span class="n">ct_typename</span><span class="p">)</span>
 
-
     <span class="k">def</span> <span class="nf">_prepare_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">ctname</span><span class="p">,</span> <span class="n">do_check</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
         <span class="c"># INTERNAL</span>
         <span class="k">if</span> <span class="n">ct</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
@@ -1987,7 +1989,6 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;constraint has already been posted: {0!s}, index is: {1}&quot;</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">ct</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>  <span class="c"># pragma : no cover</span>
             <span class="k">return</span> <span class="bp">False</span>  <span class="c"># pragma : no cover</span>
         <span class="k">return</span> <span class="bp">True</span>
-
 
     <span class="c"># @profile</span>
     <span class="k">def</span> <span class="nf">_add_constraint_internal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">ctname</span><span class="p">,</span> <span class="n">do_check</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
@@ -2421,8 +2422,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">()</span>
 
         <span class="n">self_solve_hooks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_hooks</span>
-        <span class="k">if</span> <span class="n">worker_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">self_solve_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker_hook</span><span class="p">)</span>
+        <span class="n">wk_hook</span> <span class="o">=</span> <span class="n">wk_env</span><span class="o">.</span><span class="n">solve_hook</span>
+        <span class="k">if</span> <span class="n">wk_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">self_solve_hooks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wk_hook</span><span class="p">)</span>
         <span class="c"># connect progress listeners (if any) iff problem is mip</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_integer_or_binary_vars</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_progress_listeners</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">connect_progress_listeners</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_progress_listeners</span><span class="p">)</span>
@@ -2464,8 +2466,8 @@
                                    <span class="bp">self</span><span class="o">.</span><span class="n">_make_end_infodict</span><span class="p">())</span>
 
             <span class="c"># unplug worker hook if any</span>
-            <span class="k">if</span> <span class="n">worker_hook</span><span class="p">:</span>
-                <span class="n">self_solve_hooks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">worker_hook</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">wk_hook</span><span class="p">:</span>
+                <span class="n">self_solve_hooks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">wk_hook</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">has_solution</span>
 
 <div class="viewcode-block" id="Model.get_solve_status"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.get_solve_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_solve_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -3163,7 +3165,11 @@
     <span class="k">def</span> <span class="nf">_fire_end_solve_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">has_solution</span><span class="p">,</span> <span class="n">objective_value</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_progress_listeners</span><span class="p">:</span>
             <span class="n">l</span><span class="o">.</span><span class="n">notify_end</span><span class="p">(</span><span class="n">has_solution</span><span class="p">,</span> <span class="n">objective_value</span><span class="p">)</span>
-
+            
+    <span class="k">def</span> <span class="nf">fire_jobid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobid</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_progress_listeners</span><span class="p">:</span>
+            <span class="n">l</span><span class="o">.</span><span class="n">notify_jobid</span><span class="p">(</span><span class="n">jobid</span><span class="p">)</span>
+            
     <span class="k">def</span> <span class="nf">clear_progress_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_progress_listeners</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -3338,7 +3344,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">param</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_parameter</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
             <span class="n">param</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">default_value</span><span class="p">)</span>
-
 
     <span class="c"># with protocol</span>
     <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
