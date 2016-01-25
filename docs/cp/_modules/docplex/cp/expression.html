@@ -1,0 +1,1714 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>docplex.cp.expression &mdash; DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.cp.expression</h1><div class="highlight"><pre>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the basic classes representing constraint programming model expressions.</span>
+
+<span class="sd">In particular, it defines the following classes:</span>
+
+<span class="sd"> * CpoExpr: the root class of each model expression node,</span>
+<span class="sd"> * CpoIntVar: representation of an integer variable,</span>
+<span class="sd"> * CpoIntervalVar: representation of an interval variable,</span>
+<span class="sd"> * CpoSequenceVar: representation of an interval variable,</span>
+<span class="sd"> * CpoSequenceVar: representation of an interval variable,</span>
+<span class="sd"> * CpoTransitionMatrix: representation of a transition matrix,</span>
+<span class="sd"> * CpoTupleSet: representation of a tuple set, and</span>
+<span class="sd"> * CpoStateFunction: representation of a state function.</span>
+
+<span class="sd">None of these classes should be created explicitly.</span>
+<span class="sd">There are various factory functions to do so, such as:</span>
+
+<span class="sd"> * integer_var(), integer_var_list(), integer_var_dict() to create integer variable(s),</span>
+<span class="sd"> * interval_var(), interval_var_list() to create an interval variable,</span>
+<span class="sd"> * sequence_var() to create a sequence variable,</span>
+<span class="sd"> * etc.</span>
+
+<span class="sd">Moreover, some automatic conversions are also provided.</span>
+<span class="sd">For example, a list of tuples of integers is automatically converted into a tuple set.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.catalog</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">## Integer expressions</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1">#INT_MAX = 0x1FFFFFFFFFFFFF  # (2^53 - 1) for 64 bits</span>
+<span class="n">INT_MAX</span> <span class="o">=</span> <span class="mh">0x7FFFFFFF</span>         <span class="c1"># (2^31 - 1) for 32 bits</span>
+<span class="sd">&quot;&quot;&quot; Maximum integer value. &quot;&quot;&quot;</span>
+
+<span class="n">INT_MIN</span> <span class="o">=</span> <span class="o">-</span><span class="n">INT_MAX</span>
+<span class="sd">&quot;&quot;&quot; Minimum integer value. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CpoExpr"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr">[docs]</a><span class="k">class</span> <span class="nc">CpoExpr</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Root constraint programming model expression. &quot;&quot;&quot;</span>
+    <span class="c1"># To force possible numpy operators overloading to get CPO expressions as main operand</span>
+    <span class="n">__array_priority__</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span>       <span class="c1"># Expression result type</span>
+                 <span class="s1">&#39;name&#39;</span><span class="p">,</span>       <span class="c1"># Name of the expression (None if none)</span>
+                 <span class="s1">&#39;nbrefs&#39;</span>      <span class="c1"># Number of references on this expression</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a new expression</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            type:   Expression type.</span>
+<span class="sd">            name:   Expression name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># super(CpoExpr, self).__init__()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="nb">type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbrefs</span> <span class="o">=</span> <span class="mi">0</span>
+        
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Redefinition of hash (needed by Python 3)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">/</span> <span class="mi">16</span><span class="p">)</span>
+
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    # DO NOT activate these functions with cloudpickle</span>
+<span class="sd">    def __getstate__(self):</span>
+<span class="sd">        &quot;&quot;&quot; Build a picklable object from this object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        return dict((k, getattr(self, k, None)) for k in self.__slots__)</span>
+
+<span class="sd">    def __setstate__(self, data):</span>
+<span class="sd">        &quot;&quot;&quot; Fill object from its pickle form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        for (k, v) in data.iteritems():</span>
+<span class="sd">            setattr(self, k, v)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="CpoExpr.set_name"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.set_name">[docs]</a>    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the expression name.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Expression name, possibly None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;name&#39; should be a string or None&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+            </div>
+<div class="viewcode-block" id="CpoExpr.get_name"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.get_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the expression name.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression name, possibly None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            </div>
+    <span class="k">def</span> <span class="nf">_get_alias_then_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the name of the expression (alias are for variables only)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+
+<div class="viewcode-block" id="CpoExpr.has_name"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.has_name">[docs]</a>    <span class="k">def</span> <span class="nf">has_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if the expression has a name.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if expression has a name, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">)</span>
+            </div>
+<div class="viewcode-block" id="CpoExpr.get_type"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.get_type">[docs]</a>    <span class="k">def</span> <span class="nf">get_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the type of this expression.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression type descriptor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
+            </div>
+<div class="viewcode-block" id="CpoExpr.is_kind_of"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.is_kind_of">[docs]</a>    <span class="k">def</span> <span class="nf">is_kind_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tp</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this expression type is a kind of another type.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tp: Other type to check.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">           True if this expression type type is a kind of tp.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if required type is the same</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">tp</span><span class="o">.</span><span class="n">base_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">higher_types</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoExpr.is_variable"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.is_variable">[docs]</a>    <span class="k">def</span> <span class="nf">is_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this expression is a variable.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this expression is a variable, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_variable</span><span class="p">()</span>
+            </div>
+<div class="viewcode-block" id="CpoExpr.is_constant"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.is_constant">[docs]</a>    <span class="k">def</span> <span class="nf">is_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this expression is constant.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this expression is a constant, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_constant</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="CpoExpr.is_atom_constant"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.is_atom_constant">[docs]</a>    <span class="k">def</span> <span class="nf">is_atom_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this expression is an atomic constant (boolean, int, float).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this expression is an atomic constant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="CpoExpr.get_priority"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.get_priority">[docs]</a>    <span class="k">def</span> <span class="nf">get_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the expression operation priority.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Operation priority, -1 for none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+</div>
+    <span class="k">def</span> <span class="nf">_get_children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the list of children expressions if any</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of children expressions, None if none</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="CpoExpr.get_max_depth"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.get_max_depth">[docs]</a>    <span class="k">def</span> <span class="nf">get_max_depth</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the maximum expression depth.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Max expression depth.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">depth</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">self</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="k">while</span> <span class="n">stack</span><span class="p">:</span>
+            <span class="n">selem</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">expr</span> <span class="o">=</span> <span class="n">selem</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
+                <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">chlds</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="s2">&quot;operands&quot;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">chlds</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">chlds</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+                <span class="n">cnx</span> <span class="o">=</span> <span class="n">selem</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">chlds</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)))</span> <span class="ow">or</span> <span class="p">(</span><span class="n">cnx</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chlds</span><span class="p">)):</span>
+                    <span class="n">depth</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack</span><span class="p">))</span>
+                    <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">selem</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">cnx</span>
+                    <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">chlds</span><span class="p">[</span><span class="n">cnx</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">depth</span>
+</div>
+<div class="viewcode-block" id="CpoExpr.equals"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoExpr.equals">[docs]</a>    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks the equality of this expression with another.</span>
+
+<span class="sd">        Implementation is required with this name because &#39;==&#39; is already overloaded to construct an expression.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Other object to compare with.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">))</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">type</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_incr_ref_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Increase reference count on this expression and create a name if more than one</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            expr: Expression to update</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Increment reference count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbrefs</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbrefs</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_atom_constant</span><span class="p">()):</span>
+            <span class="c1"># Add expression id if none</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_identifier</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the string representing this expression (without name)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            String representation of this expression</span>
+<span class="sd">            This default implementation returns the name of the type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the string representing this expression</span>
+<span class="sd">        Args:</span>
+<span class="sd">            root: Expression root indicator</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            String representation of this expression</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check named expression not at root</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">name</span>
+            <span class="k">return</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot; = &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_string</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_string</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CpoValue"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoValue">[docs]</a><span class="k">class</span> <span class="nc">CpoValue</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Expression representing a constant. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span>  <span class="c1"># Python value of the constant</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new constant expression.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value:  Python value.</span>
+<span class="sd">            vtyp :  Value type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">CpoType</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;type&#39; should be a CpoType&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoValue</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="o">.</span><span class="n">is_array_of_expr</span><span class="p">():</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">_update_references</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="CpoValue.get_value"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoValue.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the value of the constant.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Value of the constant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+</div>
+<div class="viewcode-block" id="CpoValue.is_atom_constant"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoValue.is_atom_constant">[docs]</a>    <span class="k">def</span> <span class="nf">is_atom_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this expression is an atomic constant (boolean, int, float).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this expression is an atomic constant.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Int</span><span class="p">,</span> <span class="n">Type_Float</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="CpoValue.equals"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoValue.equals">[docs]</a>    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks equality of this expression with another.</span>
+
+<span class="sd">        Implementation is required with this name because &#39;==&#39; is overloaded to construct expressions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Other object to compare with.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Call super</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">super</span><span class="p">(</span><span class="n">CpoValue</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="c1"># Check value</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_array_of_expr</span><span class="p">():</span>
+            <span class="n">sval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">oval</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">oval</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sval</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sval</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">sval</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">oval</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span>
+</div>
+    <span class="k">def</span> <span class="nf">_get_children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the list of children expressions if any</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of children expressions, None if none</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_array_of_expr</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">_get_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the string representing this expression (without name)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            String representation of this expression</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CpoFunctionCall"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoFunctionCall">[docs]</a><span class="k">class</span> <span class="nc">CpoFunctionCall</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Constraint programming model expression representing a function call. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;signature&#39;</span><span class="p">,</span>  <span class="c1"># Signature of the operation (None if none)</span>
+                 <span class="s1">&#39;operands&#39;</span><span class="p">,</span>   <span class="c1"># List of operand expressions, or Python value for constants</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">oprnds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a new function call expression</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sign:   Operation signature (children is operands).</span>
+<span class="sd">            oprnds: List of operand expressions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sign</span><span class="p">,</span> <span class="n">CpoSignature</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;sign&#39; should be a CpoSignature&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoFunctionCall</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">sign</span><span class="o">.</span><span class="n">get_returned_type</span><span class="p">(),</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signature</span> <span class="o">=</span> <span class="n">sign</span>
+
+        <span class="c1"># Check no toplevel constraints</span>
+        <span class="k">if</span> <span class="n">oprnds</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">oprnds</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span> <span class="o">==</span> <span class="n">Type_Constraint</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;The constraint &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; can not be member of an expression.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operands</span> <span class="o">=</span> <span class="n">_update_references</span><span class="p">(</span><span class="n">oprnds</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operands</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="CpoFunctionCall.get_signature"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoFunctionCall.get_signature">[docs]</a>    <span class="k">def</span> <span class="nf">get_signature</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the expression signature.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression signature.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span>
+</div>
+<div class="viewcode-block" id="CpoFunctionCall.get_operation"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoFunctionCall.get_operation">[docs]</a>    <span class="k">def</span> <span class="nf">get_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the expression operation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression operation, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">operation</span>
+</div>
+<div class="viewcode-block" id="CpoFunctionCall.get_priority"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoFunctionCall.get_priority">[docs]</a>    <span class="k">def</span> <span class="nf">get_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the expression operation priority.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Operation priority, -1 for none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">get_priority</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="CpoFunctionCall.get_operands"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoFunctionCall.get_operands">[docs]</a>    <span class="k">def</span> <span class="nf">get_operands</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the expression operands.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression operands (list of child expressions), None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">operands</span>
+</div>
+<div class="viewcode-block" id="CpoFunctionCall.equals"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoFunctionCall.equals">[docs]</a>    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks the equality of this expression with .</span>
+
+<span class="sd">        Implementation is required with this name because &#39;==&#39; is already overloaded to construct an expression.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Other object to compare with.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Call super</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">super</span><span class="p">(</span><span class="n">CpoFunctionCall</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="c1"># Check signature</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">signature</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="c1"># Check operands</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">is_parameters</span><span class="p">():</span>
+            <span class="n">soprds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operands</span>
+            <span class="n">ooprds</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">operands</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">soprds</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ooprds</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">soprds</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">soprds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">ooprds</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+    <span class="k">def</span> <span class="nf">_get_children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the list of children expressions if any</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of children expressions, None if none</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">operands</span>
+
+    <span class="k">def</span> <span class="nf">_get_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the string representing this expression (without name)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            String representation of this expression</span>
+<span class="sd">            This default implementation returns the name of the type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check named expression not at root</span>
+        <span class="n">opsgn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span>
+        <span class="n">oprnds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operands</span>
+        <span class="k">return</span> <span class="n">opsgn</span><span class="o">.</span><span class="n">get_operation</span><span class="p">()</span><span class="o">.</span><span class="n">get_py_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;(&quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">_to_string</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">oprnds</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
+
+</div>
+<div class="viewcode-block" id="CpoVariable"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoVariable">[docs]</a><span class="k">class</span> <span class="nc">CpoVariable</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Expression representing a variable. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;alias&#39;</span><span class="p">,</span>  <span class="c1"># Variable name alias, None if none</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new variable expression.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            type:   Expression type.</span>
+<span class="sd">            name:   Variable name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check name length</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_identifier</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoVariable</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alias</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="CpoVariable.is_variable"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoVariable.is_variable">[docs]</a>    <span class="k">def</span> <span class="nf">is_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this expression is a variable.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this expression is a variable, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="CpoVariable.get_alias"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoVariable.get_alias">[docs]</a>    <span class="k">def</span> <span class="nf">get_alias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the alias of this variable.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Variable alias, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias</span>
+</div>
+<div class="viewcode-block" id="CpoVariable.is_alias"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoVariable.is_alias">[docs]</a>    <span class="k">def</span> <span class="nf">is_alias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this variable has an alias set.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if there is an alias to this variable, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="CpoVariable.add_alias"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoVariable.add_alias">[docs]</a>    <span class="k">def</span> <span class="nf">add_alias</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds an alias to this variable, if not already set.</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            The variable alias.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alias</span> <span class="o">=</span> <span class="n">_allocate_alias</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias</span>
+</div>
+    <span class="k">def</span> <span class="nf">_get_alias_then_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the alias of this variable, or name if no alias</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Variable alias, or name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias</span>
+</div>
+<div class="viewcode-block" id="CpoIntVar"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntVar">[docs]</a><span class="k">class</span> <span class="nc">CpoIntVar</span><span class="p">(</span><span class="n">CpoVariable</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Integer variable. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;domain&#39;</span><span class="p">,</span>  <span class="c1"># Variable domain</span>
+                 <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dom</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates an integer variable.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dom:   List of integers or interval tuples representing the variable domain</span>
+<span class="sd">                   See method set_domain() for details.</span>
+<span class="sd">            name:  Variable name, None for anonymous/autonamed variable.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            IntVar expression</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoIntVar</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">Type_IntVar</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_domain</span><span class="p">(</span><span class="n">dom</span><span class="p">)</span>
+        
+<div class="viewcode-block" id="CpoIntVar.set_domain"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntVar.set_domain">[docs]</a>    <span class="k">def</span> <span class="nf">set_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dom</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the domain of the variable.</span>
+
+<span class="sd">        The domain of the variable is a list or tuple of:</span>
+
+<span class="sd">           * discrete integer values,</span>
+<span class="sd">           * list or tuple of 2 integers representing an interval.</span>
+
+<span class="sd">        For example, here are valid domain definitions:</span>
+
+<span class="sd">           set_domain([1, 3, 4, 5, 9])</span>
+<span class="sd">           set_domain([1, (3, 5), 9])</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dom: List of integers or interval tuples representing the variable domain.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">__debug__</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">is_array</span><span class="p">(</span><span class="n">dom</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;dom&#39; should be an array of integers and/or intervals (tuples of 2 integers)&quot;</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dom</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">is_int</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+                    <span class="k">assert</span> <span class="n">_is_interval_tuple</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;dom&#39; should be an array of integers and/or intervals (tuples of 2 integers)&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">dom</span>
+    </div>
+<div class="viewcode-block" id="CpoIntVar.get_domain"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntVar.get_domain">[docs]</a>    <span class="k">def</span> <span class="nf">get_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the domain of the variable.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of integers or interval tuples representing the variable domain.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span>
+    </div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;integer_var(&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
+        
+
+<span class="c1">###############################################################################</span>
+<span class="c1">## Scheduling expressions</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1">#INTERVAL_MAX = 0xFFFFFFFFFFFFE  # (2^52 - 2) for 64 bits</span></div>
+<span class="n">INTERVAL_MAX</span> <span class="o">=</span> <span class="mh">0x3FFFFFFE</span>        <span class="c1"># (2^30 - 2) for 32 bits</span>
+<span class="sd">&quot;&quot;&quot; Maximum interval variable range. &quot;&quot;&quot;</span>
+
+<span class="n">INTERVAL_MIN</span> <span class="o">=</span> <span class="o">-</span><span class="n">INTERVAL_MAX</span>
+<span class="sd">&quot;&quot;&quot; Minimum interval variable range. &quot;&quot;&quot;</span>
+
+<span class="n">INFINITY</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot; Infinity. &quot;&quot;&quot;</span>
+
+<span class="n">DEFAULT_INTERVAL</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot; Default interval. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="CpoIntervalVar"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar">[docs]</a><span class="k">class</span> <span class="nc">CpoIntervalVar</span><span class="p">(</span><span class="n">CpoVariable</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Interval variable. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span>        <span class="c1"># Start domain</span>
+                 <span class="s1">&#39;end&#39;</span><span class="p">,</span>          <span class="c1"># End domain</span>
+                 <span class="s1">&#39;length&#39;</span><span class="p">,</span>       <span class="c1"># Length domain</span>
+                 <span class="s1">&#39;size&#39;</span><span class="p">,</span>         <span class="c1"># Size domain</span>
+                 <span class="s1">&#39;intensity&#39;</span><span class="p">,</span>    <span class="c1"># Specifies relation between size and length of the interval.</span>
+                 <span class="s1">&#39;granularity&#39;</span><span class="p">,</span>  <span class="c1"># Scale of the intensity function.</span>
+                 <span class="s1">&#39;present&#39;</span><span class="p">,</span>      <span class="c1"># Present indicator</span>
+                 <span class="s1">&#39;absent&#39;</span><span class="p">,</span>       <span class="c1"># Absent indicator</span>
+                 <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span>
+                 <span class="n">intensity</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">present</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">absent</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new interval variable.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            start:       Start interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">            end:         End interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">            length:      Length interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">            size:        Size interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">            intensity:   StepFunction that specifies relation between size and length of the interval.</span>
+<span class="sd">            granularity: Scale of the intensity function. None or positive integer.</span>
+<span class="sd">            present:     Presence indicator. None or Boolean.</span>
+<span class="sd">            absent:      Absence indicator. None or Boolean.</span>
+<span class="sd">            name:        Name of the variable, None for automatic naming.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoIntervalVar</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">Type_IntervalVar</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        
+        <span class="c1"># Check and store arguments</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span>   <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">start</span><span class="p">,</span>  <span class="s2">&quot;start&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end</span>     <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">end</span><span class="p">,</span>    <span class="s2">&quot;end&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span>  <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="s2">&quot;length&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span>    <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">size</span><span class="p">,</span>   <span class="s2">&quot;size&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">present</span> <span class="o">=</span> <span class="n">_check_arg_boolean</span><span class="p">(</span><span class="n">present</span><span class="p">,</span> <span class="s2">&quot;present&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">absent</span>  <span class="o">=</span> <span class="n">_check_arg_boolean</span><span class="p">(</span><span class="n">absent</span><span class="p">,</span>  <span class="s2">&quot;absent&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_granularity</span><span class="p">(</span><span class="n">granularity</span><span class="p">)</span>  <span class="c1"># Set before intensity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_intensity</span><span class="p">(</span><span class="n">intensity</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CpoIntervalVar.set_start"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_start">[docs]</a>    <span class="k">def</span> <span class="nf">set_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">intv</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the start interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            intv: Start of the interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">intv</span><span class="p">,</span> <span class="s2">&quot;intv&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.get_start"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.get_start">[docs]</a>    <span class="k">def</span> <span class="nf">get_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the start of the interval.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Start of the interval (interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_start_min"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_start_min">[docs]</a>    <span class="k">def</span> <span class="nf">set_start_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mn</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the minimum value of the start interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Min value of the start of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="n">mn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_start_max"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_start_max">[docs]</a>    <span class="k">def</span> <span class="nf">set_start_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the maximum value of the start interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Max value of the start of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mx</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_end"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_end">[docs]</a>    <span class="k">def</span> <span class="nf">set_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">intv</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the end of the interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            intv: End of the interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">intv</span><span class="p">,</span> <span class="s2">&quot;intv&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.get_end"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.get_end">[docs]</a>    <span class="k">def</span> <span class="nf">get_end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the end of the interval.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            End of the interval (interval expressed as a tuple of 2 integers)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_end_min"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_end_min">[docs]</a>    <span class="k">def</span> <span class="nf">set_end_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mn</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the minimum value of the end interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Min value of the end of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="p">(</span><span class="n">mn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_end_max"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_end_max">[docs]</a>    <span class="k">def</span> <span class="nf">set_end_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the maximum value of the end of the interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Max value of the end of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mx</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_length"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_length">[docs]</a>    <span class="k">def</span> <span class="nf">set_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">intv</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the length interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            intv: Length of the interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">intv</span><span class="p">,</span> <span class="s2">&quot;intv&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.get_length"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.get_length">[docs]</a>    <span class="k">def</span> <span class="nf">get_length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the length interval.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Length of the interval (interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_length_min"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_length_min">[docs]</a>    <span class="k">def</span> <span class="nf">set_length_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mn</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the minimum value of the length interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Min value of the length of the interval min value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="p">(</span><span class="n">mn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_length_max"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_length_max">[docs]</a>    <span class="k">def</span> <span class="nf">set_length_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the maximum value of the length interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Max value of the length of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">length</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mx</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_size"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_size">[docs]</a>    <span class="k">def</span> <span class="nf">set_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">intv</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the size of the interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            intv: Size of the interval (single integer or interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">_check_arg_interval</span><span class="p">(</span><span class="n">intv</span><span class="p">,</span> <span class="s2">&quot;intv&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.get_size"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.get_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the size of the interval.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Size of the interval (interval expressed as a tuple of 2 integers).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_size_min"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_size_min">[docs]</a>    <span class="k">def</span> <span class="nf">set_size_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mn</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the minimum value of the size interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Min value of the size of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="n">mn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_size_max"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_size_max">[docs]</a>    <span class="k">def</span> <span class="nf">set_size_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the maximum value of the size interval.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mn: Max value of the size of the interval.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mx</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_present"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_present">[docs]</a>    <span class="k">def</span> <span class="nf">set_present</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Specifies that this IntervalVar must be present. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">present</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">absent</span> <span class="o">=</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_absent"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_absent">[docs]</a>    <span class="k">def</span> <span class="nf">set_absent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Specifies that this IntervalVar must be absent. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">present</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">absent</span> <span class="o">=</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_optional"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_optional">[docs]</a>    <span class="k">def</span> <span class="nf">set_optional</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Specifies that this IntervalVar is optional. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">present</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">absent</span> <span class="o">=</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_intensity"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_intensity">[docs]</a>    <span class="k">def</span> <span class="nf">set_intensity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">intensity</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the intensity function of this interval var.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">           intensity:  Intensity function (None, or StepFunction).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">intensity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="c1"># Check intensity function (with type to avoid recursive import - beurk)</span>
+            <span class="k">if</span> <span class="n">__debug__</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">intensity</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">intensity</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span> <span class="o">==</span> <span class="n">Type_StepFunction</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;intensity&#39; should be None or StepFunction&quot;</span>
+                <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">intensity</span><span class="o">.</span><span class="n">get_step_list</span><span class="p">():</span>
+                    <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="s2">&quot;&#39;intensity&#39; step start should be an integer&quot;</span>
+                    <span class="n">gran</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">gran</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">):</span>
+                        <span class="n">gran</span> <span class="o">=</span> <span class="mi">100</span>
+                    <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">v</span> <span class="o">&lt;=</span> <span class="n">gran</span><span class="p">),</span> <span class="s2">&quot;&#39;intensity&#39; step value should be in [0..granularity]&quot;</span>
+            <span class="c1"># Update references on intensity function</span>
+            <span class="n">intensity</span><span class="o">.</span><span class="n">_incr_ref_count</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intensity</span> <span class="o">=</span> <span class="n">intensity</span>
+</div>
+<div class="viewcode-block" id="CpoIntervalVar.set_granularity"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoIntervalVar.set_granularity">[docs]</a>    <span class="k">def</span> <span class="nf">set_granularity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">granularity</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the scale of the intensity function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            granularity: Scale of the intensity function (integer).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">granularity</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">is_int</span><span class="p">(</span><span class="n">granularity</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">granularity</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)),</span> <span class="s2">&quot;Argument &#39;granularity&#39; should be None or positive integer&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">granularity</span> <span class="o">=</span> <span class="n">granularity</span> 
+</div>
+    <span class="k">def</span> <span class="nf">_get_children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the list of children expressions if any</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of children expressions, None if none</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">intensity</span> <span class="k">else</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;interval_var(&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
+
+</div>
+<div class="viewcode-block" id="CpoSequenceVar"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoSequenceVar">[docs]</a><span class="k">class</span> <span class="nc">CpoSequenceVar</span><span class="p">(</span><span class="n">CpoVariable</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Sequence variable. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;vars&#39;</span><span class="p">,</span>   <span class="c1"># List of variables</span>
+                 <span class="s1">&#39;types&#39;</span><span class="p">,</span>  <span class="c1"># Variable types</span>
+                <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">vars</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new sequence variable.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            vars:  Array of IntervalVars that constitute the sequence.</span>
+<span class="sd">            types: Variable types (same size as vars), default is None.</span>
+<span class="sd">            name:  Name of the sequence, None for automatic naming.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check  arguments </span>
+        <span class="k">assert</span> <span class="n">is_array_of_type</span><span class="p">(</span><span class="nb">vars</span><span class="p">,</span> <span class="n">CpoIntervalVar</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;vars&#39; should be an array of CpoIntervalVar&quot;</span>
+        <span class="k">if</span> <span class="n">types</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">types</span> <span class="o">=</span> <span class="n">_check_and_expand_interval_tuples</span><span class="p">(</span><span class="s1">&#39;types&#39;</span><span class="p">,</span> <span class="n">types</span><span class="p">)</span>
+        <span class="c1"># Store attributes</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoSequenceVar</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">Type_SequenceVar</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vars</span> <span class="o">=</span> <span class="nb">vars</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">types</span> <span class="o">=</span> <span class="n">types</span>
+
+<div class="viewcode-block" id="CpoSequenceVar.get_interval_variables"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoSequenceVar.get_interval_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_interval_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the array of variables.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Array of variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vars</span>
+    </div>
+<div class="viewcode-block" id="CpoSequenceVar.get_types"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoSequenceVar.get_types">[docs]</a>    <span class="k">def</span> <span class="nf">get_types</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the array of types.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Array of types.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">types</span>
+    </div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;SequenceVar&quot;</span> <span class="o">+</span> <span class="n">to_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vars</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CpoTransitionMatrix"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTransitionMatrix">[docs]</a><span class="k">class</span> <span class="nc">CpoTransitionMatrix</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Transition matrix (transition distances). &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">,</span>    <span class="c1"># Matrix width/height</span>
+                 <span class="s1">&#39;matrix&#39;</span><span class="p">,</span>  <span class="c1"># Matrix values</span>
+                <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new empty transition matrix (square matrix of integers).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            size:   Matrix size (width or height).</span>
+<span class="sd">                    If not given, the `values` argument must be given.</span>
+<span class="sd">            values: Optional list of matrix values.</span>
+<span class="sd">                    If not given, the method `set_value()` should be called to initialize matrix content.</span>
+<span class="sd">            name:   Name of the matrix. None by default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoTransitionMatrix</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">Type_TransitionMatrix</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;size&#39; should be an int&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">values</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">size</span> <span class="o">*</span> <span class="n">size</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">is_array_of_type</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="n">size</span> <span class="o">*</span> <span class="n">size</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;values&#39; should be an array of integer of size*size length&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span> <span class="o">=</span> <span class="n">values</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">is_array_of_type</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;values&#39; should be an array of integers&quot;</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">size</span> <span class="o">*</span> <span class="n">size</span><span class="p">)),</span> <span class="s2">&quot;Argument &#39;values&#39; should hae a length that is a perfect square&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span> <span class="o">=</span> <span class="n">values</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s2">&quot;At least &#39;size&#39; or &#39;values&#39; should be given&quot;</span>
+         
+<div class="viewcode-block" id="CpoTransitionMatrix.get_size"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTransitionMatrix.get_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the matrix size.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Matrix size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
+</div>
+<div class="viewcode-block" id="CpoTransitionMatrix.get_value"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTransitionMatrix.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">from_state</span><span class="p">,</span> <span class="n">to_state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets a value in the transition matrix.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            from_state: Index of the from state.</span>
+<span class="sd">            to_state:   Index of the to state.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Transition value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">assert_arg_int_interval</span><span class="p">(</span><span class="n">from_state</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="s2">&quot;from_state&quot;</span><span class="p">)</span>
+        <span class="n">assert_arg_int_interval</span><span class="p">(</span><span class="n">to_state</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="s2">&quot;to_state&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[(</span><span class="n">from_state</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="o">+</span> <span class="n">to_state</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="CpoTransitionMatrix.get_matrix"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTransitionMatrix.get_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">get_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the complete transition matrix.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Transition value (list of lists).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span>
+</div>
+<div class="viewcode-block" id="CpoTransitionMatrix.set_value"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTransitionMatrix.set_value">[docs]</a>    <span class="k">def</span> <span class="nf">set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">from_state</span><span class="p">,</span> <span class="n">to_state</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets a value in the transition matrix.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            from_state: Index of the from state.</span>
+<span class="sd">            to_state:   Index of the to state.</span>
+<span class="sd">            value:      Transition value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">assert_arg_int_interval</span><span class="p">(</span><span class="n">from_state</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="s2">&quot;from_state&quot;</span><span class="p">)</span>
+        <span class="n">assert_arg_int_interval</span><span class="p">(</span><span class="n">to_state</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="s2">&quot;to_state&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[</span><span class="n">from_state</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">+</span> <span class="n">to_state</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;TransitionMatrix&quot;</span> <span class="o">+</span> <span class="n">to_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">)</span>
+    
+    </div>
+<div class="viewcode-block" id="CpoTupleSet"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTupleSet">[docs]</a><span class="k">class</span> <span class="nc">CpoTupleSet</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Tuple set. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">,</span>      <span class="c1"># Size of a single tuple</span>
+                 <span class="s1">&#39;tupleset&#39;</span><span class="p">,</span>  <span class="c1"># List of tuples</span>
+                 <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new empty tuple set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            size: Tuple size; default value is -1 for automatic size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;size&#39; should be an int&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoTupleSet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">Type_TupleSet</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tupleset</span> <span class="o">=</span> <span class="p">[]</span>
+         
+<div class="viewcode-block" id="CpoTupleSet.get_size"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTupleSet.get_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the tuple size.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple size, -1 if undefined.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
+</div>
+<div class="viewcode-block" id="CpoTupleSet.add"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTupleSet.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tpl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds a tuple in this tuple set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tpl: Tuple to add.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check for intervals</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="n">_check_and_expand_interval_tuples</span><span class="p">(</span><span class="s2">&quot;tpl&quot;</span><span class="p">,</span> <span class="n">tpl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tpl</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">tpl</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;You must add only tuples of size &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tupleset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tpl</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoTupleSet.add_set"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTupleSet.add_set">[docs]</a>    <span class="k">def</span> <span class="nf">add_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tpls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds a set of tuples in this tuple set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tpls: Iterator of tuples to add.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tpls</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoTupleSet.get_tuple_set"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoTupleSet.get_tuple_set">[docs]</a>    <span class="k">def</span> <span class="nf">get_tuple_set</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the complete tuple set.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tupleset</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;TupleSet&quot;</span> <span class="o">+</span> <span class="n">to_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tupleset</span><span class="p">)</span>
+    
+    </div>
+<div class="viewcode-block" id="CpoStateFunction"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoStateFunction">[docs]</a><span class="k">class</span> <span class="nc">CpoStateFunction</span><span class="p">(</span><span class="n">CpoVariable</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; State function. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;trmtx&#39;</span><span class="p">,</span>      <span class="c1"># Transition matrix</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trmtx</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new state function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            trmtx:  Transition matrix.</span>
+<span class="sd">            name:   Name of the state function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Force name for state functions</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoStateFunction</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">Type_StateFunction</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_transition_matrix</span><span class="p">(</span><span class="n">trmtx</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CpoStateFunction.set_transition_matrix"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoStateFunction.set_transition_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">set_transition_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trmtx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the transition matrix.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            trmtx: Transition matrix, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">trmtx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trmtx</span><span class="p">,</span> <span class="n">CpoTransitionMatrix</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;trmtx&#39; should be a CpoTransitionMatrix&quot;</span>
+            <span class="n">trmtx</span><span class="o">.</span><span class="n">_incr_ref_count</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trmtx</span> <span class="o">=</span> <span class="n">trmtx</span>
+</div>
+<div class="viewcode-block" id="CpoStateFunction.get_transition_matrix"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.CpoStateFunction.get_transition_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">get_transition_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the transition matrix.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Transition matrix, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trmtx</span>
+</div>
+    <span class="k">def</span> <span class="nf">_get_children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the list of children expressions if any</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of children expressions, None if none</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trmtx</span><span class="p">,)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trmtx</span> <span class="k">else</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;StateFunction&quot;</span> <span class="o">+</span> <span class="n">to_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_transition_matrix</span><span class="p">())</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">## Factory Functions</span>
+<span class="c1">###############################################################################</span>
+</div>
+<div class="viewcode-block" id="integer_var"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.integer_var">[docs]</a><span class="k">def</span> <span class="nf">integer_var</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates an integer variable.</span>
+
+<span class="sd">    An integer variable is a decision variable with a set of potential values called &#39;domain of the variable&#39;.</span>
+<span class="sd">    This domain can be expressed either:</span>
+
+<span class="sd">    * as a single interval, with a minimum and a maximum values that are included in the domain,</span>
+<span class="sd">    * or as an extensive list of values and/or intervals.</span>
+
+<span class="sd">    When the domain is given extensively, an interval of the domain is represented by a tuple (min, max).</span>
+<span class="sd">    Examples of variable domains expressed extensively are:</span>
+
+<span class="sd">    * (1, 2, 3, 4)</span>
+<span class="sd">    * (1, 2, (3, 7), 9)</span>
+<span class="sd">    * ((1, 2), (7, 9))</span>
+
+<span class="sd">    Following integer variable declarations are equivalent:</span>
+
+<span class="sd">    * v = integer_var(0, 9, &quot;X&quot;)</span>
+<span class="sd">    * v = integer_var((0, 1, 2, 3, 4, 5, 6, 7, 8, 9), &quot;X&quot;)</span>
+<span class="sd">    * v = integer_var((0, (1, 5), (6, 7), 8, 9), &quot;X&quot;)</span>
+<span class="sd">    * v = integer_var(((0, 9)), &quot;X&quot;)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        min:  Domain min value, or extensive list of values and/or intervals expressed as tuples of integers.</span>
+<span class="sd">        max:  Domain max value, default is None and indicates that &#39;min&#39; should contain an extensive list of values.</span>
+<span class="sd">        name: Variable name, default is None for automatic name.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        CpoIntVar expression</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Create name if none</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_var_name</span><span class="p">()</span>
+    <span class="c1"># Build domain</span>
+    <span class="k">if</span> <span class="nb">max</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">dom</span> <span class="o">=</span> <span class="nb">min</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">dom</span> <span class="o">=</span> <span class="p">((</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">),)</span>
+    <span class="k">return</span> <span class="n">CpoIntVar</span><span class="p">(</span><span class="n">dom</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="integer_var_list"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.integer_var_list">[docs]</a><span class="k">def</span> <span class="nf">integer_var_list</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates a list of integer variables.</span>
+
+<span class="sd">    This methods creates a list of integer variables whose size is given as first parameter.</span>
+<span class="sd">    All other parameters are identical to those requested by integer_var() method, that allows to</span>
+<span class="sd">    create a single integer variable.</span>
+<span class="sd">    See the documentation of this method for details.</span>
+
+<span class="sd">    If a name is given, each variable of the list is created with this</span>
+<span class="sd">    name concatenated with the index of the variable in the list, starting by zero.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        size: List size.</span>
+<span class="sd">        min:  Domain min value, or extensive list of values and/or intervals expressed as tuples of integers.</span>
+<span class="sd">        max:  Domain max value, default is None and indicates that &#39;min&#39; should contain an extensive list of values.</span>
+<span class="sd">        name: Variable name prefix, default is None for automatic name.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        List of integer variables.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_var_name</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">integer_var</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">,</span> <span class="n">name</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">res</span>
+
+</div>
+<div class="viewcode-block" id="integer_var_dict"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.integer_var_dict">[docs]</a><span class="k">def</span> <span class="nf">integer_var_dict</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates a dictionary of integer variables.</span>
+
+<span class="sd">    This methods creates a dictionary of integer variables associated to a list of keys given as first parameter.</span>
+<span class="sd">    All other parameters are identical to those requested by integer_var() method, that allows to</span>
+<span class="sd">    create a single integer variable.</span>
+<span class="sd">    See the documentation of this method for details.</span>
+
+<span class="sd">    If a name is given, each variable of the list is created with this</span>
+<span class="sd">    name concatenated with the string representation of the corresponding key.</span>
+<span class="sd">    The parameter &#39;name&#39; can also be a function that is called to build the variable name</span>
+<span class="sd">    with the variable key as parameter.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        keys: Iterable of variable keys.</span>
+<span class="sd">        min:  Domain min value, or extensive list of values and/or intervals expressed as tuples of integers.</span>
+<span class="sd">        max:  Domain max value, default is None and indicates that &#39;min&#39; should contain an extensive list of values.</span>
+<span class="sd">        name: Variable name prefix, default is None for automatic name.</span>
+<span class="sd">              Or function to be called on dictionary key (example: str).</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary of IntVars (OrderedDict).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_var_name</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">vname</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> 
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">vname</span> <span class="o">=</span> <span class="n">name</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="n">res</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">integer_var</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="nb">max</span><span class="p">,</span> <span class="n">vname</span><span class="p">)</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">res</span>
+
+</div>
+<div class="viewcode-block" id="interval_var"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.interval_var">[docs]</a><span class="k">def</span> <span class="nf">interval_var</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span>
+                  <span class="n">intensity</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">present</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">absent</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates an interval variable.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        start:       Interval defining start (object of type Interval).</span>
+<span class="sd">        end:         Interval defining end (object of type Interval).</span>
+<span class="sd">        length:      Interval defining length (object of type Interval).</span>
+<span class="sd">        size:        Interval defining size (object of type Interval).</span>
+<span class="sd">        intensity:   StepFunction that specifies relation between size and length of the interval.</span>
+<span class="sd">        granularity: Scale of the intensity function.</span>
+<span class="sd">        present:     Presence indicator.</span>
+<span class="sd">        absent:      Absence indicator.</span>
+<span class="sd">        name:        Name of the variable.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        IntervalVar expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">CpoIntervalVar</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">length</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
+                          <span class="n">intensity</span><span class="o">=</span><span class="n">intensity</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">present</span><span class="o">=</span><span class="n">present</span><span class="p">,</span> <span class="n">absent</span><span class="o">=</span><span class="n">absent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="interval_var_list"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.interval_var_list">[docs]</a><span class="k">def</span> <span class="nf">interval_var_list</span><span class="p">(</span><span class="n">asize</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">DEFAULT_INTERVAL</span><span class="p">,</span>
+                 <span class="n">intensity</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">present</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">absent</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates a list of interval variables.</span>
+
+<span class="sd">    If a name is given, each variable of the array is created with this</span>
+<span class="sd">    name concatenated with the index of the variable in the list.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        asize:       Result array size.</span>
+<span class="sd">        start:       Interval defining start (object of type Interval).</span>
+<span class="sd">        end:         Interval defining end (object of type Interval).</span>
+<span class="sd">        length:      Interval defining length (object of type Interval).</span>
+<span class="sd">        size:        Interval defining size (object of type Interval).</span>
+<span class="sd">        intensity:   StepFunction that specifies relation between size and length of the interval.</span>
+<span class="sd">        granularity: Scale of the intensity function.</span>
+<span class="sd">        present:     Presence indicator.</span>
+<span class="sd">        absent:      Absence indicator.</span>
+<span class="sd">        name:        Name of the variable.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        List of interval variables.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_var_name</span><span class="p">()</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">asize</span><span class="p">):</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">interval_var</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="n">length</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span>
+                                <span class="n">intensity</span><span class="o">=</span><span class="n">intensity</span><span class="p">,</span> <span class="n">granularity</span><span class="o">=</span><span class="n">granularity</span><span class="p">,</span> <span class="n">present</span><span class="o">=</span><span class="n">present</span><span class="p">,</span> <span class="n">absent</span><span class="o">=</span><span class="n">absent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">res</span>
+
+</div>
+<div class="viewcode-block" id="sequence_var"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.sequence_var">[docs]</a><span class="k">def</span> <span class="nf">sequence_var</span><span class="p">(</span><span class="n">ivars</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates a new sequence variable (list of interval variables).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ivars:   Array of interval variables.</span>
+<span class="sd">        types:   Variable types (same size than vars), default is None.</span>
+<span class="sd">        name:    Variable name, default is None for automatic name.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        IntervalVar expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">_allocate_var_name</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">CpoSequenceVar</span><span class="p">(</span><span class="n">ivars</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="transition_matrix"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.transition_matrix">[docs]</a><span class="k">def</span> <span class="nf">transition_matrix</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates an empty transition matrix.</span>
+
+<span class="sd">    The matrix can be filled using the methods provided by the TransitionMatrix object.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        size: Size of the square matrix.</span>
+<span class="sd">        name: Object name (default is None).</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        TransitionMatrix expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">CpoTransitionMatrix</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+ 
+ </div>
+<div class="viewcode-block" id="tuple_set"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.tuple_set">[docs]</a><span class="k">def</span> <span class="nf">tuple_set</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create tuple set.</span>
+
+<span class="sd">    The tuple set can be created empty, and then filled using methods provided by the TupleSet object.</span>
+<span class="sd">    Another option is to pass the list of all tuples as first parameter of this function.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        size:  Size of one tuple, or initial list of tuples.</span>
+<span class="sd">        name:  Object name (default is None).</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        TupleSet expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check if a tupleset is given</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">is_array</span><span class="p">(</span><span class="n">size</span><span class="p">)):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">CpoTupleSet</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">add_set</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+    <span class="k">return</span> <span class="n">CpoTupleSet</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="state_function"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.state_function">[docs]</a><span class="k">def</span> <span class="nf">state_function</span><span class="p">(</span><span class="n">trmtx</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create a new State Function</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        trmtx: Transition matrix</span>
+<span class="sd">        name: Name of the state function</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        CpoStateFunction expression</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">CpoStateFunction</span><span class="p">(</span><span class="n">trmtx</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">##  Public Functions</span>
+<span class="c1">###############################################################################</span>
+</div>
+<div class="viewcode-block" id="create_cpo_expr"><a class="viewcode-back" href="../../../docplex.cp.expression.py.html#docplex.cp.expression.create_cpo_expr">[docs]</a><span class="k">def</span> <span class="nf">create_cpo_expr</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create a new CP expression from a given Python value</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value:  Operation descriptor</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        New expression</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        CpoException if it is not possible.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Determine type</span>
+    <span class="n">typ</span> <span class="o">=</span> <span class="n">_get_cpo_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">typ</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Impossible to build a CPO expression with python value &#39;&quot;</span> <span class="o">+</span> <span class="n">to_string</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Check special types</span>
+    <span class="k">if</span> <span class="n">typ</span> <span class="o">==</span> <span class="n">Type_TupleSet</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">CpoTupleSet</span><span class="p">()</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">add_set</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">typ</span> <span class="o">==</span> <span class="n">Type_BoolInt</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">CpoFunctionCall</span><span class="p">((</span><span class="n">Oper_true</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="n">Oper_false</span><span class="p">)</span><span class="o">.</span><span class="n">signatures</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Check if array of exprs contains only expressions</span>
+        <span class="k">if</span> <span class="n">typ</span><span class="o">.</span><span class="n">is_array_of_expr</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">value</span><span class="p">):</span>
+                <span class="n">nval</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
+                        <span class="n">nval</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">nval</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">create_cpo_expr</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">nval</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">CpoValue</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">typ</span><span class="p">)</span>
+    <span class="c1"># Return</span>
+    <span class="k">return</span> <span class="n">res</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_create_operation</span><span class="p">(</span><span class="n">oper</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create a new expression that matches an operation descriptor</span>
+
+<span class="sd">    Search in the signatures which one matches a set or arguments</span>
+<span class="sd">    and then create an instance of the returned expression</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        oper:   Operation descriptor</span>
+<span class="sd">        params: List of expression parameters</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        New expression </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        CpoException if no operation signature matches arguments</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">oper</span><span class="p">,</span> <span class="n">CpoOperation</span><span class="p">)</span>
+
+    <span class="c1"># Convert arguments in CPO expressions</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">_build_cpo_expr</span><span class="p">,</span> <span class="n">params</span><span class="p">))</span>
+      
+    <span class="c1"># Search corresponding signature</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">_get_matching_signature</span><span class="p">(</span><span class="n">oper</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">s</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;The combination of parameters (&quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">_get_cpo_type_str</span><span class="p">,</span> <span class="n">args</span><span class="p">))</span>
+                           <span class="o">+</span> <span class="s2">&quot;) is not allowed for operation &#39;&quot;</span> <span class="o">+</span> <span class="n">oper</span><span class="o">.</span><span class="n">get_py_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Check arguments values when applicable</span>
+    <span class="c1"># TODO (range currently not in parameters)</span>
+    
+    <span class="c1"># Create result expression</span>
+    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">##  Private Functions</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1"># Map of CPO expressions corresponding to Python values</span>
+<span class="n">_CPO_VALUES_FROM_PYTHON_</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+<span class="c1"># List of Python values converted in CPO. Used only to keep a pointer on and not reuse their id</span>
+<span class="n">_CONVERTED_PYTHON_VALUES</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">def</span> <span class="nf">_build_cpo_expr</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Builds an expression from a given Python value.</span>
+
+<span class="sd">    This method uses a cache to return the same CpoExpr for the same constant.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val: Value to convert (possibly already an expression).</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Corresponding expression.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        CpoException if conversion is not possible.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check if already a CPO expression</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="c1"># Check none</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="c1">#  Check iterators</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">Iterator</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+    <span class="c1"># Check if already converted</span>
+    <span class="n">vid</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="n">cpval</span> <span class="o">=</span> <span class="n">_CPO_VALUES_FROM_PYTHON_</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vid</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cpval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cpval</span>
+
+    <span class="c1"># Build new expression</span>
+    <span class="n">cpval</span> <span class="o">=</span> <span class="n">create_cpo_expr</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="n">_CPO_VALUES_FROM_PYTHON_</span><span class="p">[</span><span class="n">vid</span><span class="p">]</span> <span class="o">=</span> <span class="n">cpval</span>
+    <span class="n">_CONVERTED_PYTHON_VALUES</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>  <span class="c1"># Keep val to ensure id is never reused</span>
+    <span class="k">return</span> <span class="n">cpval</span>
+
+
+<span class="c1"># Mapping of Python types to CPO types</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">BOOL_TYPES</span><span class="p">:</span>
+    <span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">Type_BoolInt</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">INTEGER_TYPES</span><span class="p">:</span>
+    <span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">Type_Int</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">FLOAT_TYPES</span><span class="p">:</span>
+    <span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">Type_Float</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">CpoIntVar</span><span class="p">]</span>           <span class="o">=</span> <span class="n">Type_IntVar</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">CpoIntervalVar</span><span class="p">]</span>      <span class="o">=</span> <span class="n">Type_IntervalVar</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">CpoSequenceVar</span><span class="p">]</span>      <span class="o">=</span> <span class="n">Type_SequenceVar</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">CpoTransitionMatrix</span><span class="p">]</span> <span class="o">=</span> <span class="n">Type_TransitionMatrix</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">CpoTupleSet</span><span class="p">]</span>         <span class="o">=</span> <span class="n">Type_TupleSet</span>
+<span class="n">_PYTHON_TO_CPO_TYPE</span><span class="p">[</span><span class="n">CpoStateFunction</span><span class="p">]</span>    <span class="o">=</span> <span class="n">Type_StateFunction</span>
+
+
+<span class="k">def</span> <span class="nf">_is_interval_tuple</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check if a value is a tuple representing an integer interval</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val:  Value to check</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if value is a tuple representing an interval</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_check_arg_boolean</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check that an argument is a boolean and raise error if wrong</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        arg:  Argument value</span>
+<span class="sd">        name: Argument name</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Boolean to be set</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        Exception if argument has the wrong format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">arg</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a boolean&quot;</span>
+    <span class="k">return</span> <span class="n">arg</span>
+
+
+<span class="k">def</span> <span class="nf">_check_arg_interval</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check that an argument is an interval and raise error if wrong</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        arg:  Argument value</span>
+<span class="sd">        name: Argument name</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Interval to be set</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        Exception if argument has the wrong format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_int</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">arg</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be an integer or an interval expressed as a tuple&quot;</span>
+    <span class="k">return</span> <span class="n">arg</span>
+
+
+<span class="k">def</span> <span class="nf">_check_arg_step_function</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check that an argument is a step function and raise error if wrong</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        arg:  Argument value</span>
+<span class="sd">        name: Argument name</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Resulting step function</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        Exception if argument has the wrong format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span> <span class="o">==</span> <span class="n">Type_StepFunction</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a StepFunction&quot;</span>
+    <span class="k">return</span> <span class="n">arg</span>
+
+
+<span class="k">def</span> <span class="nf">_check_and_expand_interval_tuples</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check that a list contains only integers and expand interval tuples if any</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name:  Argument name</span>
+<span class="sd">        arr:   Array of integers and/or intervals</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Array of integers</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        Exception if wrong type</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a list of integers or intervals&quot;</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">is_int</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">res</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">_is_interval_tuple</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a list of integers or intervals&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="k">else</span> <span class="n">arr</span>
+
+
+<span class="k">def</span> <span class="nf">_get_cpo_type</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Determine the CPO type of a given Python value</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val: Python value</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Corresponding CPO Type, None if none</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check simple types</span>
+    <span class="n">typ</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="n">ctyp</span> <span class="o">=</span> <span class="n">_PYTHON_TO_CPO_TYPE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">typ</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ctyp</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ctyp</span>
+
+    <span class="c1"># Check CPO Expr</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span>
+
+    <span class="c1"># Check numpy Array Scalars</span>
+    <span class="k">if</span> <span class="n">IS_NUMPY_AVAILABLE</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">is</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">val</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">_PYTHON_TO_CPO_TYPE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">val</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">type</span><span class="p">))</span>
+
+    <span class="c1"># Check arrays</span>
+    <span class="k">if</span> <span class="n">typ</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+    
+    <span class="c1"># Check empty Array</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">Type_IntArray</span><span class="p">)</span>
+
+    <span class="c1"># Get the most common type to all array elements</span>
+    <span class="n">gt</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
+        <span class="c1"># Determine type of element</span>
+        <span class="k">if</span> <span class="n">_is_interval_tuple</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+            <span class="c1"># Special case for intervals</span>
+            <span class="n">nt</span> <span class="o">=</span> <span class="n">Type_Int</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nt</span> <span class="o">=</span> <span class="n">_get_cpo_type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">return</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+        <span class="c1"># Combine with global type</span>
+        <span class="k">if</span> <span class="n">gt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">gt</span> <span class="o">=</span> <span class="n">nt</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">gt</span> <span class="o">=</span> <span class="n">gt</span><span class="o">.</span><span class="n">get_common_type</span><span class="p">(</span><span class="n">nt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+    
+    <span class="c1"># Determine array type for result element type</span>
+    <span class="k">if</span> <span class="n">gt</span> <span class="o">==</span> <span class="n">Type_IntArray</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">Type_TupleSet</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gt</span><span class="o">.</span><span class="n">get_array_type</span><span class="p">()</span>
+    
+    
+<span class="k">def</span> <span class="nf">_get_cpo_type_str</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Get the CPO type name of a value</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val: Value</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Value type string in CPO types</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_get_cpo_type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_update_references</span><span class="p">(</span><span class="n">oprnds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Increase reference count on all operand expressions and build a tuple with result</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        oprnds: Array of operands</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of operands with nbref incremented</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Increment reference count</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">oprnds</span><span class="p">:</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">_incr_ref_count</span><span class="p">()</span>
+
+    <span class="c1"># Build a tuple if not</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">oprnds</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="n">oprnds</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">oprnds</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">oprnds</span>
+
+
+<span class="k">def</span> <span class="nf">_get_matching_signature</span><span class="p">(</span><span class="n">oper</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Search the first operation signature matched by a list of arguments</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        oper: Operation where searching signature</span>
+<span class="sd">        args: Candidate list of argument expressions</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Matching signature, None if not found</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Search corresponding signature</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">oper</span><span class="o">.</span><span class="n">get_signatures</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">_is_matching_arguments</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">None</span>
+
+
+<span class="k">def</span> <span class="nf">_is_matching_arguments</span><span class="p">(</span><span class="n">sgn</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check if a list of argument expressions matches this signature</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sgn:  Signature descriptor</span>
+<span class="sd">        args: Candidate list of argument expressions</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if the arguments are matching signature</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">sgn</span><span class="o">.</span><span class="n">get_parameters</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+    <span class="c1"># Check types compatibility</span>
+    <span class="n">nbargs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">get_type</span><span class="p">()):</span>
+            <span class="k">return</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+    <span class="c1"># Check that remaining parameters, if any, have a default value</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbargs</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">is_default_value</span><span class="p">()):</span>
+            <span class="k">return</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">True</span>   
+
+
+<span class="n">_ANONYMOUS_VAR_ID_ALLOCATOR</span> <span class="o">=</span> <span class="n">IdAllocator</span><span class="p">(</span><span class="s1">&#39;_ANONYM_&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_allocate_var_name</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Allocate a new variable name for anonymous variables</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        New variable name</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_ANONYMOUS_VAR_ID_ALLOCATOR</span><span class="o">.</span><span class="n">allocate</span><span class="p">()</span>
+
+
+<span class="n">_IDENTIFIER_ALLOCATOR</span> <span class="o">=</span> <span class="n">IdAllocator</span><span class="p">(</span><span class="s1">&#39;_ID_&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_allocate_identifier</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Allocate a new expression identifier</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        New identifier</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_IDENTIFIER_ALLOCATOR</span><span class="o">.</span><span class="n">allocate</span><span class="p">()</span>
+
+
+<span class="n">_ALIAS_ALLOCATOR</span> <span class="o">=</span> <span class="n">IdAllocator</span><span class="p">(</span><span class="s1">&#39;_ALIAS_&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_allocate_alias</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Allocate a new alias identifier</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        New identifier</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_ALIAS_ALLOCATOR</span><span class="o">.</span><span class="n">allocate</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>

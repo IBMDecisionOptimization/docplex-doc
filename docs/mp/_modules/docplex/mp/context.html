@@ -1,0 +1,911 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>docplex.mp.context &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.context</h1><div class="highlight"><pre>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">isfile</span><span class="p">,</span> <span class="n">isabs</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.format</span> <span class="kn">import</span> <span class="n">ExchangeFormat</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">open_universal_newline</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.params.cplex_params</span> <span class="kn">import</span> <span class="n">get_params_from_cplex_version</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">DOcplexException</span>
+
+<span class="c1"># some utility methods</span>
+<span class="k">def</span> <span class="nf">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">option</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_convert_to_int</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span> <span class="nf">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">option</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+<span class="n">_BOOLEAN_STATES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;1&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;true&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;on&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                   <span class="s1">&#39;0&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;false&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;off&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    <span class="n">svalue</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">svalue</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">if</span> <span class="n">svalue</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_BOOLEAN_STATES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Not a boolean: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_BOOLEAN_STATES</span><span class="p">[</span><span class="n">svalue</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">open_filename_universal</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">closing</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;closing&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span> <span class="o">=</span> <span class="n">open_universal_newline</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">closing</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span> <span class="o">=</span> <span class="n">filename</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fh</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">closing</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="BaseContext"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.BaseContext">[docs]</a><span class="k">class</span> <span class="nc">BaseContext</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Class for handling the list of parameters. &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a new context.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            List of ``key=value`` to initialize context with.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BaseContext</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">get_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;__&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">res</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;&#39;{0}&#39; object has no attribute &#39;{1}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="SolverContext"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.SolverContext">[docs]</a><span class="k">class</span> <span class="nc">SolverContext</span><span class="p">(</span><span class="n">BaseContext</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The context to store parameters for solver.</span>
+
+<span class="sd">    A SolverContext within a Context is initialized with the following attributes:</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        log_output: This attribute can have the following values:</span>
+
+<span class="sd">            * True: When True, logs are printed to sys.out.</span>
+<span class="sd">            * False: When False, logs are not printed.</span>
+<span class="sd">            * A file-type object: Logs are printed to that file-type object.</span>
+
+<span class="sd">        docloud: The :class:`DOcloudContext` to store context for solving on DOcloud.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SolverContext</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_output</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">):</span>
+        <span class="c1"># We override deepcopy here just to make sure that we don&#39;t deepcopy</span>
+        <span class="c1"># file descriptors...</span>
+        <span class="n">cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+        <span class="n">memo</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)]</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="c1"># do not duplicate those (io like objects)</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;log_output&quot;</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">get_log_output_as_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">log_output</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">log_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_output</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+
+        <span class="n">output_stream</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="c1"># if log_output is an object with a lower attribute, let&#39;s use it</span>
+        <span class="c1"># as string.lower and check for some known string values</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">log_output</span><span class="p">,</span> <span class="s2">&quot;lower&quot;</span><span class="p">):</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">log_output</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_BOOLEAN_STATES</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                    <span class="n">output_stream</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">output_stream</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="s2">&quot;sys.stdout&quot;</span><span class="p">]:</span>
+                <span class="n">output_stream</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;stderr&quot;</span><span class="p">,</span> <span class="s2">&quot;sys.stderr&quot;</span><span class="p">]:</span>
+                <span class="n">output_stream</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span>
+        <span class="c1"># if log_output is a boolean, do the direct mapping to default streams</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">log_output</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">log_output</span><span class="p">:</span>
+                <span class="n">output_stream</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+        <span class="c1"># if it has a write() attribute, just return it</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">log_output</span><span class="p">,</span> <span class="s2">&quot;write&quot;</span><span class="p">):</span>
+            <span class="n">output_stream</span> <span class="o">=</span> <span class="n">log_output</span>
+
+        <span class="k">return</span> <span class="n">output_stream</span>
+
+    <span class="n">log_output_as_stream</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_log_output_as_stream</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="Context"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.Context">[docs]</a><span class="k">class</span> <span class="nc">Context</span><span class="p">(</span><span class="n">BaseContext</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The context used to create a model.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        solver: Solver attributes. See :class:`SolverContext`.</span>
+<span class="sd">        solver.docloud: A :class:`DOcloudContext` to store the DOcloud context.</span>
+<span class="sd">        cplex_parameters: A </span>
+<span class="sd">           :class:`docplex.mp.params.parameters.RootParameterGroup` to store</span>
+<span class="sd">           CPLEX parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># initialize default env</span>
+        <span class="n">cplex_parameters</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cplex_parameters&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cplex_parameters</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">local_env</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;env&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">Environment</span><span class="o">.</span><span class="n">make_new_configured_env</span><span class="p">()</span>
+            <span class="n">cplex_version</span> <span class="o">=</span> <span class="n">local_env</span><span class="o">.</span><span class="n">cplex_version</span>
+            <span class="n">cplex_parameters</span> <span class="o">=</span> <span class="n">get_params_from_cplex_version</span><span class="p">(</span><span class="n">cplex_version</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cplex_parameters</span> <span class="o">=</span> <span class="n">cplex_parameters</span>
+        <span class="c1"># initialize fields of this</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Context</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">solver</span><span class="o">=</span><span class="n">SolverContext</span><span class="p">(</span><span class="n">docloud</span><span class="o">=</span><span class="n">DOcloudContext</span><span class="p">()),</span>
+                                      <span class="n">cplex_parameters</span><span class="o">=</span><span class="n">cplex_parameters</span><span class="p">,</span>
+                                      <span class="n">docplex_tests</span><span class="o">=</span><span class="n">BaseContext</span><span class="p">())</span>
+        <span class="c1"># update will also ensure compatibility with older kwargs like</span>
+        <span class="c1"># &#39;url&#39; and &#39;api_key&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">create_missing_nodes</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Context.make_default_context"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.Context.make_default_context">[docs]</a>    <span class="k">def</span> <span class="nf">make_default_context</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creates a default context.</span>
+
+<span class="sd">        If `file_list` is a string, then it is considered to be the name</span>
+<span class="sd">        of a config file to be read.</span>
+
+<span class="sd">        If `file_list` is a list, it is considered to be a list of names</span>
+<span class="sd">        of a config files to be read.</span>
+
+<span class="sd">        if `file_list` is None or not specified, the following files are</span>
+<span class="sd">        read if they exists:</span>
+
+<span class="sd">            * the PYTHONPATH is searched for the following files:</span>
+
+<span class="sd">                * cplex_config.py</span>
+<span class="sd">                * cplex_config_&lt;hostname&gt;.py</span>
+<span class="sd">                * docloud_config.py</span>
+
+<span class="sd">            * if a ``.docplexrc`` file exists in ``~``</span>
+<span class="sd">              (``os.path.expanduser(&quot;~&quot;)`` in Python), that file is parsed, and</span>
+<span class="sd">              the properties set into the context.</span>
+
+<span class="sd">        :deprecated:</span>
+<span class="sd">           As of V1.0, reading ``.docplexrc`` is deprecated, and ``.py`` files for</span>
+<span class="sd">           configuration should be used instead.</span>
+
+<span class="sd">        A ``.docplexrc`` file is like a Java properties file (``=`` or ``:`` separated</span>
+<span class="sd">        pairs of `key,values`) or a Python file if it ends with ``.py``.</span>
+<span class="sd">        Python files are evaluated with a `context` object in the current</span>
+<span class="sd">        scope, and you set values from this context::</span>
+
+<span class="sd">            context.solver.docloud.url = &#39;http://testing.blabla.ibm.com&#39;</span>
+<span class="sd">            context.solver.docloud.key = &#39;This is an api_key&#39;</span>
+<span class="sd">            context.cplex_parameters.emphasis.memory = 1</span>
+<span class="sd">            context.cplex_parameters.emphasis.mip = 2</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_list: The list of config files to read.</span>
+<span class="sd">            docloud: A :class:`DOcloudContext` to use in this context.</span>
+<span class="sd">            cplex_parameters: A :class:`docplex.mp.params.parameters.ParameterGroup` to use as CPLEX parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">Context</span><span class="p">()</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">read_settings</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="n">file_list</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">context</span>
+</div>
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Makes a deep copy of the context.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Returns:</span>
+        <span class="c1">#   A deep copy of the context.</span>
+        <span class="k">return</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update_from_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c1"># For each pair of `(name, value)` in values, try to set the</span>
+        <span class="c1"># attribute.</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">DOcloudContext</span><span class="o">.</span><span class="n">LEGACY_PROPERTIES</span><span class="p">:</span>
+                    <span class="n">mapping</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="o">.</span><span class="n">LEGACY_PROPERTIES</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">mapping</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">mapping</span> <span class="o">=</span> <span class="s2">&quot;solver.docloud.</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">name</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">logger</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Ignoring undefined attribute : {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">property_spec</span><span class="p">,</span> <span class="n">property_value</span><span class="p">):</span>
+        <span class="n">property_list</span> <span class="o">=</span> <span class="n">property_spec</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+        <span class="n">property_chain</span> <span class="o">=</span> <span class="n">property_list</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">to_be_set</span> <span class="o">=</span> <span class="n">property_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">o</span> <span class="o">=</span> <span class="n">root</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">property_chain</span><span class="p">:</span>
+            <span class="n">o</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">target_attribute</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">to_be_set</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">target_attribute</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">target_attribute</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># Simply set the attribute</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">to_be_set</span><span class="p">,</span> <span class="n">property_value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">DOcplexException</span><span class="p">:</span>
+                <span class="k">pass</span>  <span class="c1"># ignore this</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># try a set_converted_value if it&#39;s a Parameter</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">target_attribute</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">property_value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="c1"># no set(), just setattr</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">to_be_set</span><span class="p">,</span> <span class="n">property_value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Context.update"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.Context.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">create_missing_nodes</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Updates this context from child parameters specified in `kwargs`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            docloud_context: An optional instance of :class:`DOcloudContext` that</span>
+<span class="sd">                overwrites the `context.docloud` DOcloud context service.</span>
+<span class="sd">            cplex_parameters: An optional set of CPLEX parameters to use</span>
+<span class="sd">                instead of the parameters defined as</span>
+<span class="sd">                `context.cplex_parameters`.</span>
+<span class="sd">            url: An optional parameter that overwrites the URL of the</span>
+<span class="sd">                DOcloud service defined by `context.solver.docloud.url`.</span>
+<span class="sd">            key: An optional parameter that overwrites the</span>
+<span class="sd">                authentication key of the DOcloud service defined by</span>
+<span class="sd">                `context.solver.docloud.key`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">is</span> <span class="s1">&#39;docloud_context&#39;</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;the docloud context is: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">is</span> <span class="s1">&#39;cplex_parameters&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">cplex_parameters</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">is</span> <span class="s1">&#39;url&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">is</span> <span class="s1">&#39;api_key&#39;</span> <span class="ow">or</span> <span class="n">k</span> <span class="ow">is</span> <span class="s1">&#39;key&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">elif</span> <span class="n">k</span> <span class="ow">is</span> <span class="s1">&#39;log_output&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log_output</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">create_missing_nodes</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Unknown quick-setting in Context: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">k</span><span class="p">,</span>
+                                      <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Context.read_settings"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.Context.read_settings">[docs]</a>    <span class="k">def</span> <span class="nf">read_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_list</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reads settings for a list of files.</span>
+
+<span class="sd">        If `file_list` is a string, then it is considered to be the name</span>
+<span class="sd">        of a config file to be read.</span>
+
+<span class="sd">        If `file_list` is a list, it is considered to be a list of names</span>
+<span class="sd">        of config files to be read.</span>
+
+<span class="sd">        if `file_list` is None or not specified, the following files are</span>
+<span class="sd">        read if they exists:</span>
+
+<span class="sd">            * the PYTHONPATH is searched for the following files:</span>
+
+<span class="sd">                * cplex_config.py</span>
+<span class="sd">                * cplex_config_&lt;hostname&gt;.py</span>
+<span class="sd">                * docloud_config.py</span>
+
+<span class="sd">            * if a ``.docplexrc`` file exists in ``~``</span>
+<span class="sd">              (``os.path.expanduser(&quot;~&quot;)`` in Python), that file is parsed, and</span>
+<span class="sd">              the properties set into the context.</span>
+
+<span class="sd">        :deprecated:</span>
+<span class="sd">           As of V1.0, reading ``.docplexrc`` is deprecated, and ``.py`` files for</span>
+<span class="sd">           configuration should be used instead.</span>
+<span class="sd">        </span>
+<span class="sd">        A ``.docplexrc`` file is like a Java properties file (``=`` or ``:`` separated</span>
+<span class="sd">        pairs of `key,values`) or a Python file if it ends with ``.py``.</span>
+<span class="sd">        Python files are evaluated with a `context` object in the current</span>
+<span class="sd">        scope, and you set values from this context::</span>
+
+<span class="sd">            context.solver.docloud.url = &#39;http://testing.blabla.ibm.com&#39;</span>
+<span class="sd">            context.solver.docloud.key = &#39;This is an api_key&#39;</span>
+<span class="sd">            context.cplex_parameters.emphasis.memory = 1</span>
+<span class="sd">            context.cplex_parameters.emphasis.mip = 2</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_list: The list of config files to read.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">file_list</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">file_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;cplex_config.py&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;cplex_config_{0}.py&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()),</span>
+                       <span class="s1">&#39;docloud_config.py&#39;</span><span class="p">,</span>
+                       <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span> <span class="o">+</span> <span class="s2">&quot;.docplexrc&quot;</span><span class="p">,</span>
+                       <span class="p">]</span>
+            <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">isabs</span><span class="p">(</span><span class="n">target</span><span class="p">)</span> <span class="ow">and</span> <span class="n">isfile</span><span class="p">(</span><span class="n">target</span><span class="p">)</span> <span class="ow">and</span> <span class="n">target</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+                    <span class="n">file_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+                        <span class="n">f</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                            <span class="n">abs_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">abs_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+                                <span class="n">file_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">file_list</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># let read_settings use its default behavior</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file_list</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+            <span class="n">file_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">file_list</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">file_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reading settings from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">f</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.py&quot;</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">read_from_python_file</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">read_from_rcfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">read_from_python_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="c1"># Evaluates the content of a Python file containing code to set up a</span>
+        <span class="c1"># context.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#    filename (str): The name of the file to evaluate.</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">open_universal_newline</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="c1"># This is so that there is a context in the scope of the exec </span>
+                <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span>
+                <span class="k">exec</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">read_from_rcfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c1"># Reads this context from the given resource file.</span>
+        <span class="c1">#</span>
+        <span class="c1"># The specified resource file contains `name=value` pairs. For example::</span>
+        <span class="c1">#</span>
+        <span class="c1">#   docloud.url = &quot;https://docloud.service.com/job_manager/rest/v1&quot;</span>
+        <span class="c1">#   docloud.key = &quot;example api_key&quot;</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#    filename (str) : The name of the file to evaluate.</span>
+        <span class="n">list_of_properties</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">with</span> <span class="n">open_filename_universal</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">current_name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">lineno</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">lineno</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">l</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">l</span>
+                <span class="c1"># process case of continuation</span>
+                <span class="k">if</span> <span class="n">current_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">current_value</span> <span class="o">+=</span> <span class="n">s</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">hash_rindex</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">hash_rindex</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                        <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="p">[:</span><span class="n">hash_rindex</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                        <span class="n">spl</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                        <span class="n">spl</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Syntax error in line </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lineno</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spl</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">current_name</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="n">current_value</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">current_value</span> <span class="o">==</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">:</span>
+                            <span class="n">current_value</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Syntax error in line </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lineno</span><span class="p">)</span>
+                <span class="c1"># continuation ?</span>
+                <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">:</span>
+                    <span class="n">list_of_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_name</span><span class="p">,</span> <span class="n">current_value</span><span class="p">))</span>
+                    <span class="n">current_name</span> <span class="o">=</span> <span class="bp">None</span>
+                    <span class="n">current_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="c1"># cases where last line of file ends with &#39;\&#39;</span>
+            <span class="k">if</span> <span class="n">current_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">list_of_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_name</span><span class="p">,</span> <span class="n">current_value</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_from_list</span><span class="p">(</span><span class="n">list_of_properties</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="DOcloudContext"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext">[docs]</a><span class="k">class</span> <span class="nc">DOcloudContext</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The context to solve models on DOcloud.</span>
+
+<span class="sd">    The context contains properties that alter the behavior of the DOcloud</span>
+<span class="sd">    connector.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        url: The DOcloud service URL.</span>
+<span class="sd">        api_key: The DOcloud service API key to use.</span>
+<span class="sd">        run_deterministic: Specific engine parameters are uploaded to keep the</span>
+<span class="sd">            run deterministic.</span>
+<span class="sd">        verbose: Makes the connector verbose.</span>
+<span class="sd">        timeout: The timeout for requests.</span>
+<span class="sd">        waittime: The wait time to wait for jobs to finish.</span>
+<span class="sd">        verify: If True, verifies SSL certificates.</span>
+<span class="sd">        log_requests: If True, the REST requests are logged.</span>
+<span class="sd">        exchange_format: The exchange format to use.</span>
+<span class="sd">            When setting the format, you can use the following strings: &quot;lp&quot;.</span>
+<span class="sd">            When getting the format, the property type is</span>
+<span class="sd">            `docplex.mp.format.ExchangeFormat`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new DOcloud context.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># There&#39;se a bunch of properties defined so that we can set</span>
+        <span class="c1"># any values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">api_key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_deterministic</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_waittime</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_verify</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># default is None so that we use defaults</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_requests</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_debug_dump</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump_dir</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># This maps &quot;old property names&quot; to the corresponding new qualified name.</span>
+    <span class="c1"># if the qualified name is None, then it&#39;s supposed to be:</span>
+    <span class="c1"># solver.docloud.old_name</span>
+    <span class="n">LEGACY_PROPERTIES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;api_key&quot;</span><span class="p">:</span> <span class="s2">&quot;solver.docloud.key&quot;</span><span class="p">,</span>
+                         <span class="s2">&quot;run_deterministic&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;timeout&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;waittime&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;verify&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;log_requests&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;exchange_format&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;debug_dump&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span>
+                         <span class="s2">&quot;debug_dump_dir&quot;</span><span class="p">:</span> <span class="bp">None</span>
+                         <span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">api_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span>
+
+    <span class="c1"># The waittime property</span>
+    <span class="k">def</span> <span class="nf">get_waittime</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_waittime</span>
+
+    <span class="k">def</span> <span class="nf">set_waittime</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_waittime</span> <span class="o">=</span> <span class="n">_convert_to_int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">waittime</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_waittime</span><span class="p">,</span> <span class="n">set_waittime</span><span class="p">)</span>
+
+    <span class="c1"># The timeout property</span>
+    <span class="k">def</span> <span class="nf">get_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span>
+
+    <span class="k">def</span> <span class="nf">set_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="n">_convert_to_int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">timeout</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_timeout</span><span class="p">,</span> <span class="n">set_timeout</span><span class="p">)</span>
+
+    <span class="c1"># The run_deterministic property</span>
+    <span class="k">def</span> <span class="nf">get_run_deterministic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_deterministic</span>
+
+    <span class="k">def</span> <span class="nf">set_run_deterministic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_deterministic</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">run_deterministic</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_run_deterministic</span><span class="p">,</span> <span class="n">set_run_deterministic</span><span class="p">)</span>
+
+
+    <span class="c1"># The verbose property</span>
+    <span class="k">def</span> <span class="nf">get_verbose</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span>
+
+    <span class="k">def</span> <span class="nf">set_verbose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_verbose</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">verbose</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_verbose</span><span class="p">,</span> <span class="n">set_verbose</span><span class="p">)</span>
+
+    <span class="c1"># The debug_dump property</span>
+    <span class="k">def</span> <span class="nf">get_debug_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_debug_dump</span>
+
+    <span class="k">def</span> <span class="nf">set_debug_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_debug_dump</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">debug_dump</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_debug_dump</span><span class="p">,</span> <span class="n">set_debug_dump</span><span class="p">)</span>
+
+    <span class="c1"># The verify property</span>
+    <span class="k">def</span> <span class="nf">get_verify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verify</span>
+
+    <span class="k">def</span> <span class="nf">set_verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_verify</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">verify</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_verify</span><span class="p">,</span> <span class="n">set_verify</span><span class="p">)</span>
+
+    <span class="c1"># The log_requests property</span>
+    <span class="k">def</span> <span class="nf">get_log_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_requests</span>
+
+    <span class="k">def</span> <span class="nf">set_log_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_requests</span> <span class="o">=</span> <span class="n">_convert_to_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">log_requests</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_log_requests</span><span class="p">,</span> <span class="n">set_log_requests</span><span class="p">)</span>
+
+    <span class="c1"># The exchange format property</span>
+    <span class="k">def</span> <span class="nf">get_exchange_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span>
+
+    <span class="k">def</span> <span class="nf">set_exchange_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exchange_format</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">exchange_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span> <span class="o">=</span> <span class="n">ExchangeFormat</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">exchange_format</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exchange_format</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="n">exchange_format</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_exchange_format</span><span class="p">,</span> <span class="n">set_exchange_format</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Makes a deep copy of this.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Returns:</span>
+        <span class="c1">#    A deep copy of this.</span>
+        <span class="k">return</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DOcloudContext.check_credentials"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.check_credentials">[docs]</a>    <span class="k">def</span> <span class="nf">check_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Checks if this context has syntactically valid credentials.</span>
+
+<span class="sd">        This method uses `warnings.warn()` to issue a warning if the credentials</span>
+<span class="sd">        are not valid.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            has_credentials, message - `has_credentials` is True if this context contains syntactical credentials. `message` contains a message if applicable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">has_credentials</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">:</span>
+            <span class="n">has_credentials</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">):</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;DOcloud: URL is not a string: {0!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="n">has_credentials</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;http&quot;</span><span class="p">):</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;DOcloud: not a valid URL: {0!s}, expecting https://...&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+            <span class="n">has_credentials</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">):</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;API key is not a string: {0!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">has_credentials</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="n">has_credentials</span><span class="p">,</span> <span class="n">message</span>
+</div>
+<div class="viewcode-block" id="DOcloudContext.has_credentials"><a class="viewcode-back" href="../../../docplex.mp.context.html#docplex.mp.context.DOcloudContext.has_credentials">[docs]</a>    <span class="k">def</span> <span class="nf">has_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Checks if this context has valid credentials.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this context has valid credentials.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">has_credentials</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_credentials</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">has_credentials</span>
+</div>
+    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">quoted_url</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">{}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">quoted_key</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">{}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;*******&quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span><span class="o">-</span><span class="mi">4</span><span class="p">:])</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">t_out</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;context&lt;url={0}, auth={1}, timeout={2}&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">quoted_url</span><span class="p">,</span>
+                                                                <span class="n">quoted_key</span><span class="p">,</span>
+                                                                <span class="n">t_out</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">read_from_rcfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="c1"># Reads this context from the given resource file.</span>
+        <span class="c1">#</span>
+        <span class="c1"># The specified resource file contains `name=value` pairs. For example::</span>
+        <span class="c1">#</span>
+        <span class="c1">#   url = &quot;https://docloud.service.com/job_manager/rest/v1&quot;</span>
+        <span class="c1">#   api_key = &quot;example api_key&quot;</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#    filename (str): The name of the file to evaluate.</span>
+        <span class="n">list_of_properties</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">with</span> <span class="n">open_universal_newline</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">current_name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">lineno</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">lineno</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">l</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="n">l</span>
+                <span class="c1"># process case of continuation</span>
+                <span class="k">if</span> <span class="n">current_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">current_value</span> <span class="o">+=</span> <span class="n">s</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+                        <span class="k">continue</span>
+                    <span class="n">spl</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spl</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="c1"># try with &quot;:&quot;</span>
+                        <span class="n">spl</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spl</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Syntax error in line </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lineno</span><span class="p">)</span>
+                    <span class="n">current_name</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">current_value</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="c1"># continuation ?</span>
+                <span class="k">if</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">:</span>
+                    <span class="n">list_of_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_name</span><span class="p">,</span> <span class="n">current_value</span><span class="p">))</span>
+                    <span class="n">current_name</span> <span class="o">=</span> <span class="bp">None</span>
+                    <span class="n">current_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="c1"># cases where last line of file ends with &#39;\&#39;</span>
+            <span class="k">if</span> <span class="n">current_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">list_of_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_name</span><span class="p">,</span> <span class="n">current_value</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_from_list</span><span class="p">(</span><span class="n">list_of_properties</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update_from_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="c1"># Updates this context from the list of properties specified as</span>
+        <span class="c1"># `(name, value)` tuples.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#    values : List of properties.</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="n">url</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;url&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># strip url from trailing &#39;/&#39;</span>
+            <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
+                <span class="n">slash_index</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">while</span> <span class="n">url</span><span class="p">[</span><span class="n">slash_index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;/&#39;</span><span class="p">:</span>
+                    <span class="n">slash_index</span> <span class="o">=</span> <span class="n">slash_index</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">slash_index</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">url</span> <span class="o">=</span> <span class="n">url</span><span class="p">[:</span><span class="n">slash_index</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+
+        <span class="c1"># the key value here is api_key for compat reasons</span>
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;api_key&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">api_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">api_key</span>
+
+        <span class="n">run_deterministic</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;run_deterministic&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run_deterministic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_deterministic</span> <span class="o">=</span> <span class="n">run_deterministic</span>
+
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;verbose&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+
+        <span class="n">timeout</span> <span class="o">=</span> <span class="n">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;timeout&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+
+        <span class="n">waittime</span> <span class="o">=</span> <span class="n">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;waittime&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">waittime</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">waittime</span> <span class="o">=</span> <span class="n">waittime</span>
+
+        <span class="n">debug_dump</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;debug_dump&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">debug_dump</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump</span> <span class="o">=</span> <span class="n">debug_dump</span>
+
+        <span class="n">debug_dump_dir</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;debug_dump_dir&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">debug_dump_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">debug_dump_dir</span> <span class="o">=</span> <span class="n">debug_dump_dir</span>
+
+        <span class="n">verify</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;verify&quot;</span><span class="p">)</span>
+        <span class="c1"># defaults to True, and we need to test against None to differentiate from False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verify</span> <span class="o">=</span> <span class="n">verify</span> <span class="k">if</span> <span class="n">verify</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">True</span>
+
+        <span class="n">log_requests</span> <span class="o">=</span> <span class="n">_get_value_as_boolean</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;log_requests&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">log_requests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_requests</span> <span class="o">=</span> <span class="n">log_requests</span>
+
+        <span class="n">xformat</span> <span class="o">=</span> <span class="n">_get_value_as_string</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;exchange_format&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">xformat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exchange_format</span> <span class="o">=</span> <span class="n">xformat</span>  <span class="c1"># None or other stuff handled in property</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_from_config_parser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">section_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c1"># Reads this context from the given `ConfigParser`.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Config is read from section &#39;DOcloudConnector&#39;.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Recognized options have the same names as the attributes of :class:`DOcloudContext`.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">configparser</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">ConfigParser</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;readFromConfigParser works only when configparser is installed&quot;</span><span class="p">)</span>
+
+        <span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">()</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">update_from_list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">section_name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">context</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_default_context</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;DOcloudContext is deprecated, use docloud.mp.context.Context instead&quot;</span><span class="p">,</span>
+                      <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">api_key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">home</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span>
+            <span class="n">rcfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home</span><span class="p">,</span> <span class="s2">&quot;.docplexrc&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">rcfile</span><span class="p">):</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">read_from_rcfile</span><span class="p">(</span><span class="n">rcfile</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">context</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM®.
+    </div>
+  </body>
+</html>

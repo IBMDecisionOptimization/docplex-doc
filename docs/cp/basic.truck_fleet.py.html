@@ -1,0 +1,404 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>basic/truck_fleet.py example &mdash; DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="basic-truck-fleet-py-example">
+<h1>basic/truck_fleet.py example<a class="headerlink" href="#basic-truck-fleet-py-example" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-python"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156</pre></div></td><td class="code"><div class="highlight"><pre><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The problem is to deliver some orders to several clients with a single truck.</span>
+<span class="sd">Each order consists of a given quantity of a product of a certain type (called</span>
+<span class="sd">its color).</span>
+<span class="sd">The truck must be configured in order to handle one, two or three different colors of products.</span>
+<span class="sd">The cost for configuring the truck from a configuration A to a configuration B depends on A and B.</span>
+<span class="sd">The configuration of the truck determines its capacity and its loading cost. </span>
+<span class="sd">A truck can only be loaded with orders for the same customer.</span>
+<span class="sd">Both the cost (for configuring and loading the truck) and the number of travels needed to deliver all the </span>
+<span class="sd">orders must be minimized, the cost being the most important criterion. </span>
+
+<span class="sd">Please refer to documentation for appropriate setup of solving configuration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.model</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">stdout</span>
+
+
+<span class="c1">##############################################################################</span>
+<span class="c1">## Problem data</span>
+<span class="c1">##############################################################################</span>
+
+<span class="n">nbTruckConfigs</span> <span class="o">=</span> <span class="mi">7</span>  <span class="c1"># Number of possible configurations for the truck</span>
+<span class="n">nbOrders</span> <span class="o">=</span> <span class="mi">21</span>
+<span class="n">nbCustomers</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">nbTrucks</span> <span class="o">=</span> <span class="mi">15</span>  <span class="c1"># Max. number of travels of the truck</span>
+
+<span class="c1"># Capacity of the trucks</span>
+<span class="n">maxTruckConfigLoad</span> <span class="o">=</span> <span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">maxLoad</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">maxTruckConfigLoad</span><span class="p">)</span>
+
+<span class="n">customerOfOrder</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">volumes</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Cost for loading a truck of a given config         </span>
+<span class="n">truckCost</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="c1"># Transition costs between trucks</span>
+<span class="n">costTuples</span> <span class="o">=</span> <span class="n">tuple_set</span><span class="p">(((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                        <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="p">))</span>
+
+<span class="c1">##############################################################################</span>
+<span class="c1">## Modeling</span>
+<span class="c1">##############################################################################</span>
+
+<span class="c1"># Create CPO model</span>
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
+
+<span class="c1"># Configuration of the truck</span>
+<span class="n">truckConfigs</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">nbTrucks</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nbTruckConfigs</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;truckConfigs&quot;</span><span class="p">)</span>
+<span class="c1"># In which truck is an order</span>
+<span class="n">where</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">nbOrders</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nbTrucks</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;where&quot;</span><span class="p">)</span>
+<span class="c1"># Load of a truck</span>
+<span class="n">load</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">nbTrucks</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">maxLoad</span><span class="p">,</span> <span class="s2">&quot;load&quot;</span><span class="p">)</span>
+<span class="c1"># Number of trucks used</span>
+<span class="n">numUsed</span> <span class="o">=</span> <span class="n">integer_var</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbTrucks</span><span class="p">)</span>
+<span class="c1">#</span>
+<span class="n">customerOfTruck</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">nbTrucks</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nbCustomers</span><span class="p">,</span> <span class="s2">&quot;customerOfTruck&quot;</span><span class="p">)</span>
+<span class="c1">#</span>
+<span class="n">transitionCost</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">nbTrucks</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="s2">&quot;transitionCost&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nbTrucks</span><span class="p">):</span>
+    <span class="n">auxVars</span> <span class="o">=</span> <span class="p">(</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">transitionCost</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">allowed_assignments</span><span class="p">(</span><span class="n">auxVars</span><span class="p">,</span> <span class="n">costTuples</span><span class="p">))</span>
+
+<span class="c1"># Constrain the volume of the orders in each truck </span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">pack</span><span class="p">(</span><span class="n">load</span><span class="p">,</span> <span class="n">where</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">numUsed</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbTrucks</span><span class="p">):</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">load</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">element</span><span class="p">(</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">maxTruckConfigLoad</span><span class="p">))</span>
+
+<span class="c1"># Compatibility between the colors of an order and the configuration of its truck </span>
+<span class="n">allowedContainerConfigs</span> <span class="o">=</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+                           <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+                           <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbOrders</span><span class="p">):</span>
+    <span class="n">configOfContainer</span> <span class="o">=</span> <span class="n">integer_var</span><span class="p">(</span><span class="n">allowedContainerConfigs</span><span class="p">[</span><span class="n">colors</span><span class="p">[</span><span class="n">j</span><span class="p">]])</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">configOfContainer</span> <span class="o">==</span> <span class="n">element</span><span class="p">(</span><span class="n">where</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">truckConfigs</span><span class="p">))</span>
+
+<span class="c1"># Only one customer per truck </span>
+<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbOrders</span><span class="p">):</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">element</span><span class="p">(</span><span class="n">where</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">customerOfTruck</span><span class="p">)</span> <span class="o">==</span> <span class="n">customerOfOrder</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+
+<span class="c1"># Non-used trucks are at the end</span>
+<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nbTrucks</span><span class="p">):</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">load</span><span class="p">[</span><span class="n">j</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">load</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
+
+<span class="c1"># Dominance: the non used trucks keep the last used configuration</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">load</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nbTrucks</span><span class="p">):</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">load</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]))</span>
+
+<span class="c1"># Dominance: regroup deliveries with same configuration</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbTrucks</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">ct</span> <span class="o">=</span> <span class="n">true</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nbTrucks</span><span class="p">):</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="p">(</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">!=</span> <span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">ct</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="o">|</span> <span class="n">ct</span><span class="p">)</span>
+
+<span class="c1"># Objective: first criterion for minimizing the cost for configuring and loading trucks </span>
+<span class="c1">#            second criterion for minimizing the number of trucks</span>
+<span class="n">obj1</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbTrucks</span><span class="p">):</span>
+    <span class="n">obj1</span> <span class="o">=</span> <span class="n">obj1</span> <span class="o">+</span> <span class="n">element</span><span class="p">(</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">truckCost</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">load</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">obj1</span> <span class="o">=</span> <span class="n">obj1</span> <span class="o">+</span> <span class="nb">sum</span><span class="p">(</span><span class="n">transitionCost</span><span class="p">)</span>
+
+<span class="n">obj2</span> <span class="o">=</span> <span class="n">numUsed</span>
+
+<span class="c1"># Search strategy: first assign order to truck</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">set_search_phases</span><span class="p">([</span><span class="n">search_phase</span><span class="p">(</span><span class="n">where</span><span class="p">)])</span>
+
+<span class="c1"># Multicriteria lexicographic optimization</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">minimize_static_lex</span><span class="p">([</span><span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">]))</span>
+
+
+<span class="c1">##############################################################################</span>
+<span class="c1">## Solving</span>
+<span class="c1">##############################################################################</span>
+
+<span class="c1"># Solve model</span>
+<span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Solving model....&quot;</span><span class="p">)</span>
+<span class="n">msol</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">TimeLimit</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">LogPeriod</span><span class="o">=</span><span class="mi">3000</span><span class="p">)</span>
+
+<span class="c1"># Print solution</span>
+<span class="k">if</span> <span class="n">msol</span><span class="o">.</span><span class="n">is_solution</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Solution: &quot;</span><span class="p">)</span>
+    <span class="n">ovals</span> <span class="o">=</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_objective_values</span><span class="p">()</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;   Configuration cost: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ovals</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;   Number of Trucks:   &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ovals</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbTrucks</span><span class="p">):</span>
+        <span class="n">ld</span> <span class="o">=</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">load</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">ld</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Truck &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                         <span class="o">+</span> <span class="s2">&quot;: config=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">msol</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">truckConfigs</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                         <span class="o">+</span> <span class="s2">&quot;, items=&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbOrders</span><span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">msol</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">where</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">==</span> <span class="n">i</span><span class="p">):</span>
+                    <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">colors</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">volumes</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;&gt; &quot;</span><span class="p">)</span>
+            <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Solve status: &quot;</span> <span class="o">+</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_solve_status</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>

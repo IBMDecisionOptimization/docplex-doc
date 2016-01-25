@@ -1,0 +1,481 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>docplex.cp.model &mdash; DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.cp.model</h1><div class="highlight"><pre>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">CPO Model representation</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.function</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.modeler</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">docplex.cp.expression</span> <span class="kn">as</span> <span class="nn">expression</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.solver</span> <span class="kn">import</span> <span class="n">CpoSolver</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.cpo_compiler</span> <span class="kn">import</span> <span class="n">CpoCompiler</span>
+<span class="kn">import</span> <span class="nn">docplex.cp.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">##  Public classes</span>
+<span class="c1">###############################################################################</span>
+
+<div class="viewcode-block" id="CpoModel"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel">[docs]</a><span class="k">class</span> <span class="nc">CpoModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Root class for constraint programming models. &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span>         <span class="c1"># Name of the model</span>
+                 <span class="s1">&#39;sourcefile&#39;</span><span class="p">,</span>   <span class="c1"># Name of the python source file</span>
+                 <span class="s1">&#39;varList&#39;</span><span class="p">,</span>      <span class="c1"># List of model variables, in declaration order</span>
+                 <span class="s1">&#39;varSet&#39;</span><span class="p">,</span>       <span class="c1"># Set of model variables</span>
+                 <span class="s1">&#39;exprList&#39;</span><span class="p">,</span>     <span class="c1"># List of model root expressions (tuples (expression, location))</span>
+                 <span class="s1">&#39;srch_phases&#39;</span><span class="p">,</span>  <span class="c1"># Search phases list</span>
+                 <span class="s1">&#39;nameSet&#39;</span><span class="p">,</span>      <span class="c1"># Set of variable names</span>
+                 <span class="s1">&#39;intIdCount&#39;</span><span class="p">,</span>   <span class="c1"># Counter for internal ids generated for sub-expressions</span>
+                 <span class="s1">&#39;nbExprNodes&#39;</span><span class="p">,</span>  <span class="c1"># Number of expression nodes</span>
+                 <span class="s1">&#39;allExprSet&#39;</span><span class="p">,</span>   <span class="c1"># Set of all expression ids already in the model</span>
+                 <span class="s1">&#39;sourceloc&#39;</span><span class="p">,</span>    <span class="c1"># Indicate to set in the model information of source location</span>
+                 <span class="s1">&#39;mapExpr&#39;</span><span class="p">,</span>      <span class="c1"># Map of expressions having a name</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">sfile</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name:  Model name, None for automatic (source file name).</span>
+<span class="sd">            sfile: Source file, None for automatic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoModel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">varList</span>         <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">varSet</span>          <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exprList</span>        <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">srch_phases</span>     <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nameSet</span>         <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intIdCount</span>      <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbExprNodes</span>     <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allExprSet</span>      <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sourceloc</span>       <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mapExpr</span>         <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="c1"># Store filename of the calling Python source</span>
+        <span class="k">if</span> <span class="n">sfile</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mod</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmodule</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">stack</span><span class="p">()[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">mod</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">sfile</span> <span class="o">=</span> <span class="n">mod</span><span class="o">.</span><span class="n">__file__</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sfile</span> <span class="o">=</span> <span class="s2">&quot;UnknownSource.py&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sourcefile</span> <span class="o">=</span> <span class="n">sfile</span>
+
+        <span class="c1"># Store model name</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_file_name_only</span><span class="p">(</span><span class="n">sfile</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+
+<div class="viewcode-block" id="CpoModel.add"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds an expression to the model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            expr: Expression to add.</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            CpoException in case of error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check expression</span>
+        <span class="c1">#if expr is True:</span>
+        <span class="c1">#    return</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;expr&#39; should be a CpoExpr instead of &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">expr</span><span class="p">))</span>
+        
+        <span class="c1"># Determine source location</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceloc</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_filename</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">f_lineno</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="c1"># Scan expression to check new variables</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scan_expression</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">)</span>
+        
+        <span class="c1"># Append to the map of named expressions    </span>
+        <span class="k">if</span> <span class="n">expr</span><span class="o">.</span><span class="n">has_name</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_named_expr</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+
+        <span class="c1"># Check search phase</span>
+        <span class="k">if</span> <span class="n">expr</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span> <span class="ow">is</span> <span class="n">Type_SearchPhase</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">srch_phases</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Append to the list of expressions    </span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">expr</span><span class="o">.</span><span class="n">is_variable</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">exprList</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+            </div>
+<div class="viewcode-block" id="CpoModel.set_search_phases"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.set_search_phases">[docs]</a>    <span class="k">def</span> <span class="nf">set_search_phases</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phases</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set a list of search phases</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            phases: Array of search phases</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check arguments</span>
+        <span class="k">assert</span> <span class="n">is_array_of_type</span><span class="p">(</span><span class="n">phases</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;phases&#39; should be an array of SearchPhases&quot;</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">phases</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">Type_SearchPhase</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;Argument &#39;phases&#39; should be an array of SearchPhases&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="c1"># self.srch_phases = phases</span>
+       </div>
+<div class="viewcode-block" id="CpoModel.get_search_phases"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_search_phases">[docs]</a>    <span class="k">def</span> <span class="nf">get_search_phases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns list of search phases.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of search phases (pairs (expression, location)), [] if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">srch_phases</span>
+        </div>
+<div class="viewcode-block" id="CpoModel.set_source_location"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.set_source_location">[docs]</a>    <span class="k">def</span> <span class="nf">set_source_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the indicator allowing to attach Python source line</span>
+<span class="sd">        to model expressions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sl: Adds the source location indicator. Default value is True.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sourceloc</span> <span class="o">=</span> <span class="n">sl</span>
+                </div>
+<div class="viewcode-block" id="CpoModel.get_all_variables"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_all_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the list of all model variables.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of model variables. List elements are tuples (Variable, Location).</span>
+<span class="sd">            Location is a tuple (filename, line number).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">varList</span>
+</div>
+<div class="viewcode-block" id="CpoModel.get_expressions"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_expressions">[docs]</a>    <span class="k">def</span> <span class="nf">get_expressions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the list of model expressions</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of model expressions</span>
+<span class="sd">            Each expression is a tuple (expr, loc) where loc is a tuple (source_file, line).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">exprList</span>
+</div>
+<div class="viewcode-block" id="CpoModel.get_expression"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_expression">[docs]</a>    <span class="k">def</span> <span class="nf">get_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets an expression from its name (expression or variable).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the expression.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Expression, None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">mapExpr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoModel.get_optimization_expression"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_optimization_expression">[docs]</a>    <span class="k">def</span> <span class="nf">get_optimization_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the optimization expression (maximization or minimization).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Optimization expression, None if satisfaction problem.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Search last optimization expression</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_expressions</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CpoFunctionCall</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="o">.</span><span class="n">get_operation</span><span class="p">()</span><span class="o">.</span><span class="n">is_optim</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="CpoModel.get_name"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the name of the model.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Name of the model (file name with no path or extension).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+</div>
+<div class="viewcode-block" id="CpoModel.get_source_file"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_source_file">[docs]</a>    <span class="k">def</span> <span class="nf">get_source_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the name of the source file from which model has been created.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Python source file name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourcefile</span>
+</div>
+<div class="viewcode-block" id="CpoModel.print_information"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.print_information">[docs]</a>    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Prints model information.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            out: Output stream or file name, default is sys.stdout.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">make_directories</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_write_information</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_information</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_write_information</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Write model information on a output stream</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            out: Output stream</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Model: &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - source file: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_source_file</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">nbintvar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">nbintervvar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">nbsequencevar</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">avars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_variables</span><span class="p">()</span>
+        <span class="n">lexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_expressions</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">avars</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoIntVar</span><span class="p">):</span>
+                <span class="n">nbintvar</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoIntervalVar</span><span class="p">):</span>
+                <span class="n">nbintervvar</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoSequenceVar</span><span class="p">):</span>
+                <span class="n">nbsequencevar</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - variables: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">avars</span><span class="p">)))</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; (integer: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">nbintvar</span><span class="p">))</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;, interval: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">nbintervvar</span><span class="p">))</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;, sequence: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">nbsequencevar</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;)</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - constraints: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lexpr</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;, expression nodes: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbExprNodes</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CpoModel.solve"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Solves the model.</span>
+
+<span class="sd">        This method solves the model using the appropriate solver according to the optional parameters</span>
+<span class="sd">        and/or configuration attributes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            context (optional):   Complete solving context. If not given, context is the default context that is set in config.py.</span>
+<span class="sd">            params (optional):    Solving parameters (CpoParameters) that overwrite those in the solving context</span>
+<span class="sd">            url (optional):       URL of the DOcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            key (optional):       Authentication key of the DOcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            (others) (optional):  All other context parameters that can be changed.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Model solution (type CpoModelSolution).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">solver</span> <span class="o">=</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="CpoModel.export_as_cpo"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.export_as_cpo">[docs]</a>    <span class="k">def</span> <span class="nf">export_as_cpo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">srcloc</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Exports/prints the model in the standard CPO file format.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            out:    Target output, stream or file name. Default is sys.stdout.</span>
+<span class="sd">            srcloc: Indicates to add the model source location information. Default is False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cplr</span> <span class="o">=</span> <span class="n">CpoCompiler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">cplr</span><span class="o">.</span><span class="n">set_source_location</span><span class="p">(</span><span class="n">srcloc</span><span class="p">)</span>
+        <span class="n">cplr</span><span class="o">.</span><span class="n">print_model</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CpoModel.get_cpo_string"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_cpo_string">[docs]</a>    <span class="k">def</span> <span class="nf">get_cpo_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">srcloc</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Compiles the model in CPO file format into a string.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            srcloc: Indicates to add the model source location information. Default is False.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            String containing the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cplr</span> <span class="o">=</span> <span class="n">CpoCompiler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">cplr</span><span class="o">.</span><span class="n">set_source_location</span><span class="p">(</span><span class="n">srcloc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_as_string</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="CpoModel.equals"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.equals">[docs]</a>    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this model is equal to another.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other:  Other model to compare with.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if models are identical, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check object types</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoModel</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="c1"># Check list of expressions (will also compare variables)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exprList</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">exprList</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exprList</span><span class="p">)):</span>
+            <span class="c1">#print(&quot;Compare expression &quot; + str(i) + &quot;: &quot; + str(self.exprList[i]) + &quot; with &quot; + str(other.exprList[i]))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exprList</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">exprList</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if this model is equal to another</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other:  Other model to compare with</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if models are identical, False otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check inequality of this object with another &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_add_var_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check that a variable name is not already used and add it to the namesSet.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Variable name to check/add</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            CpoException if name already used.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nameSet</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Variable name &#39;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&#39; can not be used twice&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nameSet</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> 
+
+    <span class="k">def</span> <span class="nf">_add_named_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add an expression to the map of named expressions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            expr: Named expression</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            CpoException if name already used.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">expr</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mapExpr</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Expression with name &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; already exists&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mapExpr</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">expr</span>
+
+    <span class="k">def</span> <span class="nf">_add_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">loc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add a variable to the model</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            var: Variable expression to add</span>
+<span class="sd">            loc: Variable location</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if variable already in the model</span>
+        <span class="k">if</span> <span class="ow">not</span><span class="p">(</span><span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">varSet</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">expression</span><span class="o">.</span><span class="n">_allocate_var_name</span><span class="p">()</span>
+                <span class="n">var</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_var_name</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">varSet</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">varList</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">var</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
+            
+    <span class="k">def</span> <span class="nf">_scan_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Scan an expression to add all referenced variables and update statistics</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            expr: Expression to scan</span>
+<span class="sd">            loc:  Expression location</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            CpoException if error detected</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Loop while expression stack is not empty</span>
+        <span class="n">estack</span> <span class="o">=</span> <span class="p">[</span><span class="n">expr</span><span class="p">]</span>  
+        <span class="n">eset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">allExprSet</span>
+        <span class="k">while</span> <span class="n">estack</span><span class="p">:</span>
+            <span class="c1"># Get expression to check</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">estack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">get_type</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+                <span class="n">eid</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">eid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">eset</span><span class="p">:</span>
+                    <span class="n">eset</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">eid</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">nbExprNodes</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">is_variable</span><span class="p">()):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_add_variable</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">loc</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Stack children expressions</span>
+                        <span class="n">oprnds</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">_get_children</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">oprnds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                            <span class="n">estack</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">oprnds</span><span class="p">)</span>
+
+<span class="c1">###############################################################################</span>
+<span class="c1">##  Private Functions</span>
+<span class="c1">###############################################################################</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>

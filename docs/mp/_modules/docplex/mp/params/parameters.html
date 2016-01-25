@@ -1,0 +1,840 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>docplex.mp.params.parameters &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.params.parameters</h1><div class="highlight"><pre>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_int</span><span class="p">,</span> <span class="n">StringIO</span><span class="p">,</span> <span class="n">is_number</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="kn">import</span> <span class="n">docplex_fatal</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">RedirectedOutputContext</span>
+
+
+<div class="viewcode-block" id="ParameterGroup"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup">[docs]</a><span class="k">class</span> <span class="nc">ParameterGroup</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A group of parameters.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        This class is not meant to be instantiated by users. Models come</span>
+<span class="sd">        with a full hierarchy of parameters with groups as nodes.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">parent_group</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">parent_group</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_params</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subgroups</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">parent_group</span><span class="p">:</span>
+            <span class="n">parent_group</span><span class="o">.</span><span class="n">_add_subgroup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;group&lt;</span><span class="si">%s</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.params.ParameterGroup({0})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">())</span>
+
+<div class="viewcode-block" id="ParameterGroup.clone"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns:</span>
+<span class="sd">           A deep copy of the parameter group.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+        <span class="k">return</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    </div>
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the name of the group.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Parameter group names are always lowercase.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
+
+<div class="viewcode-block" id="ParameterGroup.iter_params"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.iter_params">[docs]</a>    <span class="k">def</span> <span class="nf">iter_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Iterates over the group&#39;s own parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An iterator over the group&#39;s parameters, non-recursively.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  This property returns the number of parameters in the group, not including subgroups.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParameterGroup.total_number_of_params"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.total_number_of_params">[docs]</a>    <span class="k">def</span> <span class="nf">total_number_of_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Includes all parameters of subgroups recursively.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">           The total number of parameters inside the group.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">subparams</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">total_number_of_params</span><span class="p">()</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subgroups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">subparams</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_params</span>
+</div>
+    <span class="k">def</span> <span class="nf">total_number_of_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">subgroups</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">total_number_of_groups</span><span class="p">()</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subgroups</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">subgroups</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_subgroups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of subgroups of the group, non-recursively.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subgroups</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">iter_subgroups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subgroups</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">parent_group</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the parent group (An instance of :class:`ParameterGroup`), or None for the root group.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span>
+
+    <span class="k">def</span> <span class="nf">_add_param</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">):</span>
+        <span class="c1"># internal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_add_subgroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">):</span>
+        <span class="c1"># internal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subgroups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">subgroup</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParameterGroup.is_root"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.is_root">[docs]</a>    <span class="k">def</span> <span class="nf">is_root</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks whether the group is the root group, in other words, has no parent group.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the group is the root group.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="ow">is</span> <span class="bp">None</span>
+</div>
+    <span class="k">def</span> <span class="nf">root_group</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">group</span><span class="o">.</span><span class="n">is_root</span><span class="p">():</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">parent_group</span>
+        <span class="k">return</span> <span class="n">group</span>
+
+<div class="viewcode-block" id="ParameterGroup.qualified_name"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.qualified_name">[docs]</a>    <span class="k">def</span> <span class="nf">qualified_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">upto_root</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Computes a string with all the parents of the parameters.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            `parameter mip.mip_cuts.Cover` returns &quot;mip.mip_cuts.Covers&quot;.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sep (str): The separator string. Default is &quot;.&quot;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string representation of the parameter hierarchy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">self_parent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">self_parent</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">upto_root</span> <span class="ow">and</span> <span class="n">self_parent</span><span class="o">.</span><span class="n">is_root</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">(</span><span class="n">sep</span><span class="o">=</span><span class="n">sep</span><span class="p">,</span> <span class="n">upto_root</span><span class="o">=</span><span class="n">upto_root</span><span class="p">),</span> <span class="n">sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+</div>
+    <span class="k">def</span> <span class="nf">prettyprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">tab</span> <span class="o">=</span> <span class="n">indent</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">*</span> <span class="s2">&quot; &quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0}{1!s}={{&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tab</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">()))</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_params</span><span class="p">():</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0}    {1!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tab</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">sg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_subgroups</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sg</span><span class="p">,</span> <span class="n">ParameterGroup</span><span class="p">)</span>
+            <span class="n">sg</span><span class="o">.</span><span class="n">prettyprint</span><span class="p">(</span><span class="n">indent</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0}}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tab</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_update_self_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extra_dict</span><span class="p">,</span> <span class="n">do_check</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">self_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span>
+        <span class="k">if</span> <span class="n">do_check</span><span class="p">:</span>
+            <span class="c1"># new entries should not already be present in self.dict</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">extra_dict</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">self_dict</span><span class="p">:</span>
+                    <span class="c1"># should not happen</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;!! update_self_dict: name collision with: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">k</span><span class="p">)</span>  <span class="c1"># pragma : no cover</span>
+        <span class="n">self_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extra_dict</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">param_dict_fn</span><span class="p">,</span> <span class="n">subgroup_fn</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># factory method to create one group from:</span>
+        <span class="c1"># 1. a lambda function taking a group as argument and returning a dict of name: param instances</span>
+        <span class="c1"># 2. a dict of subgroup name: subgroup_make functions</span>
+        <span class="c1"># 3. a possibly-None parent group. If None, we are at root.</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">ParameterGroup</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="p">)</span> <span class="k">if</span> <span class="n">parent</span> <span class="k">else</span> <span class="n">RootParameterGroup</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cplex_version</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">_initialize</span><span class="p">(</span><span class="n">param_dict_fn</span><span class="p">,</span> <span class="n">subgroup_fn</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">group</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_dict_fn</span><span class="p">,</span> <span class="n">subgroup_fn</span><span class="p">):</span>
+        <span class="n">param_dict</span> <span class="o">=</span> <span class="n">param_dict_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_self_dict</span><span class="p">(</span><span class="n">param_dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">subgroup_fn</span><span class="p">:</span>
+            <span class="n">subgroup_fn_dict</span> <span class="o">=</span> <span class="n">subgroup_fn</span><span class="p">()</span>
+            <span class="n">subgroup_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">group_name</span><span class="p">:</span> <span class="n">group_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                             <span class="k">for</span> <span class="n">group_name</span><span class="p">,</span> <span class="n">group_fn</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">subgroup_fn_dict</span><span class="p">)}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_self_dict</span><span class="p">(</span><span class="n">subgroup_dict</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">number_of_nondefaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_nondefault_params</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">has_nondefaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_nondefault_params</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="ParameterGroup.reset"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Resets all parameters in the group.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            recursive (bool): If True, also resets the subgroups.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_params</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">recursive</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_subgroups</span><span class="p">():</span>
+                <span class="n">g</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">recursive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">reset_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">recursive</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParameterGroup.generate_params"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.generate_params">[docs]</a>    <span class="k">def</span> <span class="nf">generate_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Returns a generator traversing all parameters.</span>
+
+<span class="sd">        The generator yields all parameters from the group</span>
+<span class="sd">        and also from its subgroups, recursively.</span>
+<span class="sd">        Called from the root parameter group, returns all parameters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A generator object.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_and_filter_params</span><span class="p">(</span><span class="n">predicate</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_generate_and_filter_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">predicate</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; A filtering generator function that traverses a group&#39;s parameters.</span>
+
+<span class="sd">        This generator function traverses the group and its subgroup tree,</span>
+<span class="sd">        yielding only  parameters that are accepted by th epredicate.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">           predicate: A function that takes one parameter as asrgument.</span>
+<span class="sd">           The return value of this function will be interpeted as a boolean using</span>
+<span class="sd">           Python conversionb rules.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A generator object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_params</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">predicate</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">predicate</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">p</span>
+        <span class="c1"># now recurse</span>
+        <span class="k">for</span> <span class="n">sg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_subgroups</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">nd</span> <span class="ow">in</span> <span class="n">sg</span><span class="o">.</span><span class="n">_generate_and_filter_params</span><span class="p">(</span><span class="n">predicate</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">nd</span>
+
+<div class="viewcode-block" id="ParameterGroup.generate_nondefault_params"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup.generate_nondefault_params">[docs]</a>    <span class="k">def</span> <span class="nf">generate_nondefault_params</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; A generator function that returns all non-default parameters.</span>
+
+<span class="sd">        This generator function traverses the group and its subgroup tree,</span>
+<span class="sd">        yielding those parameters with a non-default value, one at a time.</span>
+<span class="sd">        A parameter is non-default as soon as its value differs from the default.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A generator object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_and_filter_params</span><span class="p">(</span><span class="n">predicate</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">is_nondefault</span><span class="p">())</span>
+</div>
+    <span class="k">def</span> <span class="nf">generate_all_subgroups</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">for</span> <span class="n">sg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_subgroups</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">sg</span>
+            <span class="k">for</span> <span class="n">ssg</span> <span class="ow">in</span> <span class="n">sg</span><span class="o">.</span><span class="n">generate_all_subgroups</span><span class="p">():</span>
+                <span class="k">yield</span> <span class="n">ssg</span>
+
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">attr_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">attr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
+            <span class="n">attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
+                <span class="c1"># attribute is set inside param, not necesarily in engine...</span>
+                <span class="n">attr</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;No parameter with name {0} in {1}&quot;</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;No parameter with name {0} in {1}&quot;</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_group</span><span class="p">()</span><span class="o">.</span><span class="n">cplex_version</span>
+
+</div>
+<div class="viewcode-block" id="Parameter"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter">[docs]</a><span class="k">class</span> <span class="nc">Parameter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Base class for all parameters.</span>
+
+<span class="sd">    This class is not meant to be instantiated, but subclassed.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># noinspection PyProtectedMember</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">ParameterGroup</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span> <span class="o">=</span> <span class="n">group</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_short_name</span> <span class="o">=</span> <span class="n">short_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_name</span> <span class="o">=</span> <span class="n">cpx_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">param_key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_description</span> <span class="o">=</span> <span class="n">description</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_value</span> <span class="o">=</span> <span class="n">default_value</span>
+        <span class="c1"># current = default at start...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span> <span class="o">=</span> <span class="n">default_value</span>
+        <span class="c1"># link to parent group</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">_add_param</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">short_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_short_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">qualified_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">(</span><span class="n">sep</span><span class="o">=</span><span class="n">sep</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">short_name</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cpx_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cpx_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_id</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">description</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_description</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">default_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_value</span>
+
+    <span class="k">def</span> <span class="nf">reset_default_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_default</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: use with caution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default_value</span> <span class="o">=</span> <span class="n">new_default</span>  <span class="c1"># pragma: no cover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span> <span class="o">=</span> <span class="n">new_default</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">current_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span>
+
+<div class="viewcode-block" id="Parameter.accept_value"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter.accept_value">[docs]</a>    <span class="k">def</span> <span class="nf">accept_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if `new_value` is an accepted value for the parameter.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            new_value: The candidate value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if acceptable, else False.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>  <span class="c1"># pragma: no cover</span>
+</div>
+    <span class="k">def</span> <span class="nf">transform_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">raw_value</span>
+
+    <span class="k">def</span> <span class="nf">check_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">raw_value</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">raw_value</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">accept_value</span><span class="p">(</span><span class="n">raw_value</span><span class="p">):</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;Value {0!s} of type {2} is invalid for parameter {1}&quot;</span><span class="p">,</span>
+                          <span class="n">raw_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">raw_value</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_value</span><span class="p">(</span><span class="n">raw_value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Parameter.set"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Changes the value of the parameter to `new_value`.</span>
+
+<span class="sd">        This method checks that the new value is valid.</span>
+<span class="sd">        If not valid, an exception is raised.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            new_value: The new value for the parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">accepted_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">accepted_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span> <span class="o">=</span> <span class="n">accepted_value</span>
+        <span class="k">return</span> <span class="n">accepted_value</span>
+</div>
+<div class="viewcode-block" id="Parameter.get"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns:</span>
+<span class="sd">           The current value of the parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span>
+</div>
+<div class="viewcode-block" id="Parameter.reset"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Resets the parameter value to its default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
+</div>
+<div class="viewcode-block" id="Parameter.is_nondefault"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter.is_nondefault">[docs]</a>    <span class="k">def</span> <span class="nf">is_nondefault</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if the current value of the parameter does not equal its default.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">           True if the current value of the parameter does not equal its default.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_value</span>
+</div>
+<div class="viewcode-block" id="Parameter.is_default"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.Parameter.is_default">[docs]</a>    <span class="k">def</span> <span class="nf">is_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Checks if the current value of the parameter equals its default.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the current value of the parameter equals its default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_is_in_range</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">range_min</span><span class="p">,</span> <span class="n">range_max</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">range_min</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">arg</span> <span class="o">&lt;</span> <span class="n">range_min</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">range_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">arg</span> <span class="o">&gt;</span> <span class="n">range_max</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;{0}:{1:s}(2!s)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_short_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">type_name</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">is_numeric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_root_group</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">root_group</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_repr_classname</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.params.{0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;{0}({1},{2!s})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_repr_classname</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span><span class="p">)</span>
+
+</div>
+<span class="n">_BOOLEAN_STATES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;1&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;true&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="s1">&#39;on&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                   <span class="s1">&#39;0&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;false&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;off&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
+
+
+<span class="k">class</span> <span class="nc">BoolParameter</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">):</span>
+        <span class="n">Parameter</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">transform_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="n">svalue</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">new_value</span> <span class="ow">in</span> <span class="p">{</span><span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="n">new_value</span>
+        <span class="k">elif</span> <span class="n">new_value</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="bp">True</span> <span class="k">if</span> <span class="n">new_value</span> <span class="k">else</span> <span class="bp">False</span>
+        <span class="k">elif</span> <span class="n">svalue</span> <span class="ow">in</span> <span class="n">_BOOLEAN_STATES</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_BOOLEAN_STATES</span><span class="p">[</span><span class="n">svalue</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">accept_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">}</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_BOOLEAN_STATES</span> <span class="ow">or</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">{</span><span class="bp">True</span><span class="p">,</span> <span class="bp">False</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;bool&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">StrParameter</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">):</span>
+        <span class="n">Parameter</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">accept_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;string&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">IntParameter</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">accept_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="n">ivalue</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">is_int</span><span class="p">(</span><span class="n">ivalue</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_in_range</span><span class="p">(</span><span class="n">ivalue</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_numeric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_get_min_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_get_max_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">max_value</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">Parameter</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span> <span class="o">=</span> <span class="n">min_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span> <span class="o">=</span> <span class="n">max_value</span>
+
+    <span class="k">def</span> <span class="nf">type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;int&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;{0}({1},{2!s})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_repr_classname</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">transform_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_int</span><span class="p">(</span><span class="n">new_value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">new_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">PositiveIntParameter</span><span class="p">(</span><span class="n">IntParameter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">IntParameter</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                              <span class="n">max_value</span><span class="o">=</span><span class="n">max_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;count&quot;</span>
+
+
+<div class="viewcode-block" id="NumParameter"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.NumParameter">[docs]</a><span class="k">class</span> <span class="nc">NumParameter</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A numeric parameter can take any floating-point value, inside a range of `[min,max]` values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">max_value</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">Parameter</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">cpx_name</span><span class="p">,</span> <span class="n">param_key</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">default_value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span> <span class="o">=</span> <span class="n">min_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span> <span class="o">=</span> <span class="n">max_value</span>
+
+    <span class="k">def</span> <span class="nf">is_numeric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_get_min_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_get_max_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">accept_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="n">fvalue</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_in_range</span><span class="p">(</span><span class="n">fvalue</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">transform_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">new_value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">new_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;num&quot;</span>
+
+<span class="c1"># a dictionary of formats for each type.</span></div>
+<span class="n">_param_prm_formats</span> <span class="o">=</span> <span class="p">{</span><span class="n">NumParameter</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%.14f</span><span class="s2">&quot;</span><span class="p">,</span>
+                      <span class="n">IntParameter</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
+                      <span class="n">PositiveIntParameter</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
+                      <span class="n">BoolParameter</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
+                      <span class="n">StrParameter</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">%s</span><span class="se">\&quot;</span><span class="s2">&quot;</span>  <span class="c1"># need quotes</span>
+                      <span class="p">}</span>
+
+
+<div class="viewcode-block" id="RootParameterGroup"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup">[docs]</a><span class="k">class</span> <span class="nc">RootParameterGroup</span><span class="p">(</span><span class="n">ParameterGroup</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The root parameter group (there should be only one instance at the root of the tree).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cplex_version</span><span class="p">):</span>
+        <span class="n">ParameterGroup</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span> <span class="o">=</span> <span class="n">cplex_version</span>
+
+    <span class="k">def</span> <span class="nf">qualified_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">upto_root</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span>
+
+    <span class="k">def</span> <span class="nf">is_root</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+<div class="viewcode-block" id="RootParameterGroup.export_prm"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup.export_prm">[docs]</a>    <span class="k">def</span> <span class="nf">export_prm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Exports parameters to an output stream in PRM format.</span>
+
+<span class="sd">        This method writes non-default parameters in CPLEX PRM syntax.</span>
+<span class="sd">        In addition to non-default parameters, some parameters can be forced to</span>
+<span class="sd">        be printed with a specific value by passing a dictionary with</span>
+<span class="sd">        Parameter objects as keys and values as arguments.</span>
+<span class="sd">        These values are used in the print operation, but will not be kept,</span>
+<span class="sd">        and the values of parameters will not be changed.</span>
+<span class="sd">        Passing `None` as `overload_params` will disable this functionality, and</span>
+<span class="sd">        only non-default parameters are printed.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output: The output stream, typically a filename.</span>
+
+<span class="sd">            overload_params: A dictionary of overloaded values for</span>
+<span class="sd">                certain parameters. This dictionary is of the form {param: value}</span>
+<span class="sd">                the printed PRM file will use overloaded values</span>
+<span class="sd">                for those parameters present in the dictionary.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">RedirectedOutputContext</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+            <span class="n">cplex_version_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;# -- This content is generated by DOcplex&quot;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;CPLEX Parameter File Version </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cplex_version_string</span><span class="p">)</span>
+
+            <span class="n">param_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_params</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">param_generator</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">overload_params</span> <span class="ow">and</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">overload_params</span><span class="p">:</span>
+                    <span class="n">param_value</span> <span class="o">=</span> <span class="n">overload_params</span><span class="p">[</span><span class="n">param</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">param_value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">param_value</span> <span class="o">!=</span> <span class="n">param</span><span class="o">.</span><span class="n">default_value</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0:&lt;33}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">cpx_name</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">print</span><span class="p">(</span><span class="n">_param_prm_formats</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">param</span><span class="p">)]</span> <span class="o">%</span> <span class="n">param_value</span><span class="p">)</span>
+
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;# --- end of generated prm data ---&quot;</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">print_all</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_info_to_stream</span><span class="p">(</span><span class="n">output</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="n">indent_level</span><span class="p">,</span> <span class="n">print_defaults</span><span class="o">=</span><span class="n">print_all</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RootParameterGroup.print_info_to_stream"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup.print_info_to_stream">[docs]</a>    <span class="k">def</span> <span class="nf">print_info_to_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">print_defaults</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Writes parameters to an output stream.</span>
+
+<span class="sd">        This method writes non-default parameters in a human readable syntax.</span>
+<span class="sd">        In addition to non-default parameters, some parameters can be forced to</span>
+<span class="sd">        be printed with a specific value by passing a dictionary with</span>
+<span class="sd">        Parameter objects as keys and values as arguments.</span>
+<span class="sd">        These values are used in the print operation but not be kept,</span>
+<span class="sd">        and the values of parameters will not be changed.</span>
+<span class="sd">        Passing `None` as `overload_params` will disable this functionality, and</span>
+<span class="sd">        only non-default parameters are printed.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output: The output stream.</span>
+<span class="sd">            overload_params: A dictionary of overloaded values for</span>
+<span class="sd">                certain parameters. This dictionary is of the form {param: value}.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="n">indent_level</span>
+        <span class="k">with</span> <span class="n">RedirectedOutputContext</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+            <span class="n">param_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_params</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">param_generator</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">overload_params</span> <span class="ow">and</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">overload_params</span><span class="p">:</span>
+                    <span class="n">param_value</span> <span class="o">=</span> <span class="n">overload_params</span><span class="p">[</span><span class="n">param</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">print_defaults</span> <span class="ow">or</span> <span class="n">param</span><span class="o">.</span><span class="n">is_nondefault</span><span class="p">():</span>
+                    <span class="n">param_value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">param_value</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="k">if</span> <span class="n">param_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0}{1} = {2!s}&quot;</span>
+                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">indent</span><span class="p">,</span>
+                                  <span class="n">param</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span>
+                                  <span class="n">_param_prm_formats</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">param</span><span class="p">)]</span> <span class="o">%</span> <span class="n">param_value</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="RootParameterGroup.export_prm_to_string"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup.export_prm_to_string">[docs]</a>    <span class="k">def</span> <span class="nf">export_prm_to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Exports non-default parameters in PRM format to a string.</span>
+
+<span class="sd">        The logic of overload is the same as in :func:`export_prm`.</span>
+<span class="sd">        A parameter is written if either it is a key on `overload_params`,</span>
+<span class="sd">        or it has a non-default value.</span>
+<span class="sd">        This allows merging non-default parameters with temporary parameter values.</span>
+
+
+<span class="sd">        Args:</span>
+<span class="sd">            overload_params: A dictionary of overloaded values, possibly None.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method causes no side effects on the parameters.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :func:`export_prm`</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string, in CPLEX PRM format.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">export_prm</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">overload_params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="RootParameterGroup.print_info_to_string"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup.print_info_to_string">[docs]</a>    <span class="k">def</span> <span class="nf">print_info_to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">print_defaults</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Writes parameters in readable format to a string.</span>
+
+<span class="sd">        The logic of overload is the same as in :func:`export_prm`.</span>
+<span class="sd">        A parameter is written if either it is a key on `overload_params`,</span>
+<span class="sd">        or it has a non-default value.</span>
+<span class="sd">        This allows merging non-default params with temporary parameter values.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            overload_params: A dictionary of overloaded values, possibly None.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method causes no side effects on the parameters.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :func:`write_parameters`</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_info_to_stream</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">print_defaults</span><span class="o">=</span><span class="n">print_defaults</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="n">overload_params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">param_dict_fn</span><span class="p">,</span> <span class="n">subgroup_fn</span><span class="p">,</span> <span class="n">cplex_version</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># factory method to create one group from:</span>
+        <span class="c1"># 1. a lambda function taking a group as argument and returning a dict of name: param instances</span>
+        <span class="c1"># 2. a dict of subgroup name: subgroup_make functions</span>
+        <span class="c1"># 3. a possibly-None parent group. If None, we are at root.</span>
+        <span class="n">root_group</span> <span class="o">=</span> <span class="n">RootParameterGroup</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cplex_version</span><span class="p">)</span>
+        <span class="n">root_group</span><span class="o">.</span><span class="n">_initialize</span><span class="p">(</span><span class="n">param_dict_fn</span><span class="p">,</span> <span class="n">subgroup_fn</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">root_group</span>
+
+    <span class="k">def</span> <span class="nf">prettyprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;* CPLEX parameters version: {0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cplex_version</span><span class="p">))</span>
+        <span class="n">ParameterGroup</span><span class="o">.</span><span class="n">prettyprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indent</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.params.RootParameterGroup(</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_version</span>
+
+        <span class="c1"># def qualified_name(self, sep=&#39;.&#39;):</span>
+        <span class="c1"># return &quot;parameters&quot;</span>
+
+    <span class="k">def</span> <span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: returns a dictionary of qualified name -&gt; parameter</span>
+        <span class="n">qdict</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">qdict</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_params</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">p</span>
+        <span class="c1"># now recurse</span>
+        <span class="k">for</span> <span class="n">sg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_subgroups</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">nd</span> <span class="ow">in</span> <span class="n">sg</span><span class="o">.</span><span class="n">_generate_and_filter_params</span><span class="p">(</span><span class="n">predicate</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">nd</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_params</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other_params</span><span class="p">,</span> <span class="n">RootParameterGroup</span><span class="p">):</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;Parameter.update expects  RootParameterGroup, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">other_params</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span> <span class="o">!=</span> <span class="n">other_params</span><span class="o">.</span><span class="n">cplex_version</span><span class="p">:</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;Parameter.update expectes same cple version, self: {0}, other: {1}&quot;</span><span class="p">,</span>
+                          <span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cplex_version</span><span class="p">,</span> <span class="n">other_params</span><span class="o">.</span><span class="n">cplex_version</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">self_qdict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span>
+            <span class="n">nb_updates</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">other_param</span> <span class="ow">in</span> <span class="n">other_params</span><span class="p">:</span>
+                <span class="n">self_param</span> <span class="o">=</span> <span class="n">self_qdict</span><span class="p">[</span><span class="n">other_param</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">]</span>
+                <span class="n">other_current</span> <span class="o">=</span> <span class="n">other_param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">self_param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">!=</span> <span class="n">other_current</span><span class="p">:</span>
+                    <span class="n">self_param</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">other_current</span><span class="p">)</span>
+                    <span class="n">nb_updates</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">return</span> <span class="n">nb_updates</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM®.
+    </div>
+  </body>
+</html>

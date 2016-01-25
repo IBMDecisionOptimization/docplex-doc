@@ -1,0 +1,250 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Campsite &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="campsite">
+<h1>Campsite<a class="headerlink" href="#campsite" title="Permalink to this headline">¶</a></h1>
+<p>Selecting the ideal camping site requires careful consideration of many
+factors such as the proximity to water, availability of firewood, and
+protection from the elements. Your potential camping sites are shown in
+the corresponding map. The map consists of 64 sites, each with varying
+characteristics including water, wood, swamp, and mosquitoes.</p>
+<p>The quality of a site is determined by a points system. A site that
+contains water receives +3 points, and a site that is near water receives
++1 point. A site that contains wood receives +2 points, and a site that
+is near wood receives +1 point. A site that contains swamp is -2 points,
+and a site that is near swamp is -1 point. A site that contains
+mosquitoes receives -3 points, and a site that is near mosquitoes is -2
+points. &#8220;Near&#8221; is defined as adjacent sites including diagonals.</p>
+<p>For example, site B5 is worth 1 point (based on +3 on water, +1 near
+wood, -2 near mosquitoes, -1 near swamp). Note that you only count
+points once for each type of characteristic.</p>
+<p>Question: Where is the best campsite?</p>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The PuzzlOr - Campsite (<a class="reference external" href="http://puzzlor.com/2015-06_Campsite.html">http://puzzlor.com/2015-06_Campsite.html</a>) .</li>
+</ul>
+<center></center><div class="code python highlight-python"><div class="highlight"><pre>!pip install docplex&gt;=0.0.24
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>Requirement already satisfied (use --upgrade to upgrade): docplex&gt;=0.0.24 in /home/notebook/ka_env/lib/python2.7/site-packages
+Requirement already satisfied (use --upgrade to upgrade): requests in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex&gt;=0.0.24)
+Requirement already satisfied (use --upgrade to upgrade): six in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex&gt;=0.0.24)
+Requirement already satisfied (use --upgrade to upgrade): docloud&gt;=1.0.0 in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex&gt;=0.0.24)
+Requirement already satisfied (use --upgrade to upgrade): futures in /home/notebook/ka_env/lib/python2.7/site-packages (from docplex&gt;=0.0.24)
+Requirement already satisfied (use --upgrade to upgrade): enum34 in /usr/local/lib/python2.7/dist-packages (from docloud&gt;=1.0.0-&gt;docplex&gt;=0.0.24)
+Cleaning up...
+</pre></div>
+</div>
+<p>First, we specialize a namedtuple class to model 2D points:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+
+<span class="k">class</span> <span class="nc">Point</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;TPoint&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">])):</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;P&lt;</span><span class="si">%g</span><span class="s2">,</span><span class="si">%g</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">coords</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now we define the site of water, wood, swamp, and mosquitoes present on
+our map:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">water</span> <span class="o">=</span> <span class="p">[</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">)]</span>
+<span class="n">wood</span> <span class="o">=</span> <span class="p">[</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">7</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">)]</span>
+<span class="n">swamp</span> <span class="o">=</span> <span class="p">[</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">7</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">)]</span>
+<span class="n">mosquitoes</span> <span class="o">=</span> <span class="p">[</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">6</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>Now let&#8217;s define a function that calculates the distance between two
+points:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">math</span>
+
+<span class="k">def</span> <span class="nf">euclidean_distance</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">):</span>
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p2</span><span class="o">.</span><span class="n">x</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">p2</span><span class="o">.</span><span class="n">y</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">dx</span> <span class="o">*</span> <span class="n">dx</span>  <span class="o">+</span>  <span class="n">dy</span> <span class="o">*</span> <span class="n">dy</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let&#8217;s define a function that give us the nearest site to our point:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">nearest_site</span><span class="p">(</span><span class="n">p1</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="n">water</span><span class="p">,</span> <span class="n">wood</span><span class="p">,</span> <span class="n">swamp</span><span class="p">,</span> <span class="n">mosquitoes</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">water</span><span class="p">:</span> <span class="n">vardi</span> <span class="o">=</span> <span class="s1">&#39;water&#39;</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">wood</span><span class="p">:</span> <span class="n">vardi</span> <span class="o">=</span> <span class="s1">&#39;wood&#39;</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">swamp</span><span class="p">:</span> <span class="n">vardi</span> <span class="o">=</span> <span class="s1">&#39;swamp&#39;</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">mosquitoes</span><span class="p">:</span> <span class="n">vardi</span> <span class="o">=</span> <span class="s1">&#39;mosquitoes&#39;</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">result</span><span class="p">[</span><span class="n">vardi</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">euclidean_distance</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">p1</span><span class="p">)</span><span class="o">&lt;</span> <span class="n">euclidean_distance</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="n">vardi</span><span class="p">],</span> <span class="n">p1</span><span class="p">):</span>
+                    <span class="n">result</span><span class="p">[</span><span class="n">vardi</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>Let&#8217;s now define the number of points on a defined site:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">how_many_point</span><span class="p">(</span><span class="n">p1</span><span class="p">):</span>
+    <span class="n">point</span><span class="o">=</span><span class="mi">0</span>
+    <span class="n">neighborhood</span> <span class="o">=</span> <span class="n">nearest_site</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;water&#39;</span><span class="p">,</span> <span class="s1">&#39;wood&#39;</span><span class="p">,</span> <span class="s1">&#39;swamp&#39;</span><span class="p">,</span> <span class="s1">&#39;mosquitoes&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">euclidean_distance</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">neighborhood</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;water&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">+</span> <span class="mi">3</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;wood&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">+</span><span class="mi">2</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;swamp&#39;</span><span class="p">:</span><span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">-</span><span class="mi">2</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;mosquitoes&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">-</span><span class="mi">3</span>
+        <span class="k">elif</span> <span class="n">euclidean_distance</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">neighborhood</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">&lt;=</span><span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;water&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;wood&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;swamp&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">-</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="s1">&#39;mosquitoes&#39;</span><span class="p">:</span> <span class="n">point</span><span class="o">=</span> <span class="n">point</span><span class="o">-</span><span class="mi">2</span>
+    <span class="k">return</span> <span class="n">point</span>
+</pre></div>
+</div>
+<p>Let&#8217;s map our point on every site on a matrix:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">points</span> <span class="o">=</span> <span class="p">[</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">8</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">8</span><span class="p">)]]</span>
+<span class="k">def</span> <span class="nf">generate_matrix</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
+    <span class="n">matrix</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="n">how_many_point</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">point</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">matrix</span>
+<span class="n">matrix</span> <span class="o">=</span> <span class="n">generate_matrix</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="n">env</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>* system is: Linux 64bit
+* CPLEX wrapper is not available
+* Numpy is present, version is 1.9.2
+* Matplotlib is present, version is 1.4.3
+</pre></div>
+</div>
+<p>Let&#8217;s now build the model that will choose the best site:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="kn">import</span> <span class="n">DOcloudContext</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;PUT_YOUR_DOCLOUD_URL_HERE&quot;</span><span class="p">,</span>
+                         <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;PUT_YOUR_DOCLOUD_KEY_HERE&quot;</span><span class="p">)</span>
+<span class="c1">#context.verbose = True</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
+
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="s2">&quot;best_campsite&quot;</span><span class="p">,</span> <span class="n">docloud_context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+
+<span class="n">cord_vars</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_dict</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cord&quot;</span><span class="p">)</span>
+
+<span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cord_vars</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>  <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">points</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">mdl</span><span class="o">.</span><span class="n">maximize</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cord_vars</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">*</span> <span class="n">matrix</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>  <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">points</span><span class="p">))</span>
+
+<span class="n">ok</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</pre></div>
+</div>
+<pre class="literal-block">
+Warning: CPLEX DLL not found, will solve on DOcloud
+* #non-compliant LP names: 49, e.g. |cord_P&lt;1,1&gt;|
+</pre>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Campsite model fails&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+        <span class="n">total_points</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">objective_value</span>
+        <span class="n">best_site</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">points</span> <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">cord_vars</span><span class="p">[</span><span class="n">h</span><span class="p">])</span> <span class="o">==</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;The best site is {}, and its score is {}.&quot;</span> <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">best_site</span><span class="p">,</span><span class="n">total_points</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>The best site is [TPoint(x=5, y=5)], and its score is 3.0.
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Campsite</a><ul>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM®.
+    </div>
+  </body>
+</html>

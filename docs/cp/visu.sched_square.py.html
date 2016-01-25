@@ -1,0 +1,304 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>visu/sched_square.py example &mdash; DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="visu-sched-square-py-example">
+<h1>visu/sched_square.py example<a class="headerlink" href="#visu-sched-square-py-example" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-python"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103
+104
+105
+106</pre></div></td><td class="code"><div class="highlight"><pre><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The aim of the square example is to place a set of small squares of</span>
+<span class="sd">different sizes into a large square.</span>
+
+<span class="sd">This version is extended and uses matplotlib to draw the result at the end.</span>
+<span class="sd">Requires installation of numpy (installer) and following python packages:</span>
+<span class="sd">    &quot;pip install matplotlib python-dateutil pyparsing&quot;</span>
+
+<span class="sd">Please refer to documentation for appropriate setup of solving configuration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">_utils_visu</span> <span class="kn">as</span> <span class="nn">visu</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.model</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="c1">##############################################################################</span>
+<span class="c1"># Model configuration</span>
+<span class="c1">##############################################################################</span>
+
+<span class="c1"># Size of the englobing square</span>
+<span class="n">SIZE_SQUARE</span> <span class="o">=</span> <span class="mi">112</span>
+
+<span class="c1"># Sizes of the sub-squares</span>
+<span class="n">SIZE_SUBSQUARE</span> <span class="o">=</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">37</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">27</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+
+
+<span class="c1">##############################################################################</span>
+<span class="c1"># Model construction</span>
+<span class="c1">##############################################################################</span>
+
+<span class="c1"># Create model</span>
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
+
+<span class="c1"># Create array of variables for subsquares</span>
+<span class="n">x</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">rx</span> <span class="o">=</span> <span class="n">pulse</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">ry</span> <span class="o">=</span> <span class="n">pulse</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">SIZE_SUBSQUARE</span><span class="p">)):</span>
+    <span class="n">sq</span> <span class="o">=</span> <span class="n">SIZE_SUBSQUARE</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">vx</span> <span class="o">=</span> <span class="n">interval_var</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">sq</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;X&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+    <span class="n">vx</span><span class="o">.</span><span class="n">set_end</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">))</span>
+    <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vx</span><span class="p">)</span>
+    <span class="n">rx</span> <span class="o">+=</span> <span class="n">pulse</span><span class="p">(</span><span class="n">vx</span><span class="p">,</span> <span class="n">sq</span><span class="p">)</span>
+
+    <span class="n">vy</span> <span class="o">=</span> <span class="n">interval_var</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">sq</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Y&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+    <span class="n">vy</span><span class="o">.</span><span class="n">set_end</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">))</span>
+    <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vy</span><span class="p">)</span>
+    <span class="n">ry</span> <span class="o">+=</span> <span class="n">pulse</span><span class="p">(</span><span class="n">vy</span><span class="p">,</span> <span class="n">sq</span><span class="p">)</span>
+
+<span class="c1"># Create dependencies between variables</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">SIZE_SUBSQUARE</span><span class="p">)):</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">end_of</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">start_of</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">]))</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">end_of</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">start_of</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">end_of</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">start_of</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]))</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">end_of</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">start_of</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">])))</span>
+
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">always_in</span><span class="p">(</span><span class="n">rx</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">))</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">always_in</span><span class="p">(</span><span class="n">ry</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">))</span>
+
+<span class="c1"># Define search phases</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">set_search_phases</span><span class="p">([</span><span class="n">search_phase</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">search_phase</span><span class="p">(</span><span class="n">y</span><span class="p">)])</span>
+
+
+<span class="c1">##############################################################################</span>
+<span class="c1"># Model solving</span>
+<span class="c1">##############################################################################</span>
+
+<span class="c1"># Solve model</span>
+<span class="k">print</span><span class="p">(</span><span class="s2">&quot;Solving model....&quot;</span><span class="p">)</span>
+<span class="n">msol</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">TimeLimit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">LogPeriod</span><span class="o">=</span><span class="mi">50000</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s2">&quot;Solution: &quot;</span><span class="p">)</span>
+<span class="n">msol</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+
+
+<span class="c1">##############################################################################</span>
+<span class="c1"># Display result</span>
+<span class="c1">##############################################################################</span>
+
+<span class="k">if</span> <span class="n">msol</span> <span class="ow">and</span> <span class="n">visu</span><span class="o">.</span><span class="n">is_visu_enabled</span><span class="p">():</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.cm</span> <span class="kn">as</span> <span class="nn">cm</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.patches</span> <span class="kn">import</span> <span class="n">Polygon</span>
+
+    <span class="c1"># Plot external square</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Plotting squares....&quot;</span><span class="p">)</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">),</span> <span class="p">(</span><span class="n">SIZE_SQUARE</span><span class="p">,</span> <span class="n">SIZE_SQUARE</span><span class="p">),</span> <span class="p">(</span><span class="n">SIZE_SQUARE</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">SIZE_SUBSQUARE</span><span class="p">)):</span>
+        <span class="c1"># Display square i</span>
+        <span class="p">(</span><span class="n">sx</span><span class="p">,</span> <span class="n">sy</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">msol</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="p">(</span><span class="n">sx1</span><span class="p">,</span> <span class="n">sx2</span><span class="p">,</span> <span class="n">sy1</span><span class="p">,</span> <span class="n">sy2</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">sx</span><span class="o">.</span><span class="n">get_start</span><span class="p">(),</span> <span class="n">sx</span><span class="o">.</span><span class="n">get_end</span><span class="p">(),</span> <span class="n">sy</span><span class="o">.</span><span class="n">get_start</span><span class="p">(),</span> <span class="n">sy</span><span class="o">.</span><span class="n">get_end</span><span class="p">())</span>
+        <span class="n">poly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">([(</span><span class="n">sx1</span><span class="p">,</span> <span class="n">sy1</span><span class="p">),</span> <span class="p">(</span><span class="n">sx1</span><span class="p">,</span> <span class="n">sy2</span><span class="p">),</span> <span class="p">(</span><span class="n">sx2</span><span class="p">,</span> <span class="n">sy2</span><span class="p">),</span> <span class="p">(</span><span class="n">sx2</span><span class="p">,</span> <span class="n">sy1</span><span class="p">)],</span> <span class="n">fc</span><span class="o">=</span><span class="n">cm</span><span class="o">.</span><span class="n">Set2</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">SIZE_SUBSQUARE</span><span class="p">)))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+        <span class="c1"># Display identifier of square i at its center</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">sx1</span> <span class="o">+</span> <span class="n">sx2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">sy1</span> <span class="o">+</span> <span class="n">sy2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">SIZE_SUBSQUARE</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>

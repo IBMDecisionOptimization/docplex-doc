@@ -1,0 +1,574 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>docplex.mp.solution &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.solution</h1><div class="highlight"><pre>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span><span class="p">,</span> <span class="n">iterkeys</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">StringIO</span><span class="p">,</span> <span class="n">RedirectedOutputContext</span>
+<span class="kn">from</span> <span class="nn">docloud.status</span> <span class="kn">import</span> <span class="n">JobSolveStatus</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.linear</span> <span class="kn">import</span> <span class="n">Var</span>
+
+
+<span class="c1"># noinspection PyAttributeOutsideInit</span>
+<div class="viewcode-block" id="SolveSolution"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution">[docs]</a><span class="k">class</span> <span class="nc">SolveSolution</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The :class:`SolveSolution` class holds the result of a solve.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># a symbolic value for no objective ?</span>
+    <span class="n">NO_OBJECTIVE_VALUE</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e+75</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">var_value_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">engine_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new solution object, associated to a a model.</span>
+
+<span class="sd">        :param model: The model to which the solution is associated. This model cannot be changed.</span>
+<span class="sd">        :param obj: The value of the objective in the solution. A value of None mans the objective is not defined at the</span>
+<span class="sd">        time the solution is created, and will be set later.</span>
+<span class="sd">        :param var_value_map:</span>
+<span class="sd">        :param engine_name:</span>
+<span class="sd">        :param keep_zeros:</span>
+
+<span class="sd">        :return: A solution object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+        <span class="k">assert</span> <span class="n">engine_name</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">engine_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">is_number</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem_name</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_expr</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">objective_expr</span> <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">has_objective</span><span class="p">()</span> <span class="k">else</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NO_OBJECTIVE_VALUE</span> <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__engine_name</span> <span class="o">=</span> <span class="n">engine_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__round_discrete</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
+
+        <span class="k">if</span> <span class="n">var_value_map</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_store_var_value_map</span><span class="p">(</span><span class="n">var_value_map</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="n">keep_zeros</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="n">rounding</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_var_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">varname</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__model</span><span class="o">.</span><span class="n">get_var_by_name</span><span class="p">(</span><span class="n">varname</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SolveSolution.is_empty"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.is_empty">[docs]</a>    <span class="k">def</span> <span class="nf">is_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks whether the solution is empty.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the solution is empty; in other words, it has no defined objective and no variable value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_objective</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span>
+</div>
+<div class="viewcode-block" id="SolveSolution.add_var_value"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.add_var_value">[docs]</a>    <span class="k">def</span> <span class="nf">add_var_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">keep_zero</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds a new pair of (var, value) to this solution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            var_key: A decision variable (:class:`docplex.mp.linear.Var`) or a variable name (a string).</span>
+<span class="sd">            value: A number, the value of the variable in the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">self_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">keep_zero</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var_key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_var_by_name</span><span class="p">(</span><span class="n">var_key</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">var</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">error_handler</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No variable with name: </span><span class="si">%s</span><span class="s2"> - ignored&quot;</span><span class="p">,</span> <span class="n">var_key</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">var</span> <span class="o">=</span> <span class="n">var_key</span>
+            <span class="k">if</span> <span class="n">var</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">rounding</span> <span class="ow">and</span> <span class="n">var</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">():</span>
+                    <span class="n">stored_value</span> <span class="o">=</span> <span class="n">self_model</span><span class="o">.</span><span class="n">round_nearest</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">stored_value</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">[</span><span class="n">var</span><span class="p">]</span> <span class="o">=</span> <span class="n">stored_value</span>
+</div>
+    <span class="k">def</span> <span class="nf">is_attributes_fetched</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">attr_name</span> <span class="ow">and</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A property that gets the model associated with the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__model</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">error_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__model</span><span class="o">.</span><span class="n">error_handler</span>
+
+<div class="viewcode-block" id="SolveSolution.get_objective_value"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.get_objective_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the objective value as defined in the solution.</span>
+<span class="sd">        When the objective value has not been defined, a special value `NO_SOLUTION` is returned.</span>
+<span class="sd">        You can check whether the objective has been set using :func:`has_objective`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The value of the objective as defined by the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span>
+</div>
+<div class="viewcode-block" id="SolveSolution.set_objective_value"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.set_objective_value">[docs]</a>    <span class="k">def</span> <span class="nf">set_objective_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the objective value of the solution.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            obj (float): The value of the objective in the solution (a floating-point number).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span> <span class="o">=</span> <span class="n">obj</span>
+</div>
+<div class="viewcode-block" id="SolveSolution.has_objective"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.has_objective">[docs]</a>    <span class="k">def</span> <span class="nf">has_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        :return: True if the solution defines an objective value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NO_OBJECTIVE_VALUE</span>
+</div>
+    <span class="k">def</span> <span class="nf">_has_problem_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">has_objective</span><span class="p">()</span>
+
+    <span class="n">objective_value</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_objective_value</span><span class="p">,</span> <span class="n">set_objective_value</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">solve_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span>
+
+    <span class="k">def</span> <span class="nf">_set_solve_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_status</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span> <span class="o">=</span> <span class="n">new_status</span>
+
+    <span class="k">def</span> <span class="nf">_store_var_value_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key_value_map</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">e</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">key_value_map</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_var_value</span><span class="p">(</span><span class="n">var_key</span><span class="o">=</span><span class="n">e</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">keep_zero</span><span class="o">=</span><span class="n">keep_zeros</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="n">rounding</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_copy_var_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># obsolete</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_store_attribute_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_rc_results</span><span class="p">,</span> <span class="n">ct_dual_results</span><span class="p">,</span> <span class="n">ct_slacks_results</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="s2">&quot;reduced_costs&quot;</span><span class="p">,</span> <span class="n">var_rc_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="s2">&quot;duals&quot;</span><span class="p">,</span> <span class="n">ct_dual_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="s2">&quot;slacks&quot;</span><span class="p">,</span> <span class="n">ct_slacks_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_store_attribute_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_idx_map</span><span class="p">,</span> <span class="n">is_variable</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stores attribute results from the engine; results are expected as a dictionary of index-&gt;float.</span>
+<span class="sd">        :param attr_name: The name of the attribute (a string).</span>
+<span class="sd">        :param attr_idx_map: The dicitonary of attribute values by index.</span>
+<span class="sd">        :param is_variable: UGLY, used to determine which compartement of indices</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">attr_idx_map</span><span class="p">:</span>
+            <span class="n">mdl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+            <span class="n">obj_mapper</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">get_var_by_index</span> <span class="k">if</span> <span class="n">is_variable</span> <span class="k">else</span> <span class="n">mdl</span><span class="o">.</span><span class="n">get_constraint_by_index</span>
+            <span class="n">attr_obj_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">obj_mapper</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span> <span class="n">attr_val</span>
+                            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">attr_val</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">attr_idx_map</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">obj_mapper</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">attr_val</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attr_obj_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span><span class="p">[</span><span class="n">attr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr_obj_map</span>
+
+<div class="viewcode-block" id="SolveSolution.iter_var_values"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.iter_var_values">[docs]</a>    <span class="k">def</span> <span class="nf">iter_var_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Iterates over the (variable, value) pairs in the solution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A dict-style iterator which returns a two-component tuple (variable, value)</span>
+<span class="sd">            for all variables mentioned in the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SolveSolution.iter_variables"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.iter_variables">[docs]</a>    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Iterates over all variables mentioned in the solution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">           An iterator object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">iterkeys</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SolveSolution.contains"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks whether or not a decision variable is mentioned in the solution.</span>
+<span class="sd">        Note that this predicate can also be used in the form `var in solution`, because the</span>
+<span class="sd">        :func:`__contains_` method has been redefined for this purpose.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dvar (:class:`docplex.mp.linear.Var`): The variable to check.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the variable is mentioned in the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">dvar</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span>
+</div>
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SolveSolution.get_value"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar_arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the value of a solution variable in a solution.</span>
+<span class="sd">        If the variable is not mentioned in the solution,</span>
+<span class="sd">        the method returns 0 and does not raise an exception.</span>
+<span class="sd">        Note that this method can also be used as :func:`solution[dvar]`</span>
+<span class="sd">        because the :func:`__getitem__` method has been overloaded.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dvar-arg: A decision variable (:class:`docplex.mp.linear.Var`) or a variable name (a string).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A floating-point number, the value of the variable in the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dvar_arg</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvar_arg</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_string</span><span class="p">(</span><span class="n">dvar_arg</span><span class="p">):</span>
+            <span class="n">dvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_var_by_name</span><span class="p">(</span><span class="n">dvar_arg</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">dvar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Solution.get_value accepts variables or names, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">dvar_arg</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: this is necessary to prevent solution from being an iterable.</span>
+        <span class="c1"># as it follows getitem protocol, it can mistakenly be interpreted as an iterable</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span>
+
+    <span class="k">def</span> <span class="nf">equals_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">check_models</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">check_explicit</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">obj_precision</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">var_precision</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check_models</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">model</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_value</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">objective_value</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">obj_precision</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">check_explicit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">dvar</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+            <span class="n">this_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+            <span class="n">other_val</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">this_val</span> <span class="o">-</span> <span class="n">other_val</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">var_precision</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">for</span> <span class="n">other_dvar</span><span class="p">,</span> <span class="n">other_val</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">check_explicit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">other_dvar</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+            <span class="n">this_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">other_dvar</span><span class="p">)</span>
+            <span class="n">other_val</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">other_dvar</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">fabs</span><span class="p">(</span><span class="n">this_val</span> <span class="o">-</span> <span class="n">other_val</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">var_precision</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">get_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mobjs</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">default_attr_value</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_empty</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">mobjs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mobjs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">elif</span> <span class="n">attr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span><span class="p">:</span>
+            <span class="c1"># warn</span>
+            <span class="k">return</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">mobjs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attr_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">attr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mobj</span><span class="p">,</span> <span class="n">default_attr_value</span><span class="p">)</span> <span class="k">for</span> <span class="n">mobj</span> <span class="ow">in</span> <span class="n">mobjs</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">display_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">attr_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span><span class="p">:</span>
+            <span class="n">attr_value_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span><span class="p">[</span><span class="n">attr_key</span><span class="p">]</span>
+
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;#{0}={1:d}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">attr_value_map</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">attr_val</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">attr_value_map</span><span class="p">):</span>
+                <span class="n">obj_qualifier</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">has_username</span><span class="p">()</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot; {0}.{1} = {2}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj_qualifier</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr_val</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">display</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">print_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                <span class="n">header_fmt</span><span class="o">=</span><span class="s2">&quot;solution for: {0:s}&quot;</span><span class="p">,</span>
+                <span class="n">objective_fmt</span><span class="o">=</span><span class="s2">&quot;{0}: {1:.{prec}f}&quot;</span><span class="p">,</span>
+                <span class="n">value_fmt</span><span class="o">=</span><span class="s2">&quot;{varname:s} = {value:.{prec}f}&quot;</span><span class="p">,</span>
+                <span class="n">iter_vars</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">problem_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_name</span>
+        <span class="k">if</span> <span class="n">header_fmt</span> <span class="ow">and</span> <span class="n">problem_name</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">header_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">problem_name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">objective_fmt</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_objective</span><span class="p">():</span>
+            <span class="n">obj_prec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">objective_expr</span><span class="o">.</span><span class="n">float_precision</span>
+            <span class="n">obj_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_name</span><span class="p">()</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">objective_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">obj_prec</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">iter_vars</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">iter_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span> <span class="k">if</span> <span class="n">print_zeros</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span>
+        <span class="n">print_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">dvar</span> <span class="ow">in</span> <span class="n">iter_vars</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dvar</span><span class="o">.</span><span class="n">is_generated</span><span class="p">():</span>
+                <span class="n">var_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">print_zeros</span> <span class="ow">or</span> <span class="n">var_value</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">print_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">print</span><span class="p">(</span><span class="n">value_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">varname</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                           <span class="n">value</span><span class="o">=</span><span class="n">var_value</span><span class="p">,</span>
+                                           <span class="n">prec</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">float_precision</span><span class="p">,</span>
+                                           <span class="n">counter</span><span class="o">=</span><span class="n">print_counter</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to_stringio</span><span class="p">(</span><span class="n">oss</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_problem_objective_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default_obj_name</span><span class="o">=</span><span class="s2">&quot;objective&quot;</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># returns the string used for displaying the objective</span>
+        <span class="c1"># if the problem has an objective with a name, use it</span>
+        <span class="c1"># else return the default (typically &quot;objective&quot;</span>
+        <span class="n">self_objective_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_expr</span>
+        <span class="k">if</span> <span class="n">self_objective_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">self_objective_expr</span><span class="o">.</span><span class="n">has_name</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">self_objective_expr</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">default_obj_name</span>
+
+    <span class="k">def</span> <span class="nf">to_stringio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oss</span><span class="p">):</span>
+        <span class="n">problem_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_name</span>
+        <span class="k">if</span> <span class="n">problem_name</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;solution for: </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">problem_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_objective</span><span class="p">():</span>
+            <span class="n">obj_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_name</span><span class="p">()</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%g</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span><span class="p">))</span>
+
+        <span class="n">value_fmt</span><span class="o">=</span><span class="s2">&quot;{varname:s}={value:.{prec}f}&quot;</span>
+        <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
+             <span class="k">if</span> <span class="ow">not</span> <span class="n">dvar</span><span class="o">.</span><span class="n">is_generated</span><span class="p">():</span>
+                <span class="n">var_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">var_value</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">varname</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">var_value</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">float_precision</span><span class="p">))</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.solution.SolveSolution({0}, {1})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_value</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">))</span>
+
+<div class="viewcode-block" id="SolveSolution.print_mst"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.print_mst">[docs]</a>    <span class="k">def</span> <span class="nf">print_mst</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Writes the solution in an output stream &quot;out&quot; (assumed to satisfy the file interface)</span>
+<span class="sd">        in CPLEX MST format.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mst_start</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;&lt;?xml version = &quot;1.0&quot; standalone=&quot;yes&quot;?&gt;</span>
+<span class="s2">&lt;?xml-stylesheet href=&quot;https://www.ilog.com/products/cplex/xmlv1.0/solution.xsl&quot; type=&quot;text/xsl&quot;?&gt;</span>
+<span class="s2">&lt;CPLEXSolution version=&quot;1.0&quot;&gt;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+        <span class="n">mst_end</span> <span class="o">=</span> <span class="s2">&quot;&lt;/CPLEXSolution&gt;&quot;</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="n">mst_start</span><span class="p">)</span>
+        <span class="c1"># header</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot; &lt;header</span><span class="se">\n</span><span class="s2">   problemName=</span><span class="se">\&quot;</span><span class="s2">{0}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_problem_name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_objective</span><span class="p">():</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;   objectiveValue=</span><span class="se">\&quot;</span><span class="s2">{0}:g</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_value</span><span class="p">))</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;  /&gt;&quot;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot; &lt;variables&gt;&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
+            <span class="n">var_name</span> <span class="o">=</span> <span class="n">dvar</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">var_value</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span>
+            <span class="n">var_index</span> <span class="o">=</span> <span class="n">dvar</span><span class="o">.</span><span class="n">index</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;  &lt;variable name=</span><span class="se">\&quot;</span><span class="s2">{0}</span><span class="se">\&quot;</span><span class="s2"> index=</span><span class="se">\&quot;</span><span class="s2">{1}</span><span class="se">\&quot;</span><span class="s2"> value=</span><span class="se">\&quot;</span><span class="s2">{2:g}</span><span class="se">\&quot;</span><span class="s2">/&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var_name</span><span class="p">,</span> <span class="n">var_index</span><span class="p">,</span> <span class="n">var_value</span><span class="p">))</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot; &lt;/variables&gt;&quot;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">mst_end</span><span class="p">)</span>
+</div>
+    <span class="n">mst_extension</span> <span class="o">=</span> <span class="s2">&quot;.mst&quot;</span>
+
+    <span class="k">def</span> <span class="nf">print_mst_to_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># prints on standard output</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_mst</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># a string is interpreted as a path name</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">out</span> <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mst_extension</span><span class="p">)</span> <span class="k">else</span> <span class="n">out</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">mst_extension</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">of</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">print_mst_to_stream</span><span class="p">(</span><span class="n">of</span><span class="p">)</span>
+                <span class="c1"># print(&quot;* file: %s overwritten&quot; % path)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">RedirectedOutputContext</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">error_handler</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">print_mst</span><span class="p">()</span>
+
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
+                <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+                <span class="c1"># stringio will raise an attribute error here, due to with</span>
+                <span class="c1"># print(&quot;Cannot use this an output: %s&quot; % str(out))</span>
+
+<div class="viewcode-block" id="SolveSolution.check_as_mip_start"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.check_as_mip_start">[docs]</a>    <span class="k">def</span> <span class="nf">check_as_mip_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">error_handler</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks that this solution is a valid MIP start. To be valid, it must have:</span>
+<span class="sd">            * at least one discrete variable (integer or binary), and</span>
+<span class="sd">            * the value for integer/binary variables should be consistent with the type.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            error_handler: An instance of an error handler or None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">discrete_vars</span> <span class="o">=</span> <span class="p">(</span><span class="n">dv</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span> <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">())</span>
+        <span class="n">count_values</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">count_errors</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="n">discrete_vars</span><span class="p">:</span>
+            <span class="n">sol_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dv</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dv</span><span class="o">.</span><span class="n">typecheck_initial_value</span><span class="p">(</span><span class="n">sol_value</span><span class="p">):</span>
+                <span class="n">count_errors</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">error_handler</span><span class="p">:</span>
+                    <span class="n">error_handler</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Wrong initial value for variable {0}: {1}, type: {2!s}&quot;</span><span class="p">,</span>   <span class="c1"># pragma: no cover</span>
+                                        <span class="n">dv</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">sol_value</span><span class="p">,</span> <span class="n">dv</span><span class="o">.</span><span class="n">vartype</span><span class="p">)</span>                             <span class="c1"># pragma: no cover</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">count_values</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">count_values</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">error_handler</span><span class="p">:</span>
+                <span class="n">error_handler</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;MIP start contains no discrete variable&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">count_errors</span> <span class="o">==</span> <span class="mi">0</span>
+</div>
+    <span class="k">def</span> <span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">var_value_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># INTERNAL: return a dictionary of variable_name: variable_value</span>
+        <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">dval</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dvar</span><span class="o">.</span><span class="n">has_automatic_name</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">keep_zeros</span> <span class="ow">or</span> <span class="n">dval</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">var_value_dict</span><span class="p">[</span><span class="n">dvar</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dval</span>
+        <span class="k">return</span> <span class="n">var_value_dict</span>
+
+
+</div>
+<span class="k">class</span> <span class="nc">SolveDetails</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">UNKNOWN_STATUS</span> <span class="o">=</span> <span class="s2">&quot;*unknown*&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dettime</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">status</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">status_string</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dettime</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">dettime</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_solve_status</span> <span class="o">=</span> <span class="n">status</span>
+        <span class="k">if</span> <span class="n">status_string</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_solve_status_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">UNKNOWN_STATUS</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_solve_status_string</span> <span class="o">=</span> <span class="n">status_string</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="n">json_details</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">json_details</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">SolveDetails</span><span class="o">.</span><span class="n">make_dummy</span><span class="p">()</span>
+
+        <span class="n">details</span> <span class="o">=</span> <span class="n">SolveDetails</span><span class="p">()</span>
+        <span class="n">details</span><span class="o">.</span><span class="n">_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">json_details</span><span class="p">[</span><span class="s2">&quot;cplex.time&quot;</span><span class="p">])</span>
+        <span class="n">details</span><span class="o">.</span><span class="n">_dettime</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">json_details</span><span class="p">[</span><span class="s2">&quot;cplex.dettime&quot;</span><span class="p">])</span>
+        <span class="n">details</span><span class="o">.</span><span class="n">_cpx_solve_status</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">json_details</span><span class="p">[</span><span class="s2">&quot;cplex.status&quot;</span><span class="p">])</span>
+        <span class="n">details</span><span class="o">.</span><span class="n">_cpx_solve_status_string</span> <span class="o">=</span> <span class="n">json_details</span><span class="p">[</span><span class="s2">&quot;cplex.statusstring&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">details</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_dummy</span><span class="p">():</span>
+        <span class="n">dummy_details</span> <span class="o">=</span> <span class="n">SolveDetails</span><span class="p">(</span><span class="n">status_string</span><span class="o">=</span><span class="s2">&quot;dummy&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dummy_details</span>
+
+    <span class="k">def</span> <span class="nf">__nonzero__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time</span>
+
+    <span class="k">def</span> <span class="nf">get_dettime</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dettime</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.solution.SolveDetails(time={0:g}, dettime={1:g}, status={2:s})&quot;</span>\
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dettime</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_solve_status_string</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;status ={0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cpx_solve_status_string</span><span class="p">))</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;time   ={0} s.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">))</span>
+        <span class="c1">#print(&quot;dettime={0}&quot;.format(self._dettime))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM®.
+    </div>
+  </body>
+</html>
