@@ -53,6 +53,9 @@
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">str_holo</span><span class="p">,</span> <span class="n">StringIO</span>
 
 
 <span class="k">class</span> <span class="nc">ModelingObjectBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -67,7 +70,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;_name&quot;</span><span class="p">,</span> <span class="s2">&quot;_model&quot;</span><span class="p">,</span> <span class="s2">&quot;_has_automatic_name&quot;</span><span class="p">)</span>
 
-    <span class="c1"># @profile</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">has_automatic_name</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
@@ -98,7 +101,7 @@
 <span class="sd">            True if the object has a name.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
 
     <span class="k">def</span> <span class="nf">has_automatic_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_automatic_name</span>
@@ -112,7 +115,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_name</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_automatic_name</span>
 
-    <span class="k">def</span> <span class="nf">notify_automatic_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_set_automatic_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_name</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">auto_name</span>  <span class="c1"># no check here</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_has_automatic_name</span> <span class="o">=</span> <span class="bp">True</span>
 
     <span class="nd">@property</span>
@@ -126,7 +131,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span>
 
     <span class="k">def</span> <span class="nf">is_in_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">model</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">==</span> <span class="n">model</span>
+        <span class="k">return</span> <span class="n">model</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="n">model</span>
 
     <span class="k">def</span> <span class="nf">_check_model_has_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">check_has_solution</span><span class="p">()</span>
@@ -147,10 +152,13 @@
     <span class="k">def</span> <span class="nf">error_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">error_handler</span>
 
+    <span class="k">def</span> <span class="nf">truncated_str</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">str_holo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_max_repr_len</span><span class="p">)</span>
+
 
 <span class="k">class</span> <span class="nc">ModelingObject</span><span class="p">(</span><span class="n">ModelingObjectBase</span><span class="p">):</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;_index&quot;</span><span class="p">,</span> <span class="s2">&quot;_origin&quot;</span><span class="p">)</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;_index&quot;</span><span class="p">,</span> <span class="s2">&quot;_origin&quot;</span><span class="p">,</span> <span class="s2">&quot;_container&quot;</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">is_valid_index</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span>
@@ -158,10 +166,11 @@
         <span class="k">return</span> <span class="n">idx</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 
     <span class="c1"># @profile</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">is_automatic_name</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">is_automatic_name</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">container</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="n">ModelingObjectBase</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">has_automatic_name</span><span class="o">=</span><span class="n">is_automatic_name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="n">index</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_origin</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_container</span> <span class="o">=</span> <span class="n">container</span>
 
     <span class="k">def</span> <span class="nf">is_generated</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Checks whether this object has been generated by another modeling object.</span>
@@ -171,16 +180,13 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            True if the objects has been generated.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">is_generated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_origin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
-            <span class="k">return</span> <span class="n">is_generated</span>
-
-        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_origin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
 
     <span class="k">def</span> <span class="nf">notify_origin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_origin</span> <span class="o">=</span> <span class="n">origin</span>
+            <span class="c1"># generated objects have generated names too</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_has_automatic_name</span> <span class="o">=</span> <span class="bp">True</span>
 
     <span class="k">def</span> <span class="nf">origin</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_origin</span>
@@ -210,6 +216,10 @@
     <span class="n">index</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_index</span><span class="p">,</span> <span class="n">set_index</span><span class="p">)</span>
     <span class="n">safe_index</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_index_or_raise</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">get_container</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_container</span>
+
 
 <div class="viewcode-block" id="Expr"><a class="viewcode-back" href="../../../docplex.mp.basic.html#docplex.mp.basic.Expr">[docs]</a><span class="k">class</span> <span class="nc">Expr</span><span class="p">(</span><span class="n">ModelingObjectBase</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Expr()</span>
@@ -233,8 +243,8 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            The number of variables in the expression.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">())</span>  <span class="c1"># pragma: no cover</span>
-</div>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">())</span>  <span class="c1"># pragma: no cover</span></div>
+
 <div class="viewcode-block" id="Expr.iter_variables"><a class="viewcode-back" href="../../../docplex.mp.basic.html#docplex.mp.basic.Expr.iter_variables">[docs]</a>    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Iterates over all variables present in the solution.</span>
@@ -242,8 +252,8 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            An iterator over all variables present in the expression.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
-</div>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span></div>
+
 <div class="viewcode-block" id="Expr.contains_var"><a class="viewcode-back" href="../../../docplex.mp.basic.html#docplex.mp.basic.Expr.contains_var">[docs]</a>    <span class="k">def</span> <span class="nf">contains_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Checks whether a variable is present in the expression.</span>
 
@@ -252,8 +262,15 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            True if the variable is present in the expression, else False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
-</div>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">dvar</span> <span class="ow">is</span> <span class="n">v</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span></div>
+
+    <span class="k">def</span> <span class="nf">var_set</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()}</span>
+
 <div class="viewcode-block" id="Expr.__contains__"><a class="viewcode-back" href="../../../docplex.mp.basic.html#docplex.mp.basic.Expr.__contains__">[docs]</a>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Overloads operator `in` for an expression and a variable.</span>
 
@@ -262,8 +279,18 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            True if the variable is present in the expression, else False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains_var</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
-</div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains_var</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nb_digits</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">prod_symbol</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">use_space</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">nb_digits</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">nb_digits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">float_precision</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to_stringio</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">nb_digits</span><span class="o">=</span><span class="n">nb_digits</span><span class="p">,</span> <span class="n">prod_symbol</span><span class="o">=</span><span class="n">prod_symbol</span><span class="p">,</span> <span class="n">use_space</span><span class="o">=</span><span class="n">use_space</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
     <span class="k">def</span> <span class="nf">_num_to_stringio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oss</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">ndigits</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
         <span class="k">if</span> <span class="n">ndigits</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
@@ -277,7 +304,92 @@
     <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># + e is identical to e</span>
         <span class="k">return</span> <span class="bp">self</span>
-</pre></div></div>
+
+    <span class="k">def</span> <span class="nf">is_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma : no cover</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">float_precision</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">()</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">float_precision</span>
+
+    <span class="k">def</span> <span class="nf">_round_if_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">round_nearest</span><span class="p">(</span><span class="n">raw_value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">raw_value</span>
+
+    <span class="k">def</span> <span class="nf">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: compute solutoion value.</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_model_has_solution</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_solution_value</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">unsupported_neq_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span></div>
+
+<span class="c1"># --- Priority class used for relaxation</span>
+<span class="k">class</span> <span class="nc">Priority</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="c1"># priority values are not sequential integers</span>
+    <span class="n">VERY_LOW</span><span class="p">,</span> <span class="n">LOW</span><span class="p">,</span> <span class="n">MEDIUM</span><span class="p">,</span> <span class="n">HIGH</span><span class="p">,</span> <span class="n">VERY_HIGH</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">MANDATORY</span> <span class="o">=</span> <span class="mi">999999999</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">default_priority</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">Priority</span><span class="o">.</span><span class="n">MEDIUM</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">all_sorted</span><span class="p">():</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">sorted_properties</span> <span class="o">=</span> <span class="p">[</span><span class="n">Priority</span><span class="o">.</span><span class="n">VERY_LOW</span><span class="p">,</span> <span class="n">Priority</span><span class="o">.</span><span class="n">LOW</span><span class="p">,</span> <span class="n">Priority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span> <span class="n">Priority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span> <span class="n">Priority</span><span class="o">.</span><span class="n">VERY_HIGH</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">sorted_properties</span>
+
+    <span class="k">def</span> <span class="nf">get_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="mi">100</span>
+
+    <span class="k">def</span> <span class="nf">_level</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: retuens an integer value for priority</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">print_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">priority_names</span> <span class="o">=</span> <span class="p">{</span><span class="n">Priority</span><span class="o">.</span><span class="n">MANDATORY</span><span class="p">:</span> <span class="s1">&#39;Mandatory&#39;</span><span class="p">,</span>
+                          <span class="n">Priority</span><span class="o">.</span><span class="n">HIGH</span><span class="p">:</span> <span class="s1">&#39;High&#39;</span><span class="p">,</span>
+                          <span class="n">Priority</span><span class="o">.</span><span class="n">VERY_HIGH</span><span class="p">:</span> <span class="s2">&quot;Very High&quot;</span><span class="p">,</span>
+                          <span class="n">Priority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">:</span> <span class="s1">&#39;Medium&#39;</span><span class="p">,</span>
+                          <span class="n">Priority</span><span class="o">.</span><span class="n">LOW</span><span class="p">:</span> <span class="s1">&#39;Low&#39;</span><span class="p">,</span>
+                          <span class="n">Priority</span><span class="o">.</span><span class="n">VERY_LOW</span><span class="p">:</span> <span class="s1">&#39;Very Low&#39;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">priority_names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Unexpected Priority&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_geometric_preference_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="mf">10.0</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: returns a CPLEX preference factor as a poer of &quot;base&quot;</span>
+        <span class="c1"># MEDIUM priority has always a preference factor of 1</span>
+        <span class="k">assert</span> <span class="n">is_number</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_mandatory</span><span class="p">():</span>
+            <span class="k">return</span> <span class="mf">1e+20</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># pylint complains about no value member but is wrong!</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_index</span><span class="p">()</span> <span class="o">-</span> <span class="n">Priority</span><span class="o">.</span><span class="n">MEDIUM</span><span class="o">.</span><span class="n">get_index</span><span class="p">()</span>
+            <span class="n">factor</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">pdiff</span> <span class="o">=</span> <span class="n">diff</span> <span class="k">if</span> <span class="n">diff</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="n">diff</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">pdiff</span><span class="p">)):</span>
+                <span class="n">factor</span> <span class="o">*=</span> <span class="n">base</span>
+            <span class="k">return</span> <span class="n">factor</span> <span class="k">if</span> <span class="n">diff</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">factor</span>
+
+    <span class="k">def</span> <span class="nf">less_than</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Priority</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_level</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">_level</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">less_than</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">less_than</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_mandatory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">Priority</span><span class="o">.</span><span class="n">MANDATORY</span>
+</pre></div>
 
           </div>
         </div>

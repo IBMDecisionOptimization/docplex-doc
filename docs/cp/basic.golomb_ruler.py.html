@@ -130,28 +130,28 @@
 <span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">stdout</span>
 
 <span class="c1"># Set model parameters</span>
-<span class="n">ORDER</span> <span class="o">=</span> <span class="mi">8</span>        <span class="c1"># Number of marks</span>
-<span class="n">MAX_LENGTH</span> <span class="o">=</span> <span class="mi">50</span>  <span class="c1"># Max rule length</span>
+<span class="n">ORDER</span> <span class="o">=</span> <span class="mi">8</span>                     <span class="c1"># Number of marks</span>
+<span class="n">MAX_LENGTH</span> <span class="o">=</span> <span class="p">(</span><span class="n">ORDER</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>  <span class="c1"># Max rule length</span>
 
 <span class="c1"># Create model</span>
 <span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
 
-<span class="c1"># Create array of variables corresponding to rule marks</span>
-<span class="n">marks</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">ORDER</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">MAX_LENGTH</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">)</span>
-<span class="n">marks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_domain</span><span class="p">((</span><span class="mi">0</span><span class="p">,))</span>
-
-<span class="c1"># Add marks ordering constraints</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ORDER</span><span class="p">):</span>
-    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">marks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">marks</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+<span class="c1"># Create array of variables corresponding to position rule marks</span>
+<span class="n">marks</span> <span class="o">=</span> <span class="n">integer_var_list</span><span class="p">(</span><span class="n">ORDER</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">MAX_LENGTH</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">)</span>
 
 <span class="c1"># Create marks distances that should be all different</span>
 <span class="n">dist</span> <span class="o">=</span> <span class="p">[</span><span class="n">marks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">marks</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ORDER</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span>
 <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">all_diff</span><span class="p">(</span><span class="n">dist</span><span class="p">))</span>
 
-<span class="c1"># Avoid symmetry</span>
-<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">dist</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">dist</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">dist</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="c1"># Avoid symmetric solutions by ordering marks</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">marks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ORDER</span><span class="p">):</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">marks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">marks</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
 
-<span class="c1"># Add optimization</span>
+<span class="c1"># Avoid mirror solution</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">marks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">marks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">marks</span><span class="p">[</span><span class="n">ORDER</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">marks</span><span class="p">[</span><span class="n">ORDER</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]))</span>
+
+<span class="c1"># Minimize ruler size (position of the last mark)</span>
 <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">minimize</span><span class="p">(</span><span class="n">marks</span><span class="p">[</span><span class="n">ORDER</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]))</span>
 
 <span class="c1"># Solve model</span>
@@ -161,11 +161,11 @@
 <span class="c1"># Print solution</span>
 <span class="k">if</span> <span class="n">msol</span><span class="p">:</span>
     <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Solution: &quot;</span> <span class="o">+</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_solve_status</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Position of rule marks: &quot;</span><span class="p">)</span>
+    <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Position of ruler marks: &quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">marks</span><span class="p">:</span>
         <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">msol</span><span class="p">[</span><span class="n">v</span><span class="p">]))</span>
     <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Solve time: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">msol</span><span class="o">.</span><span class="n">get_solve_time</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Solve time: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">msol</span><span class="o">.</span><span class="n">get_solve_time</span><span class="p">(),</span> <span class="mi">2</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;s</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Search status: &quot;</span> <span class="o">+</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_solve_status</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
