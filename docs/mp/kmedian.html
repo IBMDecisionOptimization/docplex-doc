@@ -4,7 +4,7 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
     <title>The K-Median Problem &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
     
@@ -46,12 +46,12 @@
           <div class="body" role="main">
             
   <div class="section" id="the-k-median-problem">
-<h1>The K-Median Problem<a class="headerlink" href="#the-k-median-problem" title="Permalink to this headline">Â¶</a></h1>
-<p>The K_median problem deals with finding pseudo centers in a cloud of
+<h1>The K-Median Problem<a class="headerlink" href="#the-k-median-problem" title="Permalink to this headline">¶</a></h1>
+<p>The K-median problem deals with finding pseudo-centers in a cloud of
 points.</p>
-<div class="section" id="to-begin-let-s-generate-a-random-set-of-points-in-the-plane-with-coordinates-ranging-from-1-to-100">
-<h2>To begin, let&#8217;s generate a random set of points in the plane, with coordinates ranging from 1 to 100.<a class="headerlink" href="#to-begin-let-s-generate-a-random-set-of-points-in-the-plane-with-coordinates-ranging-from-1-to-100" title="Permalink to this headline">Â¶</a></h2>
-<p>First, we specialize a namedtuple class to model 2D points:</p>
+<p>For starters, let&#8217;s generate a random set of points in the plane, with
+coordinates ranging from 1 to 100.</p>
+<p>First things first, we specialize a namedtuple class to model 2D points:</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
 
 <span class="k">class</span> <span class="nc">Point</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;TPoint&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">])):</span>
@@ -61,7 +61,7 @@ points.</p>
         <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Now define the Euclidean distance function between two points:</p>
+<p>Now define the euclidean distance function between two points</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">math</span>
 <span class="k">def</span> <span class="nf">euclidean_distance</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">):</span>
     <span class="n">dx</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p2</span><span class="o">.</span><span class="n">x</span>
@@ -69,48 +69,41 @@ points.</p>
     <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">dy</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>We also need an auxiliary function to generate the distance matrix
-between points. For now, we use the Euclidean distance, but any
-distance in the plane is sufficient.</p>
+<p>We will also need an auxiliary function to generate the distance matrix
+between points. For now, we&#8217;ll use the Euclidean distance, but any
+distance in the plane will do.</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">generate_matrix</span><span class="p">(</span><span class="n">points</span><span class="p">):</span>
     <span class="n">matrix</span> <span class="o">=</span> <span class="p">{(</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span> <span class="n">euclidean_distance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">points</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">matrix</span>
 </pre></div>
 </div>
-<p>Inside this set of points, we want to choose some points, say C,
-which have a &#8220;centric&#8221; situation within the set. More precisely, we want
-to link any point to exactly one &#8220;pseudo-center&#8221; in such a way that
+<p>Now, inside this set of points, we want to choose some points, say C,
+which have a &#8220;centric&#8221; situation within the set. More precisely, we&#8217;d
+like to link any point to exactly one &#8220;pseudo-center&#8221; in such a way that
 the total distance from any point to its pseudo-center is minimal. If
 C=1 this is the classical barycenter of the set of points, but for
 greater values of C, this can become less intuitive. We need a small
-model to generate these pseudo-centers.</p>
-<p>Install the CPLEX for Python library:</p>
-<div class="code python highlight-python"><div class="highlight"><pre>!pip install docplex
+model to generate these pseudo-centers</p>
+<p>Let&#8217;s install CPLEX for python library</p>
+<div class="code python highlight-python"><div class="highlight"><pre>try:
+    import docplex.mp
+except:
+    !pip install docplex
 </pre></div>
 </div>
-<div class="highlight-python"><div class="highlight"><pre>Requirement already satisfied (use --upgrade to upgrade): docplex in /Users/docloud/anaconda/lib/python2.7/site-packages
-Requirement already satisfied (use --upgrade to upgrade): docloud&gt;=1.0.0 in /Users/docloud/anaconda/lib/python2.7/site-packages (from docplex)
-Requirement already satisfied (use --upgrade to upgrade): futures in /Users/docloud/anaconda/lib/python2.7/site-packages (from docplex)
-Requirement already satisfied (use --upgrade to upgrade): requests in /Users/docloud/anaconda/lib/python2.7/site-packages (from docplex)
-Requirement already satisfied (use --upgrade to upgrade): six in /Users/docloud/anaconda/lib/python2.7/site-packages (from docplex)
-Requirement already satisfied (use --upgrade to upgrade): enum34 in /Users/docloud/anaconda/lib/python2.7/site-packages (from docloud&gt;=1.0.0-&gt;docplex)
-</pre></div>
-</div>
-<p>Enter DOcloud credentials:</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
 <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 <span class="n">env</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
 </pre></div>
 </div>
-<div class="highlight-python"><div class="highlight"><pre>* system is: Darwin 64bit
-* CPLEX wrapper is not available
-* Numpy is present, version is 1.10.1
-* Matplotlib is present, version is 1.4.3
+<div class="highlight-python"><div class="highlight"><pre>* system is: Windows 64bit
+* Python is present, version is 2.7.11
+* docplex is present, version is (1, 0, 0)
 </pre></div>
 </div>
-<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="kn">import</span> <span class="n">DOcloudContext</span>
-<span class="n">context</span> <span class="o">=</span> <span class="n">DOcloudContext</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;PUT_YOUR_DOCLOUD_URL_HERE&quot;</span><span class="p">,</span>
-                         <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;PUT_YOUR_DOCLOUD_KEY_HERE&quot;</span><span class="p">)</span>
+<p>Enter your IBM Decision Optimization on cloud credentials:</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;ENTER YOUR URL HERE&quot;</span>
+<span class="n">key</span> <span class="o">=</span> <span class="s2">&quot;ENTER YOUR KEY HERE&quot;</span>
 </pre></div>
 </div>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
@@ -128,18 +121,16 @@ Requirement already satisfied (use --upgrade to upgrade): enum34 in /Users/doclo
                 <span class="k">if</span> <span class="n">h</span> <span class="o">==</span> <span class="n">p</span><span class="p">:</span>
                     <span class="k">assert</span> <span class="n">distance_matrix</span><span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
             <span class="k">elif</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="ow">in</span> <span class="n">distance_matrix</span><span class="p">:</span>
-                <span class="k">assert</span> <span class="n">distance_matrix</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-                <span class="k">if</span> <span class="n">h</span> <span class="o">==</span> <span class="n">p</span><span class="p">:</span>
-                    <span class="k">assert</span> <span class="n">distance_matrix</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+                <span class="n">distance_matrix</span><span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">distance_matrix</span><span class="p">[</span><span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">print</span><span class="p">(</span><span class="s2">&quot;* forbidden arc {0} -&gt; {1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
 
     <span class="c1"># now build the model</span>
     <span class="n">kmedian_name</span> <span class="o">=</span> <span class="s2">&quot;Kmedian_p_{0}_h_{1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span> <span class="n">nb_hubs</span><span class="p">)</span>
-    <span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">docloud_context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+    <span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">()</span>
     <span class="c1"># vars</span>
     <span class="n">mdl</span><span class="o">.</span><span class="n">hub_vars</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_dict</span><span class="p">(</span><span class="n">hubs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;is_hub&quot;</span><span class="p">)</span>
-    <span class="n">mdl</span><span class="o">.</span><span class="n">link_vars</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_dict2</span><span class="p">(</span><span class="n">hubs</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;link&quot;</span><span class="p">)</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">link_vars</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_matrix</span><span class="p">(</span><span class="n">hubs</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;link&quot;</span><span class="p">)</span>
     <span class="c1"># cts</span>
     <span class="c1"># ct #1. each point can be linked only to an open hub</span>
     <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
@@ -177,14 +168,14 @@ Requirement already satisfied (use --upgrade to upgrade): enum34 in /Users/doclo
     <span class="c1"># any point is a potential hub</span>
     <span class="n">hubs</span> <span class="o">=</span> <span class="n">points</span>
 
-    <span class="n">ok</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Kmedian model fails&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">None</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">total_distance</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">objective_value</span>
-        <span class="n">open_hubs</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hubs</span> <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">hub_vars</span><span class="p">[</span><span class="n">h</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="mf">0.9</span><span class="p">]</span>
-        <span class="n">edges</span> <span class="o">=</span> <span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hubs</span> <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">link_vars</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="mf">0.9</span><span class="p">]</span>
+        <span class="n">open_hubs</span> <span class="o">=</span> <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hubs</span> <span class="k">if</span> <span class="n">mdl</span><span class="o">.</span><span class="n">hub_vars</span><span class="p">[</span><span class="n">h</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hubs</span> <span class="k">if</span> <span class="n">mdl</span><span class="o">.</span><span class="n">link_vars</span><span class="p">[</span><span class="n">p</span><span class="p">,</span> <span class="n">h</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span>
         <span class="c1"># returning a tuple</span>
         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;total distance=</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">total_distance</span><span class="p">)</span>
         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;#hubs={0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">open_hubs</span><span class="p">)))</span>
@@ -197,7 +188,7 @@ Requirement already satisfied (use --upgrade to upgrade): enum34 in /Users/doclo
 </pre></div>
 </div>
 <p>Now let&#8217;s try the algorithm on a simple topology with three points as a
-triangle and one point at the center of gravity of the triangle. Of
+triangle, and one point at the center of gravity of the triangle. Of
 course, we expect the hub to be at the center of gravity of the
 triangle.</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="n">simple_points</span> <span class="o">=</span> <span class="p">[</span> <span class="n">Point</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">)]</span>
@@ -206,15 +197,12 @@ triangle.</p>
 <span class="n">simple_res</span> <span class="o">=</span> <span class="n">solve_kmedian1</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">simple_points</span><span class="p">,</span> <span class="n">distance_matrix</span><span class="o">=</span><span class="n">simple_matrix</span><span class="p">,</span> <span class="n">nb_hubs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
-<pre class="literal-block">
-Warning: CPLEX DLL not found, will solve on DOcloud
-* #non-compliant LP name: |is_hub_P&lt;0,0&gt;|
-
-total distance=19.1421
+<div class="highlight-python"><div class="highlight"><pre>total distance=19.1421
 #hubs=1
 --hub: P&lt;5,5&gt;
-</pre>
-<p>Define a function to plot the result: the initial points, the
+</pre></div>
+</div>
+<p>Define a function to plot the result, that is the initial points, the
 hubs found by the algorithms, and the edges.</p>
 <div class="code python highlight-python"><div class="highlight"><pre>if env.has_matplotlib:
     import matplotlib.pyplot as plt
@@ -259,11 +247,7 @@ def plot_kmedian(points, hubs, edges):
 <span class="n">edges</span><span class="o">=</span><span class="p">[(</span><span class="n">TPoint</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span> <span class="n">TPoint</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">)),</span> <span class="p">(</span><span class="n">TPoint</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span> <span class="n">TPoint</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">)),</span> <span class="p">(</span><span class="n">TPoint</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span> <span class="n">TPoint</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">10</span><span class="p">))]</span>
 </pre></div>
 </div>
-<div class="highlight-python"><div class="highlight"><pre>/Users/docloud/anaconda/lib/python2.7/site-packages/matplotlib/collections.py:590: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-  if self._edgecolors == str(&#39;face&#39;):
-</pre></div>
-</div>
-<img alt="_images/output_21_2.png" src="_images/output_21_2.png" />
+<img alt="_images/kmedian_20_1.png" src="_images/kmedian_20_1.png" />
 <p>The hub is indeed at the center of gravity. Now let&#8217;s try with a random
 set of points set in the upper right quadrant [0..100]</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">random</span>
@@ -279,25 +263,21 @@ set of points set in the upper right quadrant [0..100]</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="c1"># now generate the matrix</span>
 <span class="n">rand_matrix</span> <span class="o">=</span> <span class="n">generate_matrix</span><span class="p">(</span><span class="n">rand_points</span><span class="p">)</span>
 
-<span class="c1"># and solve the kmedian problem looking for two ceneters this time</span>
+<span class="c1"># and solve the kmedian problem looking for two centers this time</span>
 <span class="p">(</span><span class="n">rand_distance</span><span class="p">,</span> <span class="n">rand_hubs</span><span class="p">,</span> <span class="n">rand_edges</span><span class="p">)</span> <span class="o">=</span> <span class="n">solve_kmedian1</span><span class="p">(</span><span class="n">rand_points</span><span class="p">,</span> <span class="n">rand_matrix</span><span class="p">,</span> <span class="n">nb_hubs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="n">plot_kmedian</span><span class="p">(</span><span class="n">rand_points</span><span class="p">,</span> <span class="n">rand_hubs</span><span class="p">,</span> <span class="n">rand_edges</span><span class="p">)</span>
 </pre></div>
 </div>
-<pre class="literal-block">
-Warning: CPLEX DLL not found, will solve on DOcloud
-* #non-compliant LP name: |is_hub_P&lt;30,26&gt;|
-
-total distance=2188.64
+<div class="highlight-python"><div class="highlight"><pre>total distance=2163.46
 #hubs=3
---hub: P&lt;58,87&gt;
---hub: P&lt;66,28&gt;
---hub: P&lt;20,47&gt;
-</pre>
-<img alt="_images/output_23_1.png" src="_images/output_23_1.png" />
+--hub: P&lt;69,34&gt;
+--hub: P&lt;22,72&gt;
+--hub: P&lt;78,72&gt;
+</pre></div>
 </div>
+<img alt="_images/kmedian_23_1.png" src="_images/kmedian_23_1.png" />
 <div class="section" id="electrifying-example">
-<h2>Electrifying Example<a class="headerlink" href="#electrifying-example" title="Permalink to this headline">Â¶</a></h2>
+<h2>Electrifying Example<a class="headerlink" href="#electrifying-example" title="Permalink to this headline">¶</a></h2>
 <p>A new city is being built which will include 20 distinct neighborhoods
 as shown by the house icons in the map. As part of the planning process,
 electricity needs to be connected to each of the neighborhoods.</p>
@@ -309,22 +289,22 @@ placement of the substations on the map requires careful consideration.</p>
 <p>A neighborhood will be serviced by the nearest electrical substation. A
 neighborhood may only be connected to one substation. The substations
 may be placed in any cell (including the same cell as an existing
-neighborhood). The cost of electrical wiring is 1M dollars per km.
+neighborhood). The cost of electrical wiring is 1M dolar per km.
 Distances are measured using a direct line between cells, which are each
 1km apart. For example, the distance between cell A1 and B2 is 1.41km.</p>
 <p>Question: What is the minimum cost required to connect all neighborhoods
 to electricity?</p>
 <div class="section" id="references">
-<h3>References<a class="headerlink" href="#references" title="Permalink to this headline">Â¶</a></h3>
+<h3>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li>The PuzzlOr - Electrifying
 (<a class="reference external" href="http://puzzlor.com/2014-12_Electrifying.html">http://puzzlor.com/2014-12_Electrifying.html</a>) .</li>
 </ul>
-<center></center><p>Let&#8217;s begin with defining the points of our map that we want to connect:</p>
+<center></center><p>Let&#8217;s begin with defining the points of our map that we want to connect</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="n">rand_points</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">7</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">7</span><span class="p">),</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="mi">3</span><span class="p">)])</span>
 </pre></div>
 </div>
-<p>Let&#8217;s now solve the problem:</p>
+<p>Let&#8217;s now resolve the problem</p>
 <div class="code python highlight-python"><div class="highlight"><pre><span class="c1"># now generate the matrix</span>
 <span class="n">rand_matrix</span> <span class="o">=</span> <span class="n">generate_matrix</span><span class="p">(</span><span class="n">rand_points</span><span class="p">)</span>
 
@@ -333,19 +313,14 @@ to electricity?</p>
 <span class="n">plot_kmedian</span><span class="p">(</span><span class="n">rand_points</span><span class="p">,</span> <span class="n">rand_hubs</span><span class="p">,</span> <span class="n">rand_edges</span><span class="p">)</span>
 </pre></div>
 </div>
-<pre class="literal-block">
-Warning: CPLEX DLL not found, will solve on DOcloud
-* #non-compliant LP name: |is_hub_P&lt;4,10&gt;|
-
-total distance=36.518
+<div class="highlight-python"><div class="highlight"><pre>total distance=36.518
 #hubs=3
 --hub: P&lt;8,7&gt;
 --hub: P&lt;3,8&gt;
 --hub: P&lt;5,2&gt;
-</pre>
-<img alt="_images/output_30_1.png" src="_images/output_30_1.png" />
-<p>The total cost is 36.518 M dollars, and we need to position the 3
-electrical substations on : 8G, 3H, 5B.</p>
+</pre></div>
+</div>
+<img alt="_images/kmedian_30_1.png" src="_images/kmedian_30_1.png" />
 </div>
 </div>
 </div>
@@ -359,7 +334,6 @@ electrical substations on : 8G, 3H, 5B.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">The K-Median Problem</a><ul>
-<li><a class="reference internal" href="#to-begin-let-s-generate-a-random-set-of-points-in-the-plane-with-coordinates-ranging-from-1-to-100">To begin, let&#8217;s generate a random set of points in the plane, with coordinates ranging from 1 to 100.</a></li>
 <li><a class="reference internal" href="#electrifying-example">Electrifying Example</a><ul>
 <li><a class="reference internal" href="#references">References</a></li>
 </ul>
@@ -398,7 +372,7 @@ electrical substations on : 8G, 3H, 5B.</p>
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, IBMÂ®.
+        &copy; Copyright 2016, IBM®.
     </div>
   </body>
 </html>

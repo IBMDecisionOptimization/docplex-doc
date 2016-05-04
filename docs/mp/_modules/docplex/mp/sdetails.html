@@ -4,7 +4,7 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
     <title>docplex.mp.sdetails &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
     
@@ -53,15 +53,16 @@
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">StringIO</span><span class="p">,</span> <span class="n">has_unicode_type</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="kn">import</span> <span class="n">StringIO</span><span class="p">,</span> <span class="n">has_unicode_type</span>
 
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">isnan</span>
 
 <div class="viewcode-block" id="SolveDetails"><a class="viewcode-back" href="../../../docplex.mp.sdetails.html#docplex.mp.sdetails.SolveDetails">[docs]</a><span class="k">class</span> <span class="nc">SolveDetails</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The :class:`SolveDetails` class contains the details of a solve.</span>
 
 <span class="sd">    This class should never be instantiated. You get an instance of this class from</span>
-<span class="sd">    the model by calling the property :attr:`Model.solve_details`.</span>
+<span class="sd">    the model by calling the property :data:`docplex.mp.model.Model.solve_details`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_unknown_label</span> <span class="o">=</span> <span class="s2">&quot;*unknown*&quot;</span>
@@ -87,6 +88,19 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_md5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_label</span>
 
+    <span class="k">def</span> <span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># Converts the solve details to a dictionary (keys may change)</span>
+        <span class="n">self_as_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">,</span>
+                        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span><span class="p">,</span>
+                        <span class="s2">&quot;problem_type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_type</span><span class="p">,</span>
+                        <span class="s2">&quot;ncolumns&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncolumns</span><span class="p">,</span>
+                        <span class="s2">&quot;linear_nonzeros&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_nonzeros</span>
+                        <span class="p">}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span><span class="p">):</span>
+            <span class="n">self_as_dict</span><span class="p">[</span><span class="s2">&quot;mipgap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span>
+        <span class="k">return</span> <span class="n">self_as_dict</span>
+
     <span class="n">_problemtype_map</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;LP&quot;</span><span class="p">,</span>
                         <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;MILP&quot;</span><span class="p">,</span>
                         <span class="mi">3</span><span class="p">:</span> <span class="s2">&quot;fixed_MILP&quot;</span><span class="p">,</span>
@@ -100,9 +114,12 @@
                         <span class="mi">12</span><span class="p">:</span> <span class="s2">&quot;node_QCP&quot;</span><span class="p">}</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_convert_problemtype</span><span class="p">(</span><span class="n">probtype</span><span class="p">,</span> <span class="n">probtype_map</span><span class="o">=</span><span class="n">_problemtype_map</span><span class="p">):</span>
-        <span class="n">iprobe_type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">probtype</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">probtype_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">iprobe_type</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_convert_problemtype</span><span class="p">(</span><span class="n">probtype</span><span class="p">,</span> <span class="n">probtype_map</span><span class="o">=</span><span class="n">_problemtype_map</span><span class="p">,</span> <span class="n">unknown_probtype</span><span class="o">=</span><span class="s2">&quot;unknown&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">iprobe_type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">probtype</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">probtype_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">iprobe_type</span><span class="p">,</span> <span class="n">unknown_probtype</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">unknown_probtype</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">to_plain_str</span><span class="p">(</span><span class="n">arg_s</span><span class="p">):</span>
@@ -247,7 +264,7 @@
 
     <span class="c1"># linear nonzeros</span>
 <div class="viewcode-block" id="SolveDetails.get_nb_linear_nonzeros"><a class="viewcode-back" href="../../../docplex.mp.sdetails.html#docplex.mp.sdetails.SolveDetails.get_nb_linear_nonzeros">[docs]</a>    <span class="k">def</span> <span class="nf">get_nb_linear_nonzeros</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; This property returns the number of linear nonzeros in the matrix solved.</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of linear non-zeros in the matrix solved.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_nonzeros</span></div>
@@ -259,7 +276,7 @@
         <span class="sd">&quot;&quot;&quot; This property returns the MIP relative gap.</span>
 
 <span class="sd">        Note:</span>
-<span class="sd">            * This property returns a NaN when the problem is not a MIP.</span>
+<span class="sd">            * This property returns NaN when the problem is not a MIP.</span>
 <span class="sd">            * The gap is returned as a floating-point value, not as a percentage.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span></div>
@@ -298,8 +315,10 @@
 
 <div class="viewcode-block" id="SolveDetails.has_hit_limit"><a class="viewcode-back" href="../../../docplex.mp.sdetails.html#docplex.mp.sdetails.SolveDetails.has_hit_limit">[docs]</a>    <span class="k">def</span> <span class="nf">has_hit_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the solve details indicate that the solve has hit a limit.</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">          True if the solve details indicate that the solve has hit a limit.</span>
+<span class="sd">          Boolean: True if the solve details indicate that the solve has hit a limit.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status_code</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit_statuses</span></div></div>
@@ -419,7 +438,7 @@
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, IBMÂ®.
+        &copy; Copyright 2016, IBM®.
     </div>
   </body>
 </html>

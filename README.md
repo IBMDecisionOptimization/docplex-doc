@@ -37,12 +37,14 @@ This library is numpy friendly.
 Optionally, you can run your optimization in the cloud with the IBM
 Decision Optimization on Cloud service.
    
-- Register for the DOcloud free trial and use it free for 30 days. See [Free trial](https://developer.ibm.com/docloud/try-docloud-free).
+- Register for the DOcplexcloud free trial and use it free for 30 days. See [Free trial](https://developer.ibm.com/docloud/try-docloud-free).
  
 - Get your API key
-    With your free trial, you can generate a key to access the DOcloud API. 
+    With your free trial, you can generate a key to access the DOcplexcloud API. 
     Visit the [Get API key & base URL](http://developer.ibm.com/docloud/docs/api-key) page to generate the key once you've registered. 
-    This page also contains the base URL you must use for DOcloud.
+    This page also contains the base URL you must use for DOcplexcloud.
+    
+- Copy/paste your API key and service URL where appropriate in the examples to be able to run them, or have a look at *Setting up an optimization engine* section of the documentation
 
 ## Get your IBM® ILOG CPLEX Optimization Studio edition
 

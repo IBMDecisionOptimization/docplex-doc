@@ -4,7 +4,7 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
     <title>docplex.mp.kpi &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
     
@@ -54,6 +54,11 @@
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
 
+<span class="kn">from</span> <span class="nn">docplex.mp.linear</span> <span class="kn">import</span> <span class="n">Var</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="kn">import</span> <span class="n">Expr</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_function</span>
+
 
 <div class="viewcode-block" id="KPI"><a class="viewcode-back" href="../../../docplex.mp.kpi.html#docplex.mp.kpi.KPI">[docs]</a><span class="k">class</span> <span class="nc">KPI</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Abstract class for key performance indicators (KPIs).</span>
@@ -74,6 +79,9 @@
 <span class="sd">            string: The published name of the KPI, a non-empty, unique string.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span></div>
+
+    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+        <span class="k">pass</span>
 
 <div class="viewcode-block" id="KPI.get_model"><a class="viewcode-back" href="../../../docplex.mp.kpi.html#docplex.mp.kpi.KPI.get_model">[docs]</a>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -96,7 +104,7 @@
 
 <div class="viewcode-block" id="KPI.requires_solution"><a class="viewcode-back" href="../../../docplex.mp.kpi.html#docplex.mp.kpi.KPI.requires_solution">[docs]</a>    <span class="k">def</span> <span class="nf">requires_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; KPIs based on decision expressions or variables require a successful solution</span>
-<span class="sd">        to be computed. KPIs based on functions may not require a solution.</span>
+<span class="sd">        to be computed.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">           Boolean: True if the KPI requires a valid solution.</span>
@@ -107,7 +115,27 @@
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>   <span class="c1"># pragma: no cover</span>
 
     <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span></div>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">new_kpi</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">kpi_arg</span><span class="p">,</span> <span class="n">kpi_name</span><span class="p">):</span>
+        <span class="c1"># static factory method to build a new concrete instance of KPI</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">,</span> <span class="n">Expr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">DecisionKPI</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">,</span> <span class="n">kpi_name</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">DecisionKPI</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">,</span> <span class="n">kpi_name</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">,</span> <span class="n">KPI</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">kpi_name</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">kpi_arg</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cloned</span> <span class="o">=</span> <span class="n">kpi_arg</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="n">cloned</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">kpi_name</span>
+                <span class="k">return</span> <span class="n">cloned</span>
+        <span class="k">elif</span> <span class="n">is_function</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">FunctionalKPI</span><span class="p">(</span><span class="n">kpi_arg</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">kpi_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Cannot interpret this as a KPI: {0!r}. expecting expression, variable or function&quot;</span><span class="p">,</span> <span class="n">kpi_arg</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="DecisionKPI"><a class="viewcode-back" href="../../../docplex.mp.kpi.html#docplex.mp.kpi.DecisionKPI">[docs]</a><span class="k">class</span> <span class="nc">DecisionKPI</span><span class="p">(</span><span class="n">KPI</span><span class="p">):</span>
@@ -119,14 +147,20 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decision_obj</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="n">KPI</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span> <span class="o">=</span> <span class="n">decision_obj</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">decision_obj</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span> <span class="o">=</span> <span class="n">decision_obj</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span> <span class="o">=</span> <span class="n">decision_obj</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">decision_obj</span><span class="o">.</span><span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
 
-    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">new_name</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">,</span> <span class="n">set_name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span><span class="o">.</span><span class="n">model</span>
@@ -135,7 +169,7 @@
         <span class="sd">&quot;&quot;&quot; Redefinition of the abstract `compute()` method.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The value of the decision expression at the solution.</span>
+<span class="sd">            float: The value of the decision expression at the solution.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            Evaluating this KPI raises an exception if the underlying model has not been solved successfully.</span>
@@ -148,12 +182,18 @@
     <span class="k">def</span> <span class="nf">as_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span>
 
+    <span class="k">def</span> <span class="nf">to_linear_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span>
+
     <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
         <span class="n">dobj_copy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">new_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">DecisionKPI</span><span class="p">(</span><span class="n">decision_obj</span><span class="o">=</span><span class="n">dobj_copy</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">DecisionKPI</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">DecisionKPI</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;{0}(name={1},expr={2!s})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dobj</span><span class="p">))</span></div>
 
 
 <span class="k">class</span> <span class="nc">FunctionalKPI</span><span class="p">(</span><span class="n">KPI</span><span class="p">):</span>
@@ -170,7 +210,10 @@
     <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
 
-    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">new_name</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">,</span> <span class="n">set_name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span>
@@ -224,7 +267,7 @@
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, IBMÂ®.
+        &copy; Copyright 2016, IBM®.
     </div>
   </body>
 </html>

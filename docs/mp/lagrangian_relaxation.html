@@ -4,7 +4,7 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
     <title>lagrangian_relaxation.py &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
     
@@ -46,7 +46,7 @@
           <div class="body" role="main">
             
   <div class="section" id="lagrangian-relaxation-py">
-<h1>lagrangian_relaxation.py<a class="headerlink" href="#lagrangian-relaxation-py" title="Permalink to this headline">Â¶</a></h1>
+<h1>lagrangian_relaxation.py<a class="headerlink" href="#lagrangian-relaxation-py" title="Permalink to this headline">¶</a></h1>
 <p>This example is inspired by an entry on the &#8220;adventures in optimization&#8221; blog.
 The sources of the article can be found <a class="reference external" href="https://github.com/ryanjoneil/adventures-in-optimization">here</a>.
 This example solves the generalized assignment problem, with or without Lagrangian relaxation.</p>
@@ -195,15 +195,19 @@ This example solves the generalized assignment problem, with or without Lagrangi
 143
 144
 145
-146
-147</pre></div></td><td class="code"><div class="highlight"><pre><span class="c1"># --------------------------------------------------------------------------</span>
+146</pre></div></td><td class="code"><div class="highlight"><pre><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="kn">import</span> <span class="n">Context</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">izip</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">izip</span> <span class="o">=</span> <span class="nb">zip</span>
+
 
 <span class="n">B</span> <span class="o">=</span> <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">15</span><span class="p">]</span>
 <span class="n">C</span> <span class="o">=</span> <span class="p">[</span>
@@ -222,26 +226,27 @@ This example solves the generalized assignment problem, with or without Lagrangi
 <span class="p">]</span>
 
 
-<span class="k">def</span> <span class="nf">run_GAP_model</span><span class="p">(</span><span class="n">As</span><span class="p">,</span> <span class="n">Bs</span><span class="p">,</span> <span class="n">Cs</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">run_GAP_model</span><span class="p">(</span><span class="n">As</span><span class="p">,</span> <span class="n">Bs</span><span class="p">,</span> <span class="n">Cs</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="s1">&#39;GAP per Wolsey -without- Lagrangian Relaxation&#39;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
     <span class="k">print</span><span class="p">(</span><span class="s2">&quot;#As={}, #Bs={}, #Cs={}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">As</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">Bs</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">Cs</span><span class="p">)))</span>
     <span class="n">number_of_cs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
     <span class="c1"># variables</span>
-    <span class="n">x_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_list</span><span class="p">(</span><span class="n">Cs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_cs</span><span class="p">)]</span>
+    <span class="n">x_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_list</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">Cs</span><span class="p">]</span>
 
     <span class="c1"># constraints</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_cs</span><span class="p">):</span>
-        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vars</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="c1"># sum i: a_ij * x_ij &lt;= b[j] for all j</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="p">)):</span>
-            <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vars</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">As</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_cs</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">Bs</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">xv</span> <span class="ow">in</span> <span class="n">x_vars</span><span class="p">:</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">xv</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">bs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">Bs</span><span class="p">):</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vars</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">As</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_cs</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">bs</span><span class="p">)</span>
 
     <span class="c1"># objective</span>
     <span class="n">total_profit</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">c_ij</span> <span class="o">*</span> <span class="n">x_ij</span> <span class="k">for</span> <span class="n">c_ij</span><span class="p">,</span> <span class="n">x_ij</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">c_i</span><span class="p">,</span> <span class="n">x_i</span><span class="p">))</span>
                            <span class="k">for</span> <span class="n">c_i</span><span class="p">,</span> <span class="n">x_i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Cs</span><span class="p">,</span> <span class="n">x_vars</span><span class="p">))</span>
     <span class="n">mdl</span><span class="o">.</span><span class="n">maximize</span><span class="p">(</span><span class="n">total_profit</span><span class="p">)</span>
     <span class="n">mdl</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
-    <span class="k">assert</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="n">obj</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">objective_value</span>
     <span class="n">mdl</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
     <span class="k">print</span><span class="p">(</span><span class="s2">&quot;* GAP with no relaxation run OK, best objective is: {:g}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
@@ -249,21 +254,20 @@ This example solves the generalized assignment problem, with or without Lagrangi
     <span class="k">return</span> <span class="n">obj</span>
 
 
-<span class="k">def</span> <span class="nf">run_GAP_model_with_Lagrangian_relaxation</span><span class="p">(</span><span class="n">As</span><span class="p">,</span> <span class="n">Bs</span><span class="p">,</span> <span class="n">Cs</span><span class="p">,</span> <span class="n">max_iters</span><span class="o">=</span><span class="mi">101</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">run_GAP_model_with_Lagrangian_relaxation</span><span class="p">(</span><span class="n">As</span><span class="p">,</span> <span class="n">Bs</span><span class="p">,</span> <span class="n">Cs</span><span class="p">,</span> <span class="n">max_iters</span><span class="o">=</span><span class="mi">101</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="s1">&#39;GAP per Wolsey -with- Lagrangian Relaxation&#39;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
     <span class="k">print</span><span class="p">(</span><span class="s2">&quot;#As={}, #Bs={}, #Cs={}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">As</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">Bs</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">Cs</span><span class="p">)))</span>
     <span class="n">c_range</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Cs</span><span class="p">))</span>
     <span class="c1"># variables</span>
-    <span class="n">x_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_list</span><span class="p">(</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">c_range</span><span class="p">]</span>
-    <span class="n">p_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">continuous_var</span><span class="p">(</span><span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">c_range</span><span class="p">]</span>  <span class="c1"># new for relaxation</span>
+    <span class="n">x_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_list</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">Cs</span><span class="p">]</span>
+    <span class="n">p_vars</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">continuous_var</span><span class="p">(</span><span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">Cs</span><span class="p">]</span>  <span class="c1"># new for relaxation</span>
 
-    <span class="c1"># constraints</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">c_range</span><span class="p">:</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">xv</span><span class="p">,</span> <span class="n">pv</span><span class="p">)</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">x_vars</span><span class="p">,</span> <span class="n">p_vars</span><span class="p">):</span>
         <span class="c1"># was  mdl.add_constraint(mdl.sum(xVars[i]) &lt;= 1)</span>
-        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vars</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">p_vars</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-        <span class="c1"># sum i: a_ij * x_ij &lt;= b[j] for all j</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Bs</span><span class="p">)):</span>
-            <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vars</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">As</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">c_range</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">Bs</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">xv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">pv</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">bs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">Bs</span><span class="p">):</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x_vars</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">As</span><span class="p">[</span><span class="n">ii</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="n">c_range</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">bs</span><span class="p">)</span>
 
     <span class="c1"># lagrangian relaxation loop</span>
     <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-6</span>
@@ -280,7 +284,7 @@ This example solves the generalized assignment problem, with or without Lagrangi
         <span class="c1"># rebuilt at each loop iteration</span>
         <span class="n">total_penalty</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p_vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">multipliers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">c_range</span><span class="p">)</span>
         <span class="n">mdl</span><span class="o">.</span><span class="n">maximize</span><span class="p">(</span><span class="n">total_profit</span> <span class="o">+</span> <span class="n">total_penalty</span><span class="p">)</span>
-        <span class="n">ok</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;*** solve fails, stopping at iteration: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">loop_count</span><span class="p">)</span>
             <span class="k">break</span>
@@ -315,7 +319,7 @@ This example solves the generalized assignment problem, with or without Lagrangi
 
 
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;DOcloud credentials can be specified with url and api_key in the code block below.</span>
+    <span class="sd">&quot;&quot;&quot;DOcplexcloud credentials can be specified with url and api_key in the code block below.</span>
 
 <span class="sd">    Alternatively, Context.make_default_context() searches the PYTHONPATH for</span>
 <span class="sd">    the following files:</span>
@@ -330,19 +334,13 @@ This example solves the generalized assignment problem, with or without Lagrangi
 <span class="sd">       context.solver.docloud.url = &quot;https://docloud.service.com/job_manager/rest/v1&quot;</span>
 <span class="sd">       context.solver.docloud.key = &quot;example api_key&quot;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">url</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># put yur url here</span>
-    <span class="n">api_key</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># put yur api key here</span>
-    <span class="n">ctx</span> <span class="o">=</span> <span class="n">Context</span><span class="o">.</span><span class="n">make_default_context</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">api_key</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># put your url here</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="bp">None</span>  <span class="c1"># put your api key here</span>
 
-    <span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
-
-    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
-    <span class="n">env</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
-
-    <span class="n">gap_best_obj</span> <span class="o">=</span> <span class="n">run_GAP_model</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">ctx</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="p">(</span><span class="mi">46</span> <span class="o">==</span> <span class="n">gap_best_obj</span><span class="p">)</span>
-    <span class="n">relaxed_best</span> <span class="o">=</span> <span class="n">run_GAP_model_with_Lagrangian_relaxation</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">ctx</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="p">(</span><span class="mi">46</span> <span class="o">==</span> <span class="n">relaxed_best</span><span class="p">)</span>
+    <span class="c1"># Run the model. If a key has been specified above, the model will run on</span>
+    <span class="c1"># IBM Decision Optimization on cloud.</span>
+    <span class="n">gap_best_obj</span> <span class="o">=</span> <span class="n">run_GAP_model</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+    <span class="n">relaxed_best</span> <span class="o">=</span> <span class="n">run_GAP_model_with_Lagrangian_relaxation</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
 </pre></div>
 </td></tr></table></div>
 </div>
@@ -383,7 +381,7 @@ This example solves the generalized assignment problem, with or without Lagrangi
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, IBMÂ®.
+        &copy; Copyright 2016, IBM®.
     </div>
   </body>
 </html>
