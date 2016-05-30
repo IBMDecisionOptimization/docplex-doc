@@ -48,7 +48,7 @@
           <div class="body" role="main">
             
   <h1>Source code for docplex.mp.model</h1><div class="highlight"><pre>
-<span class="c1"># --------------------------------------------------------------------------</span>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
@@ -81,7 +81,7 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="kn">import</span> <span class="n">StringIO</span><span class="p">,</span> <span class="n">izip</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_indexable</span><span class="p">,</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">is_iterator</span><span class="p">,</span> <span class="n">has_len</span><span class="p">,</span> <span class="n">is_int</span><span class="p">,</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_string</span><span class="p">,</span> \
-    <span class="n">make_output_path2</span><span class="p">,</span> <span class="n">generate_constant</span>
+    <span class="n">make_output_path2</span><span class="p">,</span> <span class="n">generate_constant</span><span class="p">,</span> <span class="n">is_ordered_sequence</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.numutils</span> <span class="kn">import</span> <span class="n">round_nearest_towards_infinity</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">DOcplexException</span>
 
@@ -92,7 +92,7 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.kpi</span> <span class="kn">import</span> <span class="n">KPI</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">docplex.dodocplexcloud.solvehook</span> <span class="kn">import</span> <span class="n">get_solve_hook</span>
+    <span class="kn">from</span> <span class="nn">docplex.worker.solvehook</span> <span class="kn">import</span> <span class="n">get_solve_hook</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">get_solve_hook</span> <span class="o">=</span> <span class="bp">None</span>
 
@@ -346,9 +346,9 @@
         <span class="sd">&quot;&quot;&quot; This property returns the total number of variables in the model.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_binary_variables</span> <span class="o">+</span> \
-               <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_integer_variables</span> <span class="o">+</span> \
-               <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_binary_variables</span>\
+               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_integer_variables</span>\
+               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">number_of_binary_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -655,7 +655,8 @@
     <span class="c1"># ---- type checking</span>
     <span class="k">def</span> <span class="nf">typecheck_iterable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
         <span class="c1"># INTERNAL: checks for an iterable</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">error_handler</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">is_iterable</span><span class="p">(</span><span class="n">arg</span><span class="p">),</span> <span class="s2">&quot;Expecting iterable, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Expecting iterable, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_to_fixed_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
         <span class="c1"># INTERNAL:</span>
@@ -688,14 +689,8 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_is_operand</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">accept_numbers</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Expr</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">True</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">True</span>
-        <span class="k">elif</span> <span class="n">accept_numbers</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="p">(</span><span class="n">Expr</span><span class="p">,</span> <span class="n">Var</span><span class="p">))</span> <span class="ow">or</span> <span class="p">(</span><span class="n">accept_numbers</span> <span class="ow">and</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
 
     <span class="k">def</span> <span class="nf">typecheck_operand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">caller</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">accept_numbers</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_operand</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">accept_numbers</span><span class="o">=</span><span class="n">accept_numbers</span><span class="p">):</span>
@@ -816,6 +811,8 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_trivial_cts_message_level</span> <span class="o">=</span> <span class="n">arg_val</span>
             <span class="k">elif</span> <span class="n">arg_name</span> <span class="o">==</span> <span class="s2">&quot;max_repr_len&quot;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_max_repr_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">arg_val</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">arg_name</span> <span class="o">==</span> <span class="s2">&quot;clone_transients&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_clone_transient_exprs</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">arg_val</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;argument: {0:s}:{1!s} - is not recognized (ignored)&quot;</span><span class="p">,</span> <span class="n">arg_name</span><span class="p">,</span> <span class="n">arg_val</span><span class="p">)</span>
 
@@ -901,6 +898,9 @@
         <span class="c1"># control whether to warn about trivial constraints</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trivial_cts_message_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">warn_trivial_infeasible</span>
 
+        <span class="c1"># internal</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clone_transient_exprs</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1"># use False to get fast clone...with the risk of side effects...</span>
+
         <span class="c1"># update from kwargs,, before the actual inits.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_parse_kwargs</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
 
@@ -922,6 +922,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">__solution</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_details</span> <span class="o">=</span> <span class="bp">None</span>
 
+
         <span class="c1"># all the following must be placed after an engine has been set.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__factory</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_objective_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">constant</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -939,7 +940,7 @@
                 <span class="c1"># cplex is more recent than parameters. must update defaults.</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                     <span class="s2">&quot;reset parameter defaults, from parameter version: {0} to installed version: {1}&quot;</span>  <span class="c1"># pragma: no cover</span>
-                        <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">self_cplex_parameters_version</span><span class="p">,</span> <span class="n">installed_cplex_version</span><span class="p">))</span>  <span class="c1"># pragma: no cover</span>
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">self_cplex_parameters_version</span><span class="p">,</span> <span class="n">installed_cplex_version</span><span class="p">))</span>  <span class="c1"># pragma: no cover</span>
                 <span class="n">nb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sync_parameter_defaults_from_engine</span><span class="p">()</span>  <span class="c1"># pragma: no cover</span>
                 <span class="k">if</span> <span class="n">nb</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="s2">&quot;#parameter defaults have been reset: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">nb</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
@@ -1524,23 +1525,6 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">__vars_by_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_index_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__allvars</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__vars_by_index</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">set_var_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_ub</span><span class="p">):</span>
-        <span class="c1"># INTERNAL: use var.ub property to set ub</span>
-        <span class="k">if</span> <span class="n">new_ub</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">new_ub</span><span class="p">,</span> <span class="s2">&quot;set_var_ub&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">new_ub</span> <span class="o">!=</span> <span class="n">var</span><span class="o">.</span><span class="n">ub</span><span class="p">:</span>
-                <span class="n">fub</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">new_ub</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_attribute</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="s2">&quot;ub&quot;</span><span class="p">,</span> <span class="n">fub</span><span class="p">)</span>  <span class="c1"># force float() conversion</span>
-                <span class="n">var</span><span class="o">.</span><span class="n">_internal_set_ub</span><span class="p">(</span><span class="n">new_ub</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">set_var_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_lb</span><span class="p">):</span>
-        <span class="c1"># INTERNAL: use var.lb to set lb</span>
-        <span class="k">if</span> <span class="n">new_lb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">new_lb</span><span class="p">,</span> <span class="s2">&quot;set_var_ub&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">new_lb</span> <span class="o">!=</span> <span class="n">var</span><span class="o">.</span><span class="n">lb</span><span class="p">:</span>
-                <span class="n">flb</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">new_lb</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_attribute</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="s2">&quot;lb&quot;</span><span class="p">,</span> <span class="n">flb</span><span class="p">)</span>
-                <span class="n">var</span><span class="o">.</span><span class="n">_internal_set_lb</span><span class="p">(</span><span class="n">new_lb</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">set_var_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">new_arg_name</span><span class="p">):</span>
         <span class="c1"># INTERNAL: use var.name to set variable names</span>
@@ -1548,23 +1532,51 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">new_name</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Not a valid name: {0!s}&quot;</span><span class="p">,</span> <span class="n">new_arg_name</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">new_name</span> <span class="o">!=</span> <span class="n">dvar</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_attribute</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="n">new_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">rename_var</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="n">new_name</span><span class="p">)</span>
             <span class="n">ModelingObjectBase</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="n">new_name</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">_typecheck_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">candidate_bounds</span><span class="p">):</span>
-        <span class="n">check_ok</span> <span class="o">=</span> <span class="bp">True</span>
         <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">candidate_bounds</span><span class="p">):</span>
-            <span class="k">pass</span>
-        <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">candidate_bounds</span><span class="p">):</span>
-            <span class="n">check_ok</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">elif</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">candidate_bounds</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">is_number</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">candidate_bounds</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">True</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">check_ok</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">is_number</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">candidate_bounds</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">check_ok</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Model.{0}: expecting either number or number_sequence as bounds, got: {1!s}&quot;</span><span class="p">,</span>
                        <span class="n">header</span><span class="p">,</span> <span class="n">candidate_bounds</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Model.set_var_lbs"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.set_var_lbs">[docs]</a>    <span class="k">def</span> <span class="nf">set_var_lbs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">changed_vars</span><span class="p">,</span> <span class="n">new_lbs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">zip_var_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">is_lb</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">typecheck_iterable</span><span class="p">(</span><span class="n">dvars</span><span class="p">)</span>
+        <span class="c1"># transform bounds</span>
+        <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">is_lb</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[(</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">default_lb</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[(</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">default_ub</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">bounds</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">process_var_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">is_lb</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">bounds</span><span class="p">):</span>
+            <span class="c1"># zip variables and bounds</span>
+            <span class="n">raw_zip</span> <span class="o">=</span> <span class="n">izip</span><span class="p">(</span><span class="n">dvars</span><span class="p">,</span> <span class="n">bounds</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">process_var_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">is_lb</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">raw_zip</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="s2">&quot;set_lbs&quot;</span> <span class="k">if</span> <span class="n">is_lb</span> <span class="k">else</span> <span class="s2">&quot;set_ubs&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Model.{0}: expecting either number or number_sequence as bounds, got: {1!s}&quot;</span><span class="p">,</span>
+                       <span class="n">header</span><span class="p">,</span> <span class="n">bounds</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_process_var_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_bound</span><span class="p">,</span> <span class="n">is_lb</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="n">var</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">process_var_bound</span><span class="p">(</span><span class="n">m</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_bound</span><span class="o">=</span><span class="n">new_bound</span><span class="p">,</span> <span class="n">is_lb</span><span class="o">=</span><span class="n">is_lb</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_var_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">candidate_lb</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: use var.lb to set lb</span>
+        <span class="n">new_lb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_var_bound</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">candidate_lb</span><span class="p">,</span> <span class="n">is_lb</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_lb</span><span class="p">((</span><span class="n">var</span><span class="p">,</span> <span class="n">new_lb</span><span class="p">))</span>
+        <span class="n">var</span><span class="o">.</span><span class="n">_internal_set_lb</span><span class="p">(</span><span class="n">new_lb</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Model.set_var_lbs"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.set_var_lbs">[docs]</a>    <span class="k">def</span> <span class="nf">set_var_lbs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">changed_vars</span><span class="p">,</span> <span class="n">lbs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Change lower bounds of a collection of variables.</span>
 
 <span class="sd">        `new_lbs` accepts either a single number (all lower bounds are set to this number)</span>
@@ -1574,21 +1586,22 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            changed_vars: The collection of variables to be changed.</span>
-<span class="sd">            new_lbs: Either a number or a collection of numbers.</span>
+<span class="sd">            lbs: Either a number or a collection of numbers.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">typecheck_iterable</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_typecheck_bounds</span><span class="p">(</span><span class="s2">&quot;set_var_lbs&quot;</span><span class="p">,</span> <span class="n">new_lbs</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">new_lbs</span><span class="p">):</span>
-            <span class="n">engine_new_lbs</span> <span class="o">=</span> <span class="n">new_lbs</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">engine_new_lbs</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_lbs</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">)</span>
-        <span class="n">actual_lbs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_attribute</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">,</span> <span class="s2">&quot;lb&quot;</span><span class="p">,</span> <span class="n">engine_new_lbs</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_lb</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">,</span> <span class="n">actual_lbs</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;This function is deprecated, use var.lb in a loop&quot;</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">var_lbs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zip_var_bounds</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">,</span> <span class="n">lbs</span><span class="p">,</span> <span class="n">is_lb</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_lb</span><span class="p">(</span><span class="n">var_lbs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_lb</span> <span class="ow">in</span> <span class="n">var_lbs</span><span class="p">:</span>
             <span class="n">var</span><span class="o">.</span><span class="n">_internal_set_lb</span><span class="p">(</span><span class="n">new_lb</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Model.set_var_ubs"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.set_var_ubs">[docs]</a>    <span class="k">def</span> <span class="nf">set_var_ubs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">changed_vars</span><span class="p">,</span> <span class="n">new_ubs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">set_var_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">candidate_ub</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: use var.ub to set ub</span>
+        <span class="n">new_ub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_var_bound</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">candidate_ub</span><span class="p">,</span> <span class="n">is_lb</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_ub</span><span class="p">((</span><span class="n">var</span><span class="p">,</span> <span class="n">new_ub</span><span class="p">))</span>
+        <span class="n">var</span><span class="o">.</span><span class="n">_internal_set_ub</span><span class="p">(</span><span class="n">new_ub</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Model.set_var_ubs"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.set_var_ubs">[docs]</a>    <span class="k">def</span> <span class="nf">set_var_ubs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">changed_vars</span><span class="p">,</span> <span class="n">ubs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Change upper bounds of a collection of variables.</span>
 
 <span class="sd">        `new_ubs` accepts either a single number (all upper bounds are set to this number)</span>
@@ -1599,13 +1612,14 @@
 <span class="sd">            changed_vars: The collection of variables to be changed.</span>
 <span class="sd">            new_ubs: Either a number or a collection of numbers.</span>
 
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">typecheck_iterable</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_typecheck_bounds</span><span class="p">(</span><span class="s2">&quot;set_var_ubs&quot;</span><span class="p">,</span> <span class="n">new_ubs</span><span class="p">)</span>
+<span class="sd">        Note:</span>
+<span class="sd">            This method is deprecated since docplex version &gt; 545</span>
 
-        <span class="n">new_lbs</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">new_ubs</span><span class="p">]</span> <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">new_ubs</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">new_ubs</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">)</span>
-        <span class="n">actual_ubs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_attribute</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">,</span> <span class="s2">&quot;ub&quot;</span><span class="p">,</span> <span class="n">new_lbs</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_ub</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">,</span> <span class="n">actual_ubs</span><span class="p">):</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;This function is deprecated, use var.ub in a loop&quot;</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">var_ubs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zip_var_bounds</span><span class="p">(</span><span class="n">changed_vars</span><span class="p">,</span> <span class="n">ubs</span><span class="p">,</span> <span class="n">is_lb</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">set_var_ub</span><span class="p">(</span><span class="n">var_ubs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">new_ub</span> <span class="ow">in</span> <span class="n">var_ubs</span><span class="p">:</span>
             <span class="n">var</span><span class="o">.</span><span class="n">_internal_set_ub</span><span class="p">(</span><span class="n">new_ub</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Model.get_constraint_by_name"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.get_constraint_by_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_constraint_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
@@ -2292,7 +2306,7 @@
                 <span class="c1"># delegate to the factory</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__factory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Model.scal_prod"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.scal_prod">[docs]</a>    <span class="k">def</span> <span class="nf">scal_prod</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.scal_prod"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.scal_prod">[docs]</a>    <span class="k">def</span> <span class="nf">scal_prod</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a linear expression equal to the scalar product of a list of decision variables and a sequence of coefficients.</span>
 
@@ -2303,7 +2317,7 @@
 <span class="sd">        In this last case the scalar product reduces to a sum times this coefficient.</span>
 
 
-<span class="sd">        :param dvars: A list or an iterator on variables or expressions.</span>
+<span class="sd">        :param terms: A list or an iterator on variables or expressions.</span>
 <span class="sd">        :param coefs: A list or an iterator on numbers, or a number.</span>
 
 <span class="sd">        Note: </span>
@@ -2311,13 +2325,18 @@
 
 <span class="sd">        :return: A linear expression or 0.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__factory</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="n">dvars</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">terms</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_iterator</span><span class="p">(</span><span class="n">terms</span><span class="p">):</span>
+                <span class="k">pass</span>  <span class="c1"># iterators are ok</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_ordered_sequence</span><span class="p">(</span><span class="n">terms</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Model.scal_prod() requires a list of expressions/variables, got: {0!s}&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">terms</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__factory</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Model.dot"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.dot">[docs]</a>    <span class="k">def</span> <span class="nf">dot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.dot"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.dot">[docs]</a>    <span class="k">def</span> <span class="nf">dot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Synonym for :func:`scal_prod`.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="n">dvars</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Model.sum"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.sum">[docs]</a>    <span class="k">def</span> <span class="nf">sum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Creates a linear expression summing over a sequence.</span>
@@ -2462,6 +2481,8 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">do_check</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">typecheck_constraint</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">ct</span><span class="o">.</span><span class="n">is_in_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Constraint {0!s} does not belong to model {1}&quot;</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
             <span class="c1"># -- watch for trivial cts e.g. linexpr(0) &lt;= linexpr(1)</span>
             <span class="k">if</span> <span class="n">ct</span><span class="o">.</span><span class="n">is_trivial</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">ct</span><span class="o">.</span><span class="n">_is_trivially_feasible</span><span class="p">():</span>
@@ -2469,12 +2490,9 @@
                 <span class="k">elif</span> <span class="n">ct</span><span class="o">.</span><span class="n">_is_trivially_infeasible</span><span class="p">():</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_notify_trivial_constraint</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="n">ctname</span><span class="p">,</span> <span class="n">is_feasible</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
-        <span class="c1"># is this necessary if we&#39;re sure where we are sure of the calling context??</span>
-        <span class="k">if</span> <span class="n">do_check</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ct</span><span class="o">.</span><span class="n">is_in_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Constraint {0!s} does not belong to model {1}&quot;</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="c1"># --- name management ---</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">ctname</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">ct</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ct</span><span class="o">.</span><span class="n">has_name</span><span class="p">():</span>
                 <span class="n">ct_auto_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_automatic_ctname</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
                 <span class="n">ct</span><span class="o">.</span><span class="n">_set_automatic_name</span><span class="p">(</span><span class="n">ct_auto_name</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">ctname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span><span class="p">:</span>
@@ -2485,7 +2503,7 @@
             <span class="n">ct</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ctname</span>
         <span class="c1"># ---</span>
         <span class="c1"># at this stage we are sure the ctname is valid whatsoever.</span>
-        <span class="k">assert</span> <span class="n">ct</span><span class="o">.</span><span class="n">has_name</span><span class="p">()</span>
+        <span class="c1"># assert ct.has_name()</span>
 
         <span class="c1"># check for already posted cts.</span>
         <span class="k">if</span> <span class="n">do_check</span> <span class="ow">and</span> <span class="n">ct</span><span class="o">.</span><span class="n">has_valid_index</span><span class="p">():</span>
@@ -2736,6 +2754,7 @@
         <span class="k">if</span> <span class="n">posted_cts</span><span class="p">:</span>
             <span class="n">ct_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">create_block_linear_constraints</span><span class="p">(</span><span class="n">posted_cts</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_register_block_cts</span><span class="p">(</span><span class="n">posted_cts</span><span class="p">,</span> <span class="n">ct_indices</span><span class="p">)</span>
+            <span class="c1">#self._sync_constraint_indices()</span>
         <span class="k">return</span> <span class="n">posted_cts</span>
 
 <div class="viewcode-block" id="Model.add_constraints"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.add_constraints">[docs]</a>    <span class="k">def</span> <span class="nf">add_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cts</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">do_check</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
@@ -3215,7 +3234,7 @@
             <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">self_solve_hooks</span><span class="p">:</span>
                 <span class="n">h</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">has_solution</span><span class="p">,</span> <span class="n">engine_status</span><span class="p">,</span> <span class="n">reported_obj</span><span class="p">,</span>
                                    <span class="bp">self</span><span class="o">.</span><span class="n">_make_end_infodict</span><span class="p">())</span>    <span class="c1"># pragma : no cover</span>
-                <span class="n">h</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">solve_details</span><span class="o">.</span><span class="n">as_dict</span><span class="p">())</span>  <span class="c1"># pragma: no cover</span>
+                <span class="n">h</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">solve_details</span><span class="o">.</span><span class="n">as_worker_dict</span><span class="p">())</span>  <span class="c1"># pragma: no cover</span>
 
             <span class="c1"># unplug worker hook if any</span>
             <span class="k">if</span> <span class="n">wk_hook</span><span class="p">:</span>
@@ -4097,9 +4116,11 @@
     <span class="k">def</span> <span class="nf">is_free_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_ub</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__factory</span><span class="o">.</span><span class="n">is_free_ub</span><span class="p">(</span><span class="n">var_ub</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_sync_constraint_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct_iter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_sync_constraint_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct_iter</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="c1"># INTERNAL: check only when CPLEX is present.</span>
         <span class="n">self_engine</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span>
+        <span class="k">if</span> <span class="n">ct_iter</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ct_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_constraints</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">self_engine</span><span class="o">.</span><span class="n">has_cplex</span><span class="p">():</span>
             <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">ct_iter</span><span class="p">:</span>
                 <span class="n">model_index</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">get_index</span><span class="p">()</span>
@@ -4135,10 +4156,44 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the root parameter group of the model.</span>
+
+<span class="sd">        The root parameter group models the parameter hirerachy.</span>
+<span class="sd">        It is the way to access any CPLEX parameter and get or set its value.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">            model.parameters.mip.limits.mipgap</span>
+
+<span class="sd">            Returns the parameter itself, an instance of the Parameter class.</span>
+
+<span class="sd">            To get the value of the parameter, use the get() method, as in:</span>
+
+<span class="sd">            model.parameters.mip.limits.mipgap.get()</span>
+<span class="sd">            &gt;&gt;&gt; 0.0001</span>
+
+<span class="sd">            To change the value of the parameter, use a plain Python assignment:</span>
+
+<span class="sd">            model.parameters.mip.limits.mipgap = 0.05</span>
+<span class="sd">            model.parameters.mip.limits.mipgap.get()</span>
+<span class="sd">            &gt;&gt;&gt; 0.05</span>
+
+<span class="sd">            Assigment is a snynonym for the set() method:</span>
+
+<span class="sd">            model.parameters.mip.limits.mipgap.set(0.02)</span>
+<span class="sd">            model.parameters.mip.limits.mipgap.get()</span>
+<span class="sd">            &gt;&gt;&gt; 0.02</span>
+
+
+<span class="sd">        Returns:</span>
+<span class="sd">            the root parameter group, instance of ParameterGroup class.</span>
+
+<span class="sd">        PROOFREAD</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">cplex_parameters</span>
 
     <span class="k">def</span> <span class="nf">set_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="c1"># DEPRECATED, left only for compatibility....</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;This method is deprecated, use the parameters field to get/set parameter values.&quot;</span><span class="p">)</span>
         <span class="n">param</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Model.get_parameter_from_id"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.get_parameter_from_id">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter_from_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameter_cpx_id</span><span class="p">):</span>
@@ -4210,24 +4265,6 @@
 <span class="k">class</span> <span class="nc">AbstractModel</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">Model</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_check_data_args</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">expected_sizemin</span><span class="p">,</span> <span class="n">do_raise</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Empty data collection&quot;</span>
-        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">expected_sizemin</span><span class="p">:</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Missing data: expecting </span><span class="si">%d</span><span class="s2"> collections, got: </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">expected_sizemin</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">pass</span>
-        <span class="k">if</span> <span class="n">msg</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">do_raise</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-                <span class="k">return</span> <span class="bp">False</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">True</span>
 
     <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Redefine this function to return False if some data is invalid.</span>
@@ -4324,7 +4361,6 @@
         <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">ok</span>
-        
 </pre></div>
 
           </div>

@@ -48,7 +48,7 @@
           <div class="body" role="main">
             
   <h1>Source code for docplex.mp.xcounter</h1><div class="highlight"><pre>
-<span class="c1"># --------------------------------------------------------------------------</span>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
@@ -56,7 +56,8 @@
 
 
 <span class="c1"># gendoc: ignore</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span>
 
 
 <span class="k">class</span> <span class="nc">ExprCounter</span><span class="p">(</span><span class="n">Counter</span><span class="p">):</span>
@@ -89,6 +90,321 @@
 <span class="sd">        Removes all entries with zero value</span>
 <span class="sd">        :return:</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+        <span class="n">doomed_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">_dict_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="ow">is</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">dk</span> <span class="ow">in</span> <span class="n">doomed_keys</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="p">[</span><span class="n">dk</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+
+<span class="k">class</span> <span class="nc">FastOrderedDict</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A subclass of dict that keeps key ordering.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_val</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a new ordered dictionary. Cannot init from a normal dict,</span>
+<span class="sd">        nor from kwargs, since items order is undefined in those cases.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># noinspection PyTypeChecker</span>
+        <span class="nb">dict</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">init_val</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">init_val</span><span class="p">,</span> <span class="n">FastOrderedDict</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="n">init_val</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="nb">dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_val</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">init_val</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">len_initial</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">init_val</span><span class="p">)</span>
+            <span class="c1"># ok for dicts of size 1</span>
+            <span class="k">if</span> <span class="n">len_initial</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># we lose compatibility with other ordered dict types this way</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;undefined order, cannot get items from dict&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">len_initial</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># len is 1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_from_key_values</span><span class="p">([(</span><span class="n">k</span><span class="p">,</span> <span class="n">init_val</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">init_val</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># init_val is assumed to be a list of (key, value) tuples</span>
+            <span class="n">key_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">kv</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">kv</span> <span class="ow">in</span> <span class="n">init_val</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">key_list</span><span class="p">))</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">key_list</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">init_val</span><span class="p">:</span>
+                    <span class="nb">dict</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="n">key_list</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_from_key_values</span><span class="p">(</span><span class="n">init_val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Removes a key from the dict; updates key sequence</span>
+<span class="sd">        :param key:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">dict</span><span class="o">.</span><span class="n">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="c1"># find the index without calling == otherwise create constraints...</span>
+            <span class="n">key_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_index_is</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key_index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">[</span><span class="n">key_index</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">self_iteritems</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span>
+        <span class="n">other_iteritems</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="n">self_k</span><span class="p">,</span> <span class="n">self_v</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">self_iteritems</span><span class="p">)</span>
+                <span class="n">other_k</span><span class="p">,</span> <span class="n">other_v</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">other_iteritems</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">self_k</span> <span class="o">!=</span> <span class="n">other_k</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+                <span class="k">elif</span> <span class="n">self_v</span> <span class="o">!=</span> <span class="n">other_v</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">continue</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">FastOrderedDict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">([</span><span class="si">%s</span><span class="s1">])&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="p">[</span><span class="s1">&#39;(</span><span class="si">%r</span><span class="s1">, </span><span class="si">%r</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">]))</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">dict_setitem</span><span class="o">=</span><span class="nb">dict</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">dict_setitem</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">__str__</span> <span class="o">=</span> <span class="n">__repr__</span>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        To allow deepcopy to work with OrderedDict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">memo</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; returns a copy of the ordered dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">FastOrderedDict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a lits of (key, value) tuples in sequence order.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="n">k</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a copy of the ordered keys.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">[:]</span>
+
+    <span class="c1"># noinspection PyMethodOverriding</span>
+    <span class="k">def</span> <span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return a list of values in key sequence order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an iterator on key, value pairs, properly ordered</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">generate_items</span><span class="p">(</span><span class="n">od</span><span class="p">):</span>
+            <span class="n">keyseq</span> <span class="o">=</span> <span class="n">od</span><span class="o">.</span><span class="n">_key_seq</span>
+            <span class="n">nb_keys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">keyseq</span><span class="p">)</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="n">nb_keys</span><span class="p">:</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">keyseq</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+                <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">yield</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">generate_items</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">iterkeys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an iterator on the ordered keys.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">)</span>
+
+    <span class="n">__iter__</span> <span class="o">=</span> <span class="n">iterkeys</span>
+
+    <span class="k">def</span> <span class="nf">itervalues</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an iterator over values, properly ordered</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">generate_values</span><span class="p">(</span><span class="n">od</span><span class="p">):</span>
+            <span class="n">iter_keys</span> <span class="o">=</span> <span class="n">od</span><span class="o">.</span><span class="n">iterkeys</span><span class="p">()</span>
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">od</span><span class="p">[</span><span class="n">iter_keys</span><span class="o">.</span><span class="n">next</span><span class="p">()]</span>
+
+        <span class="k">return</span> <span class="n">generate_values</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Clears the dict, and its key sequence</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">dict</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">from_arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update from another OrderedDict or sequence of (key, value) pairs</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">from_arg</span><span class="p">,</span> <span class="p">(</span><span class="n">FastOrderedDict</span><span class="p">,</span> <span class="n">OrderedDict</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">from_arg</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">from_arg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="c1"># we lose compatibility with other ordered dict types this way</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;undefined order, cannot get items from dict&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_from_key_values</span><span class="p">(</span><span class="n">from_arg</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_update_from_key_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kv_seq</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kv_seq</span><span class="p">:</span>
+            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="k">def</span> <span class="nf">_index_is</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="c1"># returns the index of key in the seqeunce without calling ==, but &quot;is&quot;</span>
+        <span class="c1"># returns -1 if not found</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">hash_key</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">is</span> <span class="n">key</span> <span class="ow">or</span> <span class="nb">hash</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">==</span> <span class="n">hash_key</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">idx</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">reverse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reverse the order of the keys.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">sort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Applies a sort to the key sequence.</span>
+
+<span class="sd">        The underlying dict is not modified.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">FastOrderedCounter</span><span class="p">(</span><span class="n">FastOrderedDict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A subclass of Counter which does not require a dictionary to be updated</span>
+<span class="sd">    Can be updated from an item (assumed to be a key)</span>
+<span class="sd">    or from a key and a value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="nb">dict</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">e</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">FastOrderedDict</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="nb">dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">update_from_item_value</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">update_from_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+
+    <span class="k">def</span> <span class="nf">update_from_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">_dict_get</span><span class="o">=</span><span class="n">FastOrderedDict</span><span class="o">.</span><span class="n">get</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds one item occurence</span>
+<span class="sd">        :param item:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">_dict_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">update_from_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Updates with a sequence.</span>
+
+<span class="sd">        :param items:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_from_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update_from_item_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">_dict_get</span><span class="o">=</span><span class="nb">dict</span><span class="o">.</span><span class="n">get</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This differs from standard Counter when a dict instance is required.</span>
+<span class="sd">        :param item: the key to be updated</span>
+<span class="sd">        :param value: the associated value</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+            <span class="n">new_value</span> <span class="o">=</span> <span class="n">_dict_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">value</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">new_value</span><span class="p">:</span>
+                <span class="n">FastOrderedDict</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">new_value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="p">[</span><span class="n">item</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">update_from_scaled_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_dict</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">_dict_get</span><span class="o">=</span><span class="nb">dict</span><span class="o">.</span><span class="n">get</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates counter from a dict instance, but with an inflation factor.</span>
+<span class="sd">        Does nothing if factor is 0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">factor</span><span class="p">:</span>
+            <span class="c1"># nothin to do</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">factor</span><span class="p">:</span>
+            <span class="c1"># standard update</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">other_dict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># update by scaled value</span>
+            <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">other_dict</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">_dict_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">value</span> <span class="o">*</span> <span class="n">factor</span>
+
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">iterable</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">iterable</span><span class="p">,</span> <span class="p">(</span><span class="n">FastOrderedDict</span><span class="p">,</span> <span class="n">OrderedDict</span><span class="p">)):</span>
+                <span class="c1"># accept only ordered types/</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="p">:</span>
+                    <span class="n">self_get</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span>
+                    <span class="k">for</span> <span class="n">elem</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">iterable</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                        <span class="bp">self</span><span class="p">[</span><span class="n">elem</span><span class="p">]</span> <span class="o">=</span> <span class="n">self_get</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">count</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># fast path when counter is empty</span>
+                    <span class="nb">dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_key_seq</span> <span class="o">=</span> <span class="n">iterable</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">iterable</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;only ordered dict types allowed.&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># a plain collection</span>
+                <span class="n">self_get</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span>
+                <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="p">[</span><span class="n">elem</span><span class="p">]</span> <span class="o">=</span> <span class="n">self_get</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">normalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_dict_get</span><span class="o">=</span><span class="nb">dict</span><span class="o">.</span><span class="n">get</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Removes all entries with zero value.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">doomed_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">_dict_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="ow">is</span> <span class="mi">0</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">dk</span> <span class="ow">in</span> <span class="n">doomed_keys</span><span class="p">:</span>
             <span class="k">del</span> <span class="bp">self</span><span class="p">[</span><span class="n">dk</span><span class="p">]</span>

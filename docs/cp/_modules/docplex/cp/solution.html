@@ -48,7 +48,7 @@
           <div class="body" role="main">
             
   <h1>Source code for docplex.cp.solution</h1><div class="highlight"><pre>
-<span class="c1"># --------------------------------------------------------------------------</span>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
@@ -71,7 +71,7 @@
 <span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">json</span>
 
 <span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="kn">import</span> <span class="n">CpoExpr</span><span class="p">,</span> <span class="n">INT_MIN</span><span class="p">,</span> <span class="n">INT_MAX</span><span class="p">,</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="kn">import</span> <span class="n">make_directories</span><span class="p">,</span> <span class="n">IdentityAccessor</span>
+<span class="kn">import</span> <span class="nn">docplex.cp.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
 
 <span class="c1">###############################################################################</span>
 <span class="c1">##  Public constants</span>
@@ -124,11 +124,14 @@
 <span class="c1"># Fail status: Stopped by time limit</span>
 <span class="n">FAIL_STATUS_TIME_LIMIT</span> <span class="o">=</span> <span class="s2">&quot;SearchStoppedByLimit&quot;</span>
 
+<span class="c1"># Fail status: Search completed</span>
+<span class="n">FAIL_STATUS_SEARCH_COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;SearchCompleted&quot;</span>
+
 <span class="c1"># List of all possible search statuses</span>
 <span class="n">ALL_FAIL_STATUSES</span> <span class="o">=</span> <span class="p">(</span><span class="n">FAIL_STATUS_UNKNOWN</span><span class="p">,</span>
                      <span class="n">FAIL_STATUS_FAILED_NORMALLY</span><span class="p">,</span> <span class="n">FAIL_STATUS_NOT_FAILED</span><span class="p">,</span>
                      <span class="n">FAIL_STATUS_ABORT</span><span class="p">,</span> <span class="n">FAIL_STATUS_EXCEPTION</span><span class="p">,</span> <span class="n">FAIL_STATUS_EXIT</span><span class="p">,</span> <span class="n">FAIL_STATUS_LABEL</span><span class="p">,</span>
-                     <span class="n">FAIL_STATUS_TIME_LIMIT</span><span class="p">)</span>
+                     <span class="n">FAIL_STATUS_TIME_LIMIT</span><span class="p">,</span> <span class="n">FAIL_STATUS_SEARCH_COMPLETED</span><span class="p">)</span>
 
 
 <span class="c1">###############################################################################</span>
@@ -161,12 +164,22 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">None</span></div></div>
+        <span class="k">return</span> <span class="bp">None</span></div>
 
-     
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Overwrite equality comparison</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Other object to compare with</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this object is equal to the other, False otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="CpoIntVarSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntVarSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoIntVarSolution</span><span class="p">(</span><span class="n">CpoVarSolution</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Solution to an integer variable. &quot;&quot;&quot;</span>
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;value&#39;</span>  <span class="c1"># Variable value</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span>  <span class="c1"># Variable value</span>
                 <span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
@@ -378,6 +391,14 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span></div>
 
+    <span class="k">def</span> <span class="nf">_set_fail_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fsts</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set the fail status</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            fsts: Fail status</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">=</span> <span class="n">fsts</span>
+
 <div class="viewcode-block" id="CpoModelSolution.get_fail_status"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.get_fail_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_fail_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the solving fail status.</span>
 
@@ -415,7 +436,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            True if there is a solution.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span> <span class="ow">in</span> <span class="p">(</span><span class="n">SOLVE_STATUS_FEASIBLE</span><span class="p">,</span> <span class="n">SOLVE_STATUS_OPTIMAL</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span> <span class="ow">in</span> <span class="p">(</span><span class="n">SOLVE_STATUS_FEASIBLE</span><span class="p">,</span> <span class="n">SOLVE_STATUS_OPTIMAL</span><span class="p">))</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">!=</span> <span class="n">FAIL_STATUS_SEARCH_COMPLETED</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="CpoModelSolution.is_solution_optimal"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.is_solution_optimal">[docs]</a>    <span class="k">def</span> <span class="nf">is_solution_optimal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Checks if this descriptor contains an optimal solution to the problem.</span>
@@ -701,7 +722,7 @@
 
         <span class="c1"># Check file</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">make_directories</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+            <span class="n">utils</span><span class="o">.</span><span class="n">make_directories</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_write_solution</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -736,7 +757,20 @@
             <span class="n">lvars</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vars</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
             <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">lvars</span><span class="p">:</span>
                 <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
-                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Overwrite equality comparison</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Other object to compare with</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if this object is equal to the other, False otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span></div>
+
+
+
 
 <span class="c1">###############################################################################</span>
 <span class="c1">##  Private functions</span>
