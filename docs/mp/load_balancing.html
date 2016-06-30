@@ -309,7 +309,41 @@ This optimization is achieved by the <code class="docutils literal"><span class=
 251
 252
 253
-254</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
@@ -318,7 +352,9 @@ This optimization is achieved by the <code class="docutils literal"><span class=
 <span class="c1"># Source: http://blog.yhathq.com/posts/how-yhat-does-cloud-balancing.html</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">json</span>
 
+<span class="kn">from</span> <span class="nn">docplex.util.environment</span> <span class="kn">import</span> <span class="n">get_environment</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">AbstractModel</span>
 
 
@@ -332,8 +368,8 @@ This optimization is achieved by the <code class="docutils literal"><span class=
 
 <span class="k">class</span> <span class="nc">LoadBalancingModel</span><span class="p">(</span><span class="n">AbstractModel</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;load_balancing&#39;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;load_balancing&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># raw data</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_processes_per_server</span> <span class="o">=</span> <span class="n">DEFAULT_MAX_PROCESSES_PER_SERVER</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">servers</span> <span class="o">=</span> <span class="p">[]</span>
@@ -428,7 +464,7 @@ This optimization is achieved by the <code class="docutils literal"><span class=
 
         <span class="k">return</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve_lexicographic</span><span class="p">(</span><span class="n">ordered_goals</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">print_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">mdl</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="n">active_servers</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">servers</span> <span class="k">if</span> <span class="n">mdl</span><span class="o">.</span><span class="n">active_var_by_server</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">==</span> <span class="mi">1</span><span class="p">])</span>
         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Active Servers: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">active_servers</span><span class="p">))</span>
@@ -440,6 +476,37 @@ This optimization is achieved by the <code class="docutils literal"><span class=
         <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">active_servers</span><span class="p">:</span>
             <span class="n">sleeping</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assign_user_to_server_vars</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">sleeping</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
             <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Server: {} #sleeping={}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">sleeping</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">save_solution_as_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_file</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Saves the solution for this model as JSON.</span>
+<span class="sd">        </span>
+<span class="sd">        Note that this is not a CPLEX Solution file, as this is the result of post-processing a CPLEX solution</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mdl</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">solution_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># active server</span>
+        <span class="n">active_servers</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">servers</span> <span class="k">if</span> <span class="n">mdl</span><span class="o">.</span><span class="n">active_var_by_server</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">==</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">solution_dict</span><span class="p">[</span><span class="s2">&quot;active servers&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">active_servers</span>
+        
+        <span class="c1"># sleeping processes by server</span>
+        <span class="n">sleeping_processes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">active_servers</span><span class="p">:</span>
+            <span class="n">sleeping</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assign_user_to_server_vars</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">sleeping</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">users</span><span class="p">)</span>
+            <span class="n">sleeping_processes</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">sleeping</span>
+        <span class="n">solution_dict</span><span class="p">[</span><span class="s2">&quot;sleeping processes by server&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sleeping_processes</span>
+        
+        <span class="c1"># user assignment</span>
+        <span class="n">user_assignment</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">assign_user_to_server_vars</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">mdl</span><span class="o">.</span><span class="n">assign_user_to_server_vars</span><span class="p">[(</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">)]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">id</span>
+                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;server&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;migration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;yes&quot;</span> <span class="k">if</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_is_migration</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;no&quot;</span>
+                <span class="n">user_assignment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">solution_dict</span><span class="p">[</span><span class="s1">&#39;user assignment&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">user_assignment</span>
+        <span class="n">json_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">solution_dict</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+
 
 
 <span class="n">SERVERS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;server002&quot;</span><span class="p">,</span> <span class="s2">&quot;server003&quot;</span><span class="p">,</span> <span class="s2">&quot;server001&quot;</span><span class="p">,</span> <span class="s2">&quot;server006&quot;</span><span class="p">,</span> <span class="s2">&quot;server007&quot;</span><span class="p">,</span> <span class="s2">&quot;server004&quot;</span><span class="p">,</span> <span class="s2">&quot;server005&quot;</span><span class="p">]</span>
@@ -560,9 +627,10 @@ This optimization is achieved by the <code class="docutils literal"><span class=
 
     <span class="c1"># Run the model. If a key has been specified above, the model will run on</span>
     <span class="c1"># IBM Decision Optimization on cloud.</span>
-    <span class="n">ok</span> <span class="o">=</span> <span class="n">lbm</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">ok</span>
-    <span class="n">lbm</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">lbm</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">):</span>
+        <span class="n">lbm</span><span class="o">.</span><span class="n">report</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">get_environment</span><span class="p">()</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="s2">&quot;solution.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="n">lbm</span><span class="o">.</span><span class="n">save_solution_as_json</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
 </pre></div>
 </td></tr></table></div>
 </div>

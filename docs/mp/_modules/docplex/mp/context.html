@@ -64,11 +64,18 @@
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">isfile</span><span class="p">,</span> <span class="n">isabs</span>
 
+<span class="kn">from</span> <span class="nn">docplex.util.environment</span> <span class="kn">import</span> <span class="n">get_environment</span>
+
 <span class="kn">from</span> <span class="nn">docplex.mp.format</span> <span class="kn">import</span> <span class="n">ExchangeFormat</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">open_universal_newline</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.params.cplex_params</span> <span class="kn">import</span> <span class="n">get_params_from_cplex_version</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">DOcplexException</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">docplex.worker.solvehook</span> <span class="kn">import</span> <span class="n">get_solve_hook</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">get_solve_hook</span> <span class="o">=</span> <span class="bp">None</span>
 
 <span class="c1"># some utility methods</span>
 <span class="k">def</span> <span class="nf">_get_value_as_int</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">option</span><span class="p">):</span>
@@ -156,6 +163,31 @@
     <span class="k">return</span> <span class="n">is_ignored</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span><span class="o">.</span><span class="n">ignored_urls</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
 
 
+<span class="k">def</span> <span class="nf">is_auto_publishing_solve_details</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">get_solve_hook</span><span class="p">()</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>  <span class="c1"># not in a worker</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">auto_publish_details</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">solve_details</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">auto_publish_details</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">auto_publish_details</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">return</span> <span class="n">auto_publish_details</span>
+
+
+<span class="k">def</span> <span class="nf">is_auto_publishing_json_solution</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">get_solve_hook</span><span class="p">()</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">False</span>  <span class="c1"># not in a worker</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">auto_publish</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">json_solution</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">auto_publish</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">auto_publish</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">return</span> <span class="n">auto_publish</span>
+
 <span class="k">class</span> <span class="nc">BaseContext</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
     <span class="c1"># Class for handling the list of parameters.</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -191,6 +223,10 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">SolverContext</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_output</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_threads</span> <span class="o">=</span> <span class="n">get_environment</span><span class="p">()</span><span class="o">.</span><span class="n">get_available_core_count</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_publish</span> <span class="o">=</span> <span class="n">BaseContext</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">solve_details</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">json_solution</span> <span class="o">=</span> <span class="bp">True</span>
 
     <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">):</span>
         <span class="c1"># We override deepcopy here just to make sure that we don&#39;t deepcopy</span>
@@ -248,6 +284,16 @@
 <span class="sd">        cplex_parameters: A</span>
 <span class="sd">           :class:`docplex.mp.params.parameters.RootParameterGroup` to store</span>
 <span class="sd">           CPLEX parameters.</span>
+<span class="sd">        solver.auto_publish: If ``True``, :meth:`docplex.mp.model.Model.solve` will do as if every</span>
+<span class="sd">            automatically publishable item (``solve_details``, ``json_solution``) must be published</span>
+<span class="sd">            when the code is run on the DOcplexcloud Python worker.</span>
+<span class="sd">        solver.auto_publish.solve_details: If ``True``, automatically publish solve details</span>
+<span class="sd">            when :meth:`docplex.mp.model.Model.solve` is called and code is run on the DOcplexcloud</span>
+<span class="sd">            Python worker. The default value is ``True``.</span>
+<span class="sd">        solver.auto_publish.json_solution: If ``True``, automatically publish the solution</span>
+<span class="sd">            when :meth:`docplex.mp.model.Model.solve` is called and code is run on hte DOcplexcloud</span>
+<span class="sd">            Python worker. The solution is saved as an output attachment which name is ``solution.json``.</span>
+<span class="sd">            The default value is ``True``.</span>
 <span class="sd">        solver.log_output: This attribute can have the following values:</span>
 
 <span class="sd">            * True: When True, logs are printed to sys.out.</span>
@@ -608,6 +654,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_progress_poll_interval</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ignored_keys</span> <span class="o">=</span> <span class="s2">&quot;ENTER YOUR KEY HERE&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ignored_urls</span> <span class="o">=</span> <span class="s2">&quot;ENTER YOUR URL HERE&quot;</span>
+        <span class="c1"># if true, download job info after solve() has finished and fire</span>
+        <span class="c1"># the last details as a progress_info. Mostly for debug.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fire_last_progress</span> <span class="o">=</span> <span class="bp">False</span>
 
 
     <span class="c1"># This maps &quot;old property names&quot; to the corresponding new qualified name.</span>

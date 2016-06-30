@@ -333,18 +333,31 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 280
 281
 282
-283</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">json</span>
 
+<span class="kn">from</span> <span class="nn">docplex.util.environment</span> <span class="kn">import</span> <span class="n">get_environment</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">AbstractModel</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_iterable</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="kn">import</span> <span class="n">Context</span>
-
 
 <span class="c1"># ------------------------------</span>
 
@@ -383,10 +396,8 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 <span class="k">class</span> <span class="nc">CuttingStockPatternGeneratorModel</span><span class="p">(</span><span class="n">AbstractModel</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; The cutting stock pattern-generation model.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">master_items</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;CuttingStock_PatternGeneratorModel&#39;</span><span class="p">,</span>
-                               <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
-                               <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">master_items</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;CuttingStock_PatternGeneratorModel&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">master_items</span>
         <span class="c1"># default values</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">duals</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">master_items</span><span class="p">)</span>
@@ -520,13 +531,26 @@ solves the new, enlarged model. Column generation repeats the process until a sa
                                                             <span class="n">pattern_detail</span><span class="p">))</span>
         <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| {} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">75</span><span class="p">))</span>
 
+    <span class="k">def</span> <span class="nf">save_solution_as_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">file</span><span class="p">):</span>
+        <span class="n">solution</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">&gt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
+                <span class="n">pattern_detail</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="k">if</span>
+                                  <span class="n">a</span> <span class="o">==</span> <span class="n">p</span><span class="p">}</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;pattern&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;cuts&#39;</span><span class="p">]</span><span class="o">=</span> <span class="s2">&quot;</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span>
+                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;details&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pattern_detail</span>
+                <span class="n">solution</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+
     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">master_model</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="n">master_model</span><span class="o">.</span><span class="n">ensure_setup</span><span class="p">()</span>
         <span class="n">gen_model</span> <span class="o">=</span> <span class="n">CuttingStockPatternGeneratorModel</span><span class="p">(</span><span class="n">master_items</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">,</span>
                                                       <span class="n">roll_width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span><span class="p">,</span>
-                                                      <span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">,</span>
-                                                      <span class="n">output_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_level</span>
+                                                      <span class="n">output_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_level</span><span class="p">,</span>
+                                                      <span class="o">**</span><span class="n">kwargs</span>
                                                       <span class="p">)</span>
         <span class="n">gen_model</span><span class="o">.</span><span class="n">setup</span><span class="p">()</span>
         <span class="n">rc_eps</span> <span class="o">=</span> <span class="mf">1e-6</span>
@@ -585,7 +609,7 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 
 
 <span class="k">class</span> <span class="nc">DefaultCutStockMasterModel</span><span class="p">(</span><span class="n">CutStockMasterModel</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">CutStockMasterModel</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">load_data</span><span class="p">(</span><span class="n">DEFAULT_ITEMS</span><span class="p">,</span> <span class="n">DEFAULT_PATTERNS</span><span class="p">,</span> <span class="n">DEFAULT_PATTERN_ITEM_FILLED</span><span class="p">,</span> <span class="n">DEFAULT_ROLL_WIDTH</span><span class="p">)</span>
 
@@ -613,9 +637,11 @@ solves the new, enlarged model. Column generation repeats the process until a sa
     
     <span class="c1"># Solve the model. If a key has been specified above, the solve</span>
     <span class="c1"># will use IBM Decision Optimization on cloud.</span>
-    <span class="n">ok</span> <span class="o">=</span> <span class="n">cutstock_model</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">cutstock_model</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">):</span>
         <span class="n">cutstock_model</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+        <span class="c1"># Save the solution as &quot;solution.json&quot; program output.</span>
+        <span class="k">with</span> <span class="n">get_environment</span><span class="p">()</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="s2">&quot;solution.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="n">cutstock_model</span><span class="o">.</span><span class="n">save_solution_as_json</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
 </pre></div>
 </td></tr></table></div>
 </div>

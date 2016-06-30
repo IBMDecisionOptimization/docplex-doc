@@ -1,0 +1,690 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    
+    <title>docplex.mp.quad &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.quad</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.linear</span> <span class="kn">import</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">LinearConstraintType</span><span class="p">,</span> <span class="n">AbstractLinearExpr</span><span class="p">,</span> <span class="n">Var</span><span class="p">,</span> <span class="n">ZeroExpr</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.xcounter</span> <span class="kn">import</span> <span class="n">FastOrderedDict</span>
+
+
+<span class="k">def</span> <span class="nf">_compare_vars</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">):</span>
+    <span class="n">v1i</span> <span class="o">=</span> <span class="n">v1</span><span class="o">.</span><span class="n">_index</span>
+    <span class="n">v2i</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">_index</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">v1i</span> <span class="o">&gt;</span> <span class="n">v2i</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">v2i</span> <span class="o">&gt;</span> <span class="n">v1i</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">VarPair</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="s2">&quot;second&quot;</span><span class="p">,</span> <span class="s2">&quot;_cached_hash&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_hash</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">v2</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="n">v1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">second</span> <span class="o">=</span> <span class="n">v1</span>
+        <span class="k">elif</span> <span class="n">_compare_vars</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="n">v1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">second</span> <span class="o">=</span> <span class="n">v2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="n">v2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">second</span> <span class="o">=</span> <span class="n">v1</span>
+
+    <span class="k">def</span> <span class="nf">is_square</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">second</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: necessary for use as dict keys</span>
+        <span class="c1"># VarPair ensures variables are sorted by indices</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">VarPair</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="n">first</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">second</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="n">second</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">self_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_hash</span>
+        <span class="k">if</span> <span class="n">self_hash</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">self_hash</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">first</span><span class="p">)</span> <span class="o">+</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">second</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cached_hash</span> <span class="o">=</span> <span class="n">self_hash</span>
+        <span class="k">return</span> <span class="n">self_hash</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.quad.VarPair(first={0!s},second={1!s})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">first</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">second</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;VarPair({0!s}, {1!s})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">first</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">second</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">item</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">first</span>
+        <span class="k">elif</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">item</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">second</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">StopIteration</span>
+
+
+<div class="viewcode-block" id="QuadExpr"><a class="viewcode-back" href="../../../docplex.mp.quad.html#docplex.mp.quad.QuadExpr">[docs]</a><span class="k">class</span> <span class="nc">QuadExpr</span><span class="p">(</span><span class="n">Expr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;QuadExpr()</span>
+
+<span class="sd">    This class models linear expressions.</span>
+<span class="sd">    This class is not intended to be instantiated. Quadratic expressions are built</span>
+<span class="sd">    either using operators or using `Model.quad_expr()`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qterms_dict_type</span> <span class="o">=</span> <span class="n">FastOrderedDict</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_mapping</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">None</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">is_quad_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">is_quadratic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">square</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_quadratic</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Cannot take the square of a quadratic term: {0!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">quad_value</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">qv0</span><span class="p">,</span> <span class="n">qv1</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quad_triplets</span><span class="p">():</span>
+            <span class="n">quad_value</span> <span class="o">+=</span> <span class="n">qk</span> <span class="o">*</span> <span class="p">(</span><span class="n">qv0</span><span class="o">.</span><span class="n">unchecked_solution_value</span> <span class="o">*</span> <span class="n">qv1</span><span class="o">.</span><span class="n">unchecked_solution_value</span><span class="p">)</span>
+        <span class="n">lin_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">_get_solution_value</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">quad_value</span> <span class="o">+</span> <span class="n">lin_value</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">quads</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">linexpr</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">_qterm_type</span><span class="o">=</span><span class="n">qterms_dict_type</span><span class="p">):</span>
+        <span class="n">Expr</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">_quadexpr_instance_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">quads</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="n">_qterm_type</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quads</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">safe</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="n">quads</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># check</span>
+                <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">quads</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">qk</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">qv</span><span class="p">,</span> <span class="n">VarPair</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Expecting variable-pair, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">qv</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="n">_qterm_type</span><span class="p">(</span><span class="n">quads</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">quads</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">tuplesize</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">quads</span><span class="p">)</span>
+            <span class="k">if</span> <span class="mi">2</span> <span class="o">==</span> <span class="n">tuplesize</span><span class="p">:</span>
+                <span class="n">vp</span> <span class="o">=</span> <span class="n">quads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">qk</span> <span class="o">=</span> <span class="n">quads</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">safe</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vp</span><span class="p">,</span> <span class="n">VarPair</span><span class="p">)</span>
+                    <span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">qk</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="n">_qterm_type</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="p">[</span><span class="n">vp</span><span class="p">]</span> <span class="o">=</span> <span class="n">qk</span>
+
+            <span class="k">elif</span> <span class="mi">3</span> <span class="o">==</span> <span class="n">tuplesize</span><span class="p">:</span>
+                <span class="n">v1</span> <span class="o">=</span> <span class="n">quads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">v2</span> <span class="o">=</span> <span class="n">quads</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">qk</span> <span class="o">=</span> <span class="n">quads</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">safe</span><span class="p">:</span>
+                    <span class="n">model</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">v1</span><span class="p">)</span>
+                    <span class="n">model</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">v2</span><span class="p">)</span>
+                    <span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">qk</span><span class="p">,</span> <span class="s1">&#39;QuadExpr&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="n">_qterm_type</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="p">[</span><span class="n">VarPair</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)]</span> <span class="o">=</span> <span class="n">qk</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;only tuples of len 2,3 are valid for QuadExpr, got: {0!r}&quot;</span><span class="p">,</span> <span class="n">quads</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">quads</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="n">_qterm_type</span><span class="p">(</span><span class="n">quads</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;unexpected argument for QuadExpr: {0!r}&quot;</span><span class="p">,</span> <span class="n">quads</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">linexpr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">linexpr</span><span class="p">)</span>
+
+<div class="viewcode-block" id="QuadExpr.clone"><a class="viewcode-back" href="../../../docplex.mp.quad.html#docplex.mp.quad.QuadExpr.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Makes a copy of the quadratic expression and returns it.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A quadratic expression.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_quadexpr_clone_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">cloned_linear</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">self_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">cloned_name</span> <span class="o">=</span> <span class="n">self_name</span> <span class="k">if</span> <span class="n">self_name</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">self_name</span><span class="p">[:]</span>
+        <span class="n">new_quad</span> <span class="o">=</span> <span class="n">QuadExpr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">quads</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                            <span class="n">linexpr</span><span class="o">=</span><span class="n">cloned_linear</span><span class="p">,</span>
+                            <span class="n">name</span><span class="o">=</span><span class="n">cloned_name</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_quad</span></div>
+
+    <span class="k">def</span> <span class="nf">is_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">qv0</span><span class="p">,</span> <span class="n">qv1</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quad_triplets</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">qv0</span><span class="o">.</span><span class="n">is_discrete</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">qv1</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">is_int</span><span class="p">(</span><span class="n">qk</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">generate_quad_triplets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># a generator that returns triplets (i.e. tuples of len 3)</span>
+        <span class="c1"># with the variable pair and the coefficient</span>
+        <span class="k">for</span> <span class="n">qvp</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="n">qvp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">qvp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">qk</span>
+
+    <span class="k">def</span> <span class="nf">iter_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="p">)</span>
+
+<div class="viewcode-block" id="QuadExpr.iter_quad_triplets"><a class="viewcode-back" href="../../../docplex.mp.quad.html#docplex.mp.quad.QuadExpr.iter_quad_triplets">[docs]</a>    <span class="k">def</span> <span class="nf">iter_quad_triplets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Iterates over quadratic terms.</span>
+
+<span class="sd">        This iterator returns triplets of the form v1,v2,k where v1 and v2 are decision</span>
+<span class="sd">        variables and k is a number.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_quad_triplets</span><span class="p">()</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_quadratic_terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the number of quadratic terms.</span>
+
+<span class="sd">        Counts both the square and product terms.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            q1 = x**2</span>
+<span class="sd">            q1.number_of-quadratic_terms</span>
+<span class="sd">            &gt;&gt;&gt; 1</span>
+<span class="sd">            q2 = (x+y+1)**2</span>
+<span class="sd">            q2.number_of_quadratic_terms</span>
+<span class="sd">            &gt;&gt;&gt; 3</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="p">)</span>
+
+<div class="viewcode-block" id="QuadExpr.is_separable"><a class="viewcode-back" href="../../../docplex.mp.quad.html#docplex.mp.quad.QuadExpr.is_separable">[docs]</a>    <span class="k">def</span> <span class="nf">is_separable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns True if all quadratic terms are separable.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">qv</span><span class="o">.</span><span class="n">is_square</span><span class="p">():</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span></div>
+
+
+    <span class="k">def</span> <span class="nf">compute_separable_convexity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># returns 1 if separable, convex</span>
+        <span class="c1"># returns -1 if separable non convex</span>
+        <span class="c1"># return s0 if non separable</span>
+
+        <span class="n">justifier</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">qv</span><span class="o">.</span><span class="n">is_square</span><span class="p">():</span>
+                <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">None</span>  <span class="c1"># non separable: fast exit</span>
+            <span class="k">elif</span> <span class="n">qk</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">justifier</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">justifier</span> <span class="o">=</span> <span class="p">(</span><span class="n">qk</span><span class="p">,</span> <span class="n">qv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># separable, non convex, kept</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">justifier</span> <span class="ow">or</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>  <span class="c1"># (1, None) is for separable, convex</span>
+
+    <span class="k">def</span> <span class="nf">get_quadratic_coefficient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">var1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">var2</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">var2</span> <span class="o">=</span> <span class="n">var1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">var2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_quadratic_coefficient</span><span class="p">(</span><span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_quadratic_coefficient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var1</span><span class="p">,</span> <span class="n">var2</span><span class="p">):</span>
+        <span class="c1"># INTERNAL, no checks</span>
+        <span class="n">vp</span> <span class="o">=</span> <span class="n">VarPair</span><span class="p">(</span><span class="n">var1</span><span class="p">,</span> <span class="n">var2</span> <span class="ow">or</span> <span class="n">var1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_quadratic_coefficient_from_var_pair</span><span class="p">(</span><span class="n">vp</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_quadratic_coefficient_from_var_pair</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vp</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vp</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># ---</span>
+    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QuadExpr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_quadratic_terms</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">number_of_quadratic_terms</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">for</span> <span class="n">qvp</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">_get_quadratic_coefficient_from_var_pair</span><span class="p">(</span><span class="n">qvp</span><span class="p">)</span> <span class="o">!=</span> <span class="n">qk</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">equals_expr</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_linexpr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_quadratic</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">constant</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">linear_part</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span>
+
+    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">qvp</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">qvp</span><span class="o">.</span><span class="n">is_square</span><span class="p">():</span>
+                <span class="k">yield</span> <span class="n">qvp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">qvp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">yield</span> <span class="n">qvp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">lv</span>
+
+    <span class="k">def</span> <span class="nf">contains_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="c1"># required by tests...</span>
+        <span class="k">for</span> <span class="n">qv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">qv</span> <span class="ow">is</span> <span class="n">dvar</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.quad.QuadExpr(</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">truncated_str</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">to_stringio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oss</span><span class="p">,</span> <span class="n">nb_digits</span><span class="p">,</span> <span class="n">prod_symbol</span><span class="p">,</span> <span class="n">use_space</span><span class="p">,</span> <span class="n">var_namer</span><span class="o">=</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># noinspection PyPep8Naming</span>
+        <span class="n">SP</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span>
+        <span class="k">for</span> <span class="n">qv1</span><span class="p">,</span> <span class="n">qv2</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quad_triplets</span><span class="p">():</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">qk</span><span class="p">:</span>
+                <span class="k">continue</span>  <span class="c1"># pragma: no cover</span>
+
+            <span class="c1"># ---</span>
+            <span class="c1"># sign is printed if  non-first OR negative</span>
+            <span class="c1"># at the end of this block coeff is positive</span>
+            <span class="n">wrote_sign</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">if</span> <span class="n">qk</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">q</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;-&#39;</span> <span class="k">if</span> <span class="n">qk</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;+&#39;</span><span class="p">)</span>
+                <span class="n">wrote_sign</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">if</span> <span class="n">qk</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">qk</span> <span class="o">=</span> <span class="o">-</span><span class="n">qk</span>
+
+            <span class="c1"># write coeff if &lt;&gt; 1</span>
+            <span class="n">varname1</span> <span class="o">=</span> <span class="n">var_namer</span><span class="p">(</span><span class="n">qv1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">use_space</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">wrote_sign</span> <span class="ow">and</span> <span class="n">q</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">varname1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">SP</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="mi">1</span> <span class="o">!=</span> <span class="n">qk</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_num_to_stringio</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">qk</span><span class="p">,</span> <span class="n">ndigits</span><span class="o">=</span><span class="n">nb_digits</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">prod_symbol</span><span class="p">:</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">prod_symbol</span><span class="p">)</span>
+
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">varname1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">qv1</span> <span class="ow">is</span> <span class="n">qv2</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;^2&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">prod_symbol</span><span class="p">:</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">prod_symbol</span><span class="p">)</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">var_namer</span><span class="p">(</span><span class="n">qv2</span><span class="p">))</span>
+            <span class="n">q</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># problem for linexpr: force &#39;+&#39; ssi c&gt;0</span>
+        <span class="n">linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span>
+        <span class="k">if</span> <span class="n">linexpr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">linexpr</span><span class="o">.</span><span class="n">constant</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">q</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sign</span> <span class="o">=</span> <span class="s1">&#39;-&#39;</span> <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;+&#39;</span>
+                <span class="k">if</span> <span class="n">use_space</span><span class="p">:</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">q</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">sign</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">use_space</span><span class="p">:</span>
+                        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">SP</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_num_to_stringio</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="nb">abs</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">ndigits</span><span class="o">=</span><span class="n">nb_digits</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># linear part is NOT a constant</span>
+            <span class="n">print_plus_sign</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">if</span> <span class="n">q</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">fv</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">linexpr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                    <span class="n">fv</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="k">if</span> <span class="n">fv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">linexpr</span><span class="p">[</span><span class="n">fv</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">print_plus_sign</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">elif</span> <span class="n">linexpr</span><span class="o">.</span><span class="n">constant</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">print_plus_sign</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="c1"># ---</span>
+            <span class="k">if</span> <span class="n">use_space</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">print_plus_sign</span><span class="p">:</span>
+                <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">use_space</span><span class="p">:</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">SP</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">to_stringio</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">nb_digits</span><span class="p">,</span> <span class="n">prod_symbol</span><span class="p">,</span> <span class="n">use_space</span><span class="p">,</span> <span class="n">var_namer</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">minus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">rminus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># other - self</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">negate</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">other</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_expr</span><span class="p">()</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ZeroExpr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">other</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">constant</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">k</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_expr</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">k</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">other</span> <span class="o">*</span> <span class="n">k</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="n">cloned</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">minus</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># e - self</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rsubtract</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># self is modified</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotient</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__idiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_divide</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotient</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">negate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># increment the QuadExpr with some other argument</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QuadExpr</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_quad</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">self_linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">self_linexpr</span><span class="p">,</span> <span class="n">ZeroExpr</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rsubtract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># to compute (other - self) we copy self, negate the copy and add other</span>
+        <span class="c1"># result is always cloned even if other is zero (optimization possible here)</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">negate</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">subtract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QuadExpr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subtract_quad</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">negate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: negate sall coefficients, modify self</span>
+        <span class="n">qterms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span>
+        <span class="k">for</span> <span class="n">qvp</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">qterms</span><span class="p">):</span>
+            <span class="n">qterms</span><span class="p">[</span><span class="n">qvp</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">qk</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">negate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">multiply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="n">this_constant</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">get_constant</span><span class="p">()</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">this_constant</span><span class="p">:</span>
+                <span class="c1"># do nothing</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_assign_scaled</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">this_constant</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot multiply {0!s} by {1!s}, exponent would be greater than 2. A variable&#39;s exponent can be at most 2&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">quotient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_as_denominator</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">_divide</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+    <span class="k">def</span> <span class="nf">_divide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_as_denominator</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>  <span class="c1"># only a nonzero number is allowed...</span>
+        <span class="n">inverse</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">other</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="p">(</span><span class="n">inverse</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: scales a quad expr from a numeric constant.</span>
+        <span class="c1"># no checks done!</span>
+        <span class="c1"># this method modifies self.</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">factor</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">factor</span><span class="p">:</span>
+            <span class="c1"># nothing to do</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># scale quads</span>
+            <span class="n">self_quadterms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span>
+            <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+                <span class="n">self_quadterms</span><span class="p">[</span><span class="n">qv</span><span class="p">]</span> <span class="o">=</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">qk</span>
+            <span class="c1"># scale linear part</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">_scale</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_assign_scaled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">AbstractLinearExpr</span><span class="p">,</span> <span class="n">Var</span><span class="p">)):</span>
+            <span class="n">scaled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">force_clone</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="n">scaled</span> <span class="o">*=</span> <span class="n">factor</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span> <span class="o">=</span> <span class="n">scaled</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">QuadExpr</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_add_one_quad_term</span><span class="p">(</span><span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="o">*</span> <span class="n">factor</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_assign_scaled</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">linear_part</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_add_one_quad_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span><span class="p">):</span>
+        <span class="n">qterms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span>
+        <span class="k">if</span> <span class="n">qv</span> <span class="ow">in</span> <span class="n">qterms</span><span class="p">:</span>
+            <span class="n">new_qk</span> <span class="o">=</span> <span class="n">qterms</span><span class="p">[</span><span class="n">qv</span><span class="p">]</span> <span class="o">+</span> <span class="n">qk</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">new_qk</span><span class="p">:</span>
+                <span class="n">qterms</span><span class="p">[</span><span class="n">qv</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_qk</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">qterms</span><span class="p">[</span><span class="n">qv</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">qterms</span><span class="p">[</span><span class="n">qv</span><span class="p">]</span> <span class="o">=</span> <span class="n">qk</span>
+
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quadterms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qterms_dict_type</span><span class="p">()</span>  <span class="c1"># clear quads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_expr</span><span class="p">()</span>
+
+    <span class="c1"># quad-specific</span>
+    <span class="k">def</span> <span class="nf">_add_quad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_quad</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">oqv</span><span class="p">,</span> <span class="n">oqk</span> <span class="ow">in</span> <span class="n">other_quad</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_one_quad_term</span><span class="p">(</span><span class="n">oqv</span><span class="p">,</span> <span class="n">oqk</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_subtract_quad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_quad</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">oqv</span><span class="p">,</span> <span class="n">oqk</span> <span class="ow">in</span> <span class="n">other_quad</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_one_quad_term</span><span class="p">(</span><span class="n">oqv</span><span class="p">,</span> <span class="o">-</span><span class="n">oqk</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_linear_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_quadratic</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">(</span>
+                <span class="s2">&quot;quadratic expression [{0!s}] cannot be converted to a linear expression&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linexpr</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_is_normal_form</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">qk</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>  <span class="c1"># pragma: no cover</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c1"># --- relational operators</span>
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quadratic_constraint_not_implemented</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">EQ</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quadratic_constraint_not_implemented</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">LE</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quadratic_constraint_not_implemented</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">GE</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_quadratic_constraint_not_implemented</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">ctype</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Quadratic constraints are not implemented (yet)&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM®.
+    </div>
+  </body>
+</html>

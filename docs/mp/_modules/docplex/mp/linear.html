@@ -63,10 +63,10 @@
 
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="kn">import</span> <span class="n">ModelingObject</span><span class="p">,</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">ZeroExpr</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="kn">import</span> <span class="n">ModelingObject</span><span class="p">,</span> <span class="n">Expr</span><span class="p">,</span> <span class="n">ModelingObjectBase</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.vartype</span> <span class="kn">import</span> <span class="n">BinaryVarType</span><span class="p">,</span> <span class="n">IntegerVarType</span><span class="p">,</span> <span class="n">ContinuousVarType</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.xcounter</span> <span class="kn">import</span> <span class="n">ExprCounter</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.xcounter</span> <span class="kn">import</span> <span class="n">ExprCounter</span><span class="p">,</span> <span class="n">FastOrderedDict</span>
 
 
 <div class="viewcode-block" id="Var"><a class="viewcode-back" href="../../../docplex.mp.linear.html#docplex.mp.linear.Var">[docs]</a><span class="k">class</span> <span class="nc">Var</span><span class="p">(</span><span class="n">ModelingObject</span><span class="p">):</span>
@@ -219,6 +219,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span>
 
+    <span class="k">def</span> <span class="nf">get_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span>
+
+    <span class="k">def</span> <span class="nf">set_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_vartype</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">set_var_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_vartype</span><span class="p">)</span>
+
+
     <span class="k">def</span> <span class="nf">has_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vartype</span><span class="p">):</span>
         <span class="c1"># internal</span>
         <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="p">)</span> <span class="o">==</span> <span class="n">vartype</span>
@@ -356,7 +363,7 @@
 
     <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
         <span class="c1"># e - self</span>
-        <span class="n">expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>  <span class="c1"># makes a clone.</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model</span><span class="p">()</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">force_clone</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>  <span class="c1"># makes a clone.</span>
         <span class="k">return</span> <span class="n">expr</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">divide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
@@ -384,7 +391,7 @@
 
     <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># the &quot;-e&quot; unary minus returns a linear expression</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">power</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
@@ -465,6 +472,10 @@
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_set_vartype_internal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_vartype</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span> <span class="o">=</span> <span class="n">new_vartype</span>
 
     <span class="k">def</span> <span class="nf">_name_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_generated</span><span class="p">():</span>
@@ -583,6 +594,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model</span><span class="p">()</span><span class="o">.</span><span class="n">ge_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
 
 
+
 <span class="k">class</span> <span class="nc">MonomialExpr</span><span class="p">(</span><span class="n">AbstractLinearExpr</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">raw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coef</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dvar</span><span class="o">.</span><span class="n">solution_value</span>
@@ -596,7 +608,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>  <span class="c1"># faster than to call recursively init methods...</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_dvar</span> <span class="o">=</span> <span class="n">dvar</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_coef</span> <span class="o">=</span> <span class="n">coeff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_coef</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">to_valid_number</span><span class="p">(</span><span class="n">coeff</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">dvar</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.times()&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">number_of_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="mi">1</span>
@@ -667,9 +679,7 @@
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">rminus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">e</span> <span class="ow">is</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span>
-        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
             <span class="c1"># e might be a fancy numpy type</span>
             <span class="k">if</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">e</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span>
@@ -677,7 +687,7 @@
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_expr</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># return a fresh instance</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coef</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coef</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">LinearExpr</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
@@ -696,7 +706,7 @@
     <span class="k">def</span> <span class="nf">quotient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_as_denominator</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
         <span class="n">inverse</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coef</span> <span class="o">*</span> <span class="n">inverse</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coef</span> <span class="o">*</span> <span class="n">inverse</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
@@ -788,18 +798,12 @@
 <span class="sd">    either using operators or using `Model.linear_expr()`.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">_private_instance_counter</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">_private_clone_counter</span> <span class="o">=</span> <span class="mi">0</span>
 
     <span class="c1"># what type to use for merging dicts</span>
     <span class="n">counter_type</span> <span class="o">=</span> <span class="n">ExprCounter</span>
 
     <span class="c1"># what type to use for storing terms</span>
     <span class="n">term_dict_type</span> <span class="o">=</span> <span class="n">OrderedDict</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">number_of_instances</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">LinearExpr</span><span class="o">.</span><span class="n">_private_instance_counter</span>  <span class="c1"># pragma: no cover</span>
 
 
     <span class="nd">@staticmethod</span>
@@ -849,17 +853,18 @@
         <span class="c1"># INTERNAL: builds a new terms dict.</span>
         <span class="k">return</span> <span class="n">dict_type</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
 
-    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;_constant&quot;</span><span class="p">,</span> <span class="s2">&quot;__terms&quot;</span><span class="p">,</span> <span class="s2">&quot;private_instance_counter&quot;</span><span class="p">,</span> <span class="s2">&quot;_transient&quot;</span><span class="p">)</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_constant&#39;</span><span class="p">,</span> <span class="s1">&#39;__terms&#39;</span><span class="p">,</span> <span class="s1">&#39;_transient&#39;</span><span class="p">,</span> <span class="s1">&#39;_refcnt&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="n">Expr</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="c1"># a global counter for performance measurement</span>
-        <span class="n">LinearExpr</span><span class="o">.</span><span class="n">_private_instance_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">_linexpr_instance_counter</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="c1"># &quot;calling LinearExpr ctor, k=%d&quot; % LinearExpr.InstanceCounter)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">safe</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">constant</span><span class="p">:</span>
             <span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">constant</span><span class="p">,</span> <span class="s1">&#39;LinearExpr()&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="n">constant</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_transient</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_refcnt</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">safe</span><span class="p">:</span>
@@ -876,7 +881,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_terms_dict</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">e</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span><span class="p">[</span><span class="n">e</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">+=</span> <span class="n">e</span>
@@ -903,14 +910,24 @@
                 <span class="n">model</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span><span class="p">[</span><span class="n">o</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 
-        <span class="k">elif</span> <span class="n">e</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">pass</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Cannot convert {1!s} to docplex.mp.LinearExpr, instance: {0!s}&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">_check_mutable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refcnt</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;An expression used in constraints is not mutable: {0!s}&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">notify_used</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_refcnt</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_is_mutable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refcnt</span>
+
     <span class="k">def</span> <span class="nf">clone_if_necessary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1">#  INTERNAL</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transient</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_clone_transient_exprs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transient</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_clone_transient_exprs</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_mutable</span><span class="p">():</span>
             <span class="k">return</span> <span class="bp">self</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
@@ -935,9 +952,9 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            A copy of the expression on the same model.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">LinearExpr</span><span class="o">.</span><span class="n">_private_clone_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_linexpr_clone_counter</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">cloned_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">term_dict_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__terms</span><span class="p">)</span>  <span class="c1"># faster than copy() on OrderedDict()</span>
-        <span class="n">cloned</span> <span class="o">=</span> <span class="n">LinearExpr</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="n">cloned_terms</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_constant</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="n">LinearExpr</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">,</span> <span class="n">e</span><span class="o">=</span><span class="n">cloned_terms</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_constant</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">cloned</span></div>
 
     <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_mapping</span><span class="p">):</span>
@@ -962,6 +979,7 @@
 <span class="sd">            The modified self.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span>
         <span class="n">self_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">self_terms</span><span class="p">):</span>
@@ -973,6 +991,7 @@
 
 <span class="sd">        All variables and coefficients are removed and the constant term is set to zero.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_terms_dict</span><span class="p">()</span>
 
@@ -1036,6 +1055,7 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
     <span class="k">def</span> <span class="nf">_add_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">coef</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="c1"># INTERNAL</span>
         <span class="k">if</span> <span class="n">coef</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">self_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span>
@@ -1049,6 +1069,7 @@
                     <span class="k">del</span> <span class="n">self_terms</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">_add_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="n">old_coeff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="n">new_coef</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">old_coeff</span>
         <span class="k">if</span> <span class="n">new_coef</span><span class="p">:</span>  <span class="c1"># nonzero is True</span>
@@ -1071,6 +1092,7 @@
         <span class="k">return</span> <span class="bp">self</span></div>
 
     <span class="k">def</span> <span class="nf">_remove_term</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="c1"># INTERNAL</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span>
 
@@ -1081,6 +1103,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span></div>
 
     <span class="k">def</span> <span class="nf">set_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numval</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="n">numval</span>
 
     <span class="n">constant</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_constant</span><span class="p">,</span> <span class="n">set_constant</span><span class="p">)</span>
@@ -1179,6 +1202,7 @@
 <span class="sd">        :param other_expr:</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">constant</span> <span class="o">+=</span> <span class="n">other_expr</span><span class="o">.</span><span class="n">constant</span>
         <span class="c1"># merge term dictionaries</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">other_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
@@ -1186,6 +1210,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_term</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_add_expr_scaled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="c1"># INTERNAL</span>
         <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">factor</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">constant</span> <span class="o">+=</span> <span class="n">expr</span><span class="o">.</span><span class="n">constant</span> <span class="o">*</span> <span class="n">factor</span>
@@ -1212,16 +1237,17 @@
 
 <span class="sd">        PROOFREAD</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_var</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">+=</span> <span class="n">e</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">LinearExpr</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_expr</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">MonomialExpr</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_term</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">_coef</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">ZeroExpr</span><span class="p">):</span>
             <span class="k">pass</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">+=</span> <span class="n">e</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Expr</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">DOCPlexQuadraticArithException</span>
         <span class="k">else</span><span class="p">:</span>
@@ -1257,6 +1283,7 @@
 
 <span class="sd">        PROOFREAD</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_add_term</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
@@ -1287,6 +1314,7 @@
     <span class="k">def</span> <span class="nf">_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
         <span class="c1"># INTERNAL: used my multiply</span>
         <span class="c1"># this method modifies self.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">factor</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
         <span class="k">elif</span> <span class="n">factor</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
@@ -1312,6 +1340,7 @@
 
 <span class="sd">        PROOFREAD</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_mutable</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_scale</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">LinearExpr</span><span class="p">):</span>
@@ -1327,7 +1356,7 @@
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_qfactory</span><span class="o">.</span><span class="n">new_var_product</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">MonomialExpr</span><span class="p">):</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_monomial_expr</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">_coef</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_monomial_expr</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">_dvar</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">_coef</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_qfactory</span><span class="o">.</span><span class="n">new_linexpr_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">ZeroExpr</span><span class="p">):</span>
@@ -1642,6 +1671,8 @@
 <span class="k">class</span> <span class="nc">AbstractLinearConstraint</span><span class="p">(</span><span class="n">AbstractConstraint</span><span class="p">):</span>
     <span class="c1"># INTERNAL:  base class for linear constraints</span>
 
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="n">AbstractConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
 
@@ -1674,10 +1705,9 @@
         <span class="n">AbstractLinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span> <span class="o">=</span> <span class="n">ctype</span>
         <span class="c1"># noinspection PyPep8</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>  <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">left_expr</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">right_expr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>  <span class="o">=</span> <span class="n">left_expr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span> <span class="o">=</span> <span class="n">right_expr</span>
 
-        <span class="n">model</span><span class="o">.</span><span class="n">_check_both_in_selfmodel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">,</span> <span class="s2">&quot;linear constraint&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">is_trivial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Checks whether the constraint is equivalent to a comparison between numbers.</span>
@@ -1872,8 +1902,13 @@
 
 <span class="k">class</span> <span class="nc">_DummyFeasibleConstraint</span><span class="p">(</span><span class="n">LinearConstraint</span><span class="p">):</span>
     <span class="c1"># INTERNAL</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero_expr</span><span class="p">):</span>
-        <span class="n">LinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero_expr</span><span class="p">,</span> <span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;_dummy_feasible_ct_&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero_expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">ctname</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;dummy_feasible_ct&quot;</span>
+        <span class="n">LinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+                                  <span class="n">left_expr</span><span class="o">=</span><span class="n">zero_expr</span><span class="p">,</span>
+                                  <span class="n">ctype</span><span class="o">=</span><span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span>
+                                  <span class="n">right_expr</span><span class="o">=</span><span class="n">zero_expr</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="n">ctname</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.LinearConstraint._TrivialFeasible&quot;</span>
@@ -1881,8 +1916,12 @@
 
 <span class="k">class</span> <span class="nc">_DummyInfeasibleConstraint</span><span class="p">(</span><span class="n">LinearConstraint</span><span class="p">):</span>
     <span class="c1"># INTERNAL</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero</span><span class="p">):</span>
-        <span class="n">LinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero</span><span class="p">,</span> <span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;_dummy_infeasible_ct_&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero</span><span class="p">,</span> <span class="n">one</span><span class="p">):</span>
+        <span class="n">LinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+                                  <span class="n">left_expr</span><span class="o">=</span><span class="n">zero</span><span class="p">,</span>
+                                  <span class="n">ctype</span><span class="o">=</span><span class="n">LinearConstraintType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span>
+                                  <span class="n">right_expr</span><span class="o">=</span><span class="n">one</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_dummy_infeasible_ct_&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.LinearConstraint.TrivialInfeasible&quot;</span>
@@ -1906,7 +1945,7 @@
         <span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">ub</span><span class="p">,</span> <span class="s1">&#39;RangeConstraint.ub&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span> <span class="o">=</span> <span class="n">ub</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span> <span class="o">=</span> <span class="n">lb</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">_to_linear_expr</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span> <span class="o">=</span> <span class="n">expr</span>
 
     <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">!=</span> <span class="n">RangeConstraint</span><span class="p">:</span>
@@ -2151,6 +2190,142 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># try a python sum ?</span>
         <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x_list</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ZeroExpr</span><span class="p">(</span><span class="n">AbstractLinearExpr</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">is_zero</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c1"># INTERNAL</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="n">ModelingObjectBase</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>  <span class="c1"># this is not cloned.</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ZeroExpr</span><span class="p">(</span><span class="n">target_model</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_linear_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>  <span class="c1"># this is a linear expr.</span>
+
+    <span class="k">def</span> <span class="nf">number_of_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">iter_emptyset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">iter_terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">iter_emptyset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">is_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">is_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">unchecked_get_coef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">contains_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">constant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># for compatibility</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+
+    <span class="k">def</span> <span class="nf">negate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># noinspection PyMethodMayBeStatic</span>
+    <span class="k">def</span> <span class="nf">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">e</span>
+
+
+    <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="c1"># noinspection PyMethodMayBeStatic</span>
+    <span class="k">def</span> <span class="nf">minus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">e</span>
+        <span class="c1"># expr = e.to_linear_expr().clone()</span>
+        <span class="c1"># expr.negate()</span>
+        <span class="c1"># return expr</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nb_digits</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">prod_symbol</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">use_space</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;0&quot;</span>
+
+    <span class="k">def</span> <span class="nf">to_stringio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oss</span><span class="p">,</span> <span class="n">nb_digits</span><span class="p">,</span> <span class="n">prod_symbol</span><span class="p">,</span> <span class="n">use_space</span><span class="p">,</span> <span class="n">var_namer</span><span class="o">=</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+
+    <span class="c1"># arithmetic</span>
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">minus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># e - 0 = e !</span>
+        <span class="k">return</span> <span class="n">e</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">other</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">other</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_divide</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># for py3</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__div__</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">_divide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">typecheck_as_denominator</span><span class="p">(</span><span class="n">numerator</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">denominator</span><span class="o">=</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.ZeroExpr()&quot;</span>
+
+    <span class="k">def</span> <span class="nf">equals_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ZeroExpr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model</span><span class="p">()</span><span class="o">.</span><span class="n">ge_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model</span><span class="p">()</span><span class="o">.</span><span class="n">le_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model</span><span class="p">()</span><span class="o">.</span><span class="n">eq_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">square</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="c1"># arithmetci to self</span>
+    <span class="n">add</span> <span class="o">=</span> <span class="n">plus</span>
+    <span class="n">subtract</span> <span class="o">=</span> <span class="n">minus</span>
+    <span class="n">tmultiply</span> <span class="o">=</span> <span class="n">times</span>
+
+    <span class="k">def</span> <span class="nf">_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
 </pre></div>
 
           </div>

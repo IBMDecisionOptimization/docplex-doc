@@ -26,6 +26,7 @@
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="DOcplex.CP: Constraint Programming Modeling for Python V1.0 documentation" href="index.html" />
     <link rel="up" title="docplex.cp reference manual" href="refman.html" />
+    <link rel="next" title="docplex.cp.config.py module" href="docplex.cp.config.py.html" />
     <link rel="prev" title="docplex.cp.parameters.py module" href="docplex.cp.parameters.py.html" /> 
   </head>
   <body role="document">
@@ -38,6 +39,9 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
+        <li class="right" >
+          <a href="docplex.cp.config.py.html" title="docplex.cp.config.py module"
+             accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="docplex.cp.parameters.py.html" title="docplex.cp.parameters.py module"
              accesskey="P">previous</a> |</li>
@@ -65,8 +69,10 @@
 <li>CpoIntervalVarSolution: solution of an interval variable,</li>
 <li>CpoSequenceVarSolution: solution of a sequence variable,</li>
 <li>CpoStateFunctionSolution: solution of a state function, and</li>
-<li>CpoModelSolution: aggregation of all individual model element solutions,
-plus some other information regarding the solve.</li>
+<li>CpoModelSolution: aggregation of all individual model element solutions,</li>
+<li>CpoSolveResult: result of a model solve, including model solution and other associated information
+(solve details, log, etc)</li>
+<li>CpoRefineConflictResult: result of an invocation of the conflict refiner.</li>
 </ul>
 </div></blockquote>
 <dl class="class">
@@ -74,16 +80,36 @@ plus some other information regarding the solve.</li>
 <em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoIntVarSolution</code><span class="sig-paren">(</span><em>name</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntVarSolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntVarSolution" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#docplex.cp.solution.CpoVarSolution" title="docplex.cp.solution.CpoVarSolution"><code class="xref py py-class docutils literal"><span class="pre">docplex.cp.solution.CpoVarSolution</span></code></a></p>
 <p>Solution to an integer variable.</p>
-<p>Creates a new int variable solution.</p>
-<dl class="method">
-<dt id="docplex.cp.solution.CpoIntVarSolution.get_value">
-<code class="descname">get_value</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntVarSolution.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntVarSolution.get_value" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the variable value.</p>
+<p>Creates a new integer variable solution.</p>
+<p>The solution can be complete if the value is a single integer, or partial if the value
+is a domain, expressed as</p>
+<blockquote>
+<div><ul class="simple">
+<li>a list of integers or tuples denoting possible values or intervals</li>
+<li>a single tuple denoting a single interval</li>
+</ul>
+</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Variable value (integer).</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; Variable name</li>
+<li><strong>value</strong> &#8211; Variable value, or domain if not completely instantiated</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="docplex.cp.solution.CpoIntVarSolution.get_value">
+<code class="descname">get_value</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntVarSolution.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntVarSolution.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the variable value, or domain if partially instantiated.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Variable value (integer), or domain (list of integers or intervals)</td>
 </tr>
 </tbody>
 </table>
@@ -93,20 +119,22 @@ plus some other information regarding the solve.</li>
 
 <dl class="class">
 <dt id="docplex.cp.solution.CpoIntervalVarSolution">
-<em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoIntervalVarSolution</code><span class="sig-paren">(</span><em>name</em>, <em>present</em>, <em>start=0</em>, <em>end=0</em>, <em>size=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntervalVarSolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntervalVarSolution" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoIntervalVarSolution</code><span class="sig-paren">(</span><em>name</em>, <em>presence=None</em>, <em>start=None</em>, <em>end=None</em>, <em>size=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntervalVarSolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntervalVarSolution" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#docplex.cp.solution.CpoVarSolution" title="docplex.cp.solution.CpoVarSolution"><code class="xref py py-class docutils literal"><span class="pre">docplex.cp.solution.CpoVarSolution</span></code></a></p>
 <p>Solution to an interval variable.</p>
 <p>Creates a new interval variable solution.</p>
+<p>The solution can be complete if all attribute values are integers, or partial if at least one
+of them is an interval expressed as a tuple.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>name</strong> &#8211; Name of the variable.</li>
-<li><strong>present</strong> &#8211; Present interval indicator.</li>
-<li><strong>start</strong> &#8211; Value of start.</li>
-<li><strong>end</strong> &#8211; Value of end.</li>
-<li><strong>size</strong> &#8211; Value of size.</li>
+<li><strong>presence</strong> &#8211; Presence indicator (true for present, false for absent, None for undetermined). Default is None.</li>
+<li><strong>start</strong> &#8211; Value of start, or tuple representing the start range</li>
+<li><strong>end</strong> &#8211; Value of end, or tuple representing the end range</li>
+<li><strong>size</strong> &#8211; Value of size, or tuple representing the size range</li>
 </ul>
 </td>
 </tr>
@@ -169,6 +197,34 @@ plus some other information regarding the solve.</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="docplex.cp.solution.CpoIntervalVarSolution.is_absent">
+<code class="descname">is_absent</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntervalVarSolution.is_absent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntervalVarSolution.is_absent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets whether the interval is absent.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if interval is absent.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoIntervalVarSolution.is_optional">
+<code class="descname">is_optional</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntervalVarSolution.is_optional"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntervalVarSolution.is_optional" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets whether the interval is optional.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if interval is optional.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="docplex.cp.solution.CpoIntervalVarSolution.is_present">
 <code class="descname">is_present</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoIntervalVarSolution.is_present"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoIntervalVarSolution.is_present" title="Permalink to this definition">¶</a></dt>
 <dd><p>Gets whether the interval is present.</p>
@@ -188,19 +244,76 @@ plus some other information regarding the solve.</li>
 <dt id="docplex.cp.solution.CpoModelSolution">
 <em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoModelSolution</code><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>Solution to a constraint programming model.</p>
-<p>The elements of the solutions are accessible through the different accessors that are
-provided by this class.
-For convenience reasons, more direct access is possible using the following attributes:</p>
+<p>Solution of a model.</p>
+<p>This object represent a solution of a the model. It contains the solutions of model variables,
+handled in a map whose key is variable name, and value is
+either CpoIntVarSolution, CpoIntervalVarSolution, CpoSequenceVarSolution, CpoStateFunctionSolution.</p>
+<p>This object is used to handle a complete solution, where every variable has a final solution,
+but also partial solutions where not all variables are defined, and/or with domains instead of discrete value.</p>
+<p>Creates a new empty model solution.</p>
+<dl class="method">
+<dt id="docplex.cp.solution.CpoModelSolution.add_integer_var_solution">
+<code class="descname">add_integer_var_solution</code><span class="sig-paren">(</span><em>name</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.add_integer_var_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.add_integer_var_solution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new integer variable solution.</p>
+<p>The solution can be complete if the value is a single integer, or partial if the value
+is a domain, expressed as</p>
 <blockquote>
 <div><ul class="simple">
-<li>vars: Dictionary of all variables solutions. Key is variable name, value is
-either CpoIntVarSolution, CpoIntervalVarSolution, CpoSequenceVarSolution, CpoStateFunctionSolution.</li>
-<li>parameters: Map of solving parameters. Key is parameter name, value is string, int or float.</li>
-<li>infos: Map of solving information. Key is attribute name, value is string, int or float</li>
+<li>a list of integers or tuples denoting possible values or intervals</li>
+<li>a single tuple denoting a single interval</li>
 </ul>
 </div></blockquote>
-<p>Creates a new empty solution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; Variable name</li>
+<li><strong>value</strong> &#8211; Variable value, or domain if not completely instantiated</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoModelSolution.add_interval_var_solution">
+<code class="descname">add_interval_var_solution</code><span class="sig-paren">(</span><em>name</em>, <em>presence=None</em>, <em>start=None</em>, <em>end=None</em>, <em>size=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.add_interval_var_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.add_interval_var_solution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new interval variable solution.</p>
+<p>The solution can be complete if all attribute values are integers, or partial if at least one
+of them is an interval expressed as a tuple.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; Name of the variable.</li>
+<li><strong>presence</strong> &#8211; Presence indicator (true for present, false for absent, None for undetermined). Default is None.</li>
+<li><strong>start</strong> &#8211; Value of start, or tuple representing the start range</li>
+<li><strong>end</strong> &#8211; Value of end, or tuple representing the end range</li>
+<li><strong>size</strong> &#8211; Value of size, or tuple representing the size range</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoModelSolution.add_var_solution">
+<code class="descname">add_var_solution</code><span class="sig-paren">(</span><em>vsol</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.add_var_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.add_var_solution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a variable solution to this model solution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vsol</strong> &#8211; Variable solution</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="docplex.cp.solution.CpoModelSolution.get_all_var_solutions">
 <code class="descname">get_all_var_solutions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_all_var_solutions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_all_var_solutions" title="Permalink to this definition">¶</a></dt>
@@ -216,106 +329,6 @@ either CpoIntVarSolution, CpoIntervalVarSolution, CpoSequenceVarSolution, CpoSta
 </dd></dl>
 
 <dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_fail_status">
-<code class="descname">get_fail_status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_fail_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_fail_status" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the solving fail status.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Fail status, values in ALL_FAIL_STATUSES.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_info">
-<code class="descname">get_info</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets a particular information attribute.
-Semantically equivalent to <cite>info[name]</cite> on this object, except that it returns None if not found.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Information attribute value, None if not found.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_infos">
-<code class="descname">get_infos</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_infos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_infos" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the complete dictionary of information attributes.
-Identical to get the attribute &#8216;info&#8217; of this object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary of information attributes.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_number_of_constraints">
-<code class="descname">get_number_of_constraints</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_number_of_constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_number_of_constraints" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the number of constraints in the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of constraints.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_number_of_integer_vars">
-<code class="descname">get_number_of_integer_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_number_of_integer_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_number_of_integer_vars" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the number of integer variables in the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of integer variables.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_number_of_interval_vars">
-<code class="descname">get_number_of_interval_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_number_of_interval_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_number_of_interval_vars" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the number of interval variables in the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of interval variables.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_number_of_sequence_vars">
-<code class="descname">get_number_of_sequence_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_number_of_sequence_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_number_of_sequence_vars" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the number of sequence variables in the model.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of sequence variables.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="docplex.cp.solution.CpoModelSolution.get_objective_values">
 <code class="descname">get_objective_values</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_objective_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_objective_values" title="Permalink to this definition">¶</a></dt>
 <dd><p>Gets the numeric values of all objectives.</p>
@@ -324,78 +337,6 @@ Identical to get the attribute &#8216;info&#8217; of this object.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Array of all objective values, None if none.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_parameter">
-<code class="descname">get_parameter</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_parameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_parameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get a particular solving parameter.
-Semantically equivalent to &#8216;parameters[name]&#8217; on this object, except that it returns None if not found.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Parameter value, None if not found.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_parameters">
-<code class="descname">get_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_parameters" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the complete dictionary of solving parameters.
-Identical to get the attribute <cite>parameters</cite> of this object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary of parameters.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_solve_status">
-<code class="descname">get_solve_status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_solve_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_solve_status" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the solve status.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Solve status, values in ALL_SOLVE_STATUSES.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_solve_time">
-<code class="descname">get_solve_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_solve_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_solve_time" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the solve time required for this solution.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">(float) Solve time in seconds.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.get_solver_log">
-<code class="descname">get_solver_log</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.get_solver_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.get_solver_log" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets the solver log.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Solver log as a string, None if unknown.</td>
 </tr>
 </tbody>
 </table>
@@ -438,36 +379,6 @@ For StateFunction, value is list of steps.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.is_solution">
-<code class="descname">is_solution</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.is_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.is_solution" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if this descriptor contains a valid solution to the problem.</p>
-<p>A solution is present if the solve status is &#8216;Feasible&#8217; or &#8216;Optimal&#8217;.
-Optimality of the solution should be tested with <cite>is_solution_optimal()</cite>.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if there is a solution.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="docplex.cp.solution.CpoModelSolution.is_solution_optimal">
-<code class="descname">is_solution_optimal</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.is_solution_optimal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.is_solution_optimal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Checks if this descriptor contains an optimal solution to the problem.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if there is an optimal solution.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="docplex.cp.solution.CpoModelSolution.print_solution">
 <code class="descname">print_solution</code><span class="sig-paren">(</span><em>out=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoModelSolution.print_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoModelSolution.print_solution" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prints the solution on a given output.</p>
@@ -476,6 +387,126 @@ Optimality of the solution should be tested with <cite>is_solution_optimal()</ci
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>out</strong> &#8211; Target output stream or output file, standard output if not given.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="docplex.cp.solution.CpoRefineConflictResult">
+<em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoRefineConflictResult</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRefineConflictResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRefineConflictResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.cp.solution.CpoRunResult" title="docplex.cp.solution.CpoRunResult"><code class="xref py py-class docutils literal"><span class="pre">docplex.cp.solution.CpoRunResult</span></code></a></p>
+<p>Model conflict refiner result.</p>
+<p>A conflict is a subset of the constraints and/or variables of the model which are
+mutually contradictory.</p>
+<p>The conflict refiner first examines the full infeasible model to identify portions of the conflict
+that it can remove. By this process of refinement, the conflict refiner arrives at a minimal conflict.
+A minimal conflict is usually smaller than the full infeasible model and thus makes infeasibility analysis easier.
+Since the conflict is minimal, removal of any one of these constraints will remove that particular cause
+for infeasibility.
+There may be other conflicts in the model; consequently, repair of a given conflict does not guarantee
+feasibility of the remaining model.
+If a model happens to include multiple independent causes of infeasibility,
+then it may be necessary for the user to repair one such cause and then repeat the diagnosis with further
+conflict analysis.</p>
+<p>Creates a new empty conflict refiner result.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>model</strong> &#8211; Related model</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="docplex.cp.solution.CpoRefineConflictResult.get_all_member_constraints">
+<code class="descname">get_all_member_constraints</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRefineConflictResult.get_all_member_constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRefineConflictResult.get_all_member_constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of all constraints that are certainly member of the conflict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of model constraints (class CpoExpr) certainly member of the conflict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoRefineConflictResult.get_all_member_variables">
+<code class="descname">get_all_member_variables</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRefineConflictResult.get_all_member_variables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRefineConflictResult.get_all_member_variables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of all variables that are certainly member of the conflict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of model variables (class CpoVariable) certainly member of the conflict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoRefineConflictResult.get_all_possible_constraints">
+<code class="descname">get_all_possible_constraints</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRefineConflictResult.get_all_possible_constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRefineConflictResult.get_all_possible_constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of all constraints that are possibly member of the conflict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of model constraints (class CpoExpr) possibly member of the conflict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoRefineConflictResult.get_all_possible_variables">
+<code class="descname">get_all_possible_variables</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRefineConflictResult.get_all_possible_variables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRefineConflictResult.get_all_possible_variables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the list of all variables that are possibly member of the conflict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of model variables (class CpoVariable) possibly member of the conflict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoRefineConflictResult.print_conflict">
+<code class="descname">print_conflict</code><span class="sig-paren">(</span><em>out=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRefineConflictResult.print_conflict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRefineConflictResult.print_conflict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints this conflict on a given output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>out</strong> &#8211; Target output stream or output file, standard output if not given.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="docplex.cp.solution.CpoRunResult">
+<em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoRunResult</code><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRunResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRunResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Abstract class representing a run result.</p>
+<p>Creates a new run result.</p>
+<dl class="method">
+<dt id="docplex.cp.solution.CpoRunResult.get_solver_log">
+<code class="descname">get_solver_log</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoRunResult.get_solver_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoRunResult.get_solver_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the solver log.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Solver log as a string, None if unknown.</td>
 </tr>
 </tbody>
 </table>
@@ -520,6 +551,300 @@ Optimality of the solution should be tested with <cite>is_solution_optimal()</ci
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of CpoIntervalVarSolution of this sequence.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="docplex.cp.solution.CpoSolveResult">
+<em class="property">class </em><code class="descclassname">docplex.cp.solution.</code><code class="descname">CpoSolveResult</code><span class="sig-paren">(</span><em>model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.cp.solution.CpoRunResult" title="docplex.cp.solution.CpoRunResult"><code class="xref py py-class docutils literal"><span class="pre">docplex.cp.solution.CpoRunResult</span></code></a></p>
+<p>Model solve result.</p>
+<p>This object contains all the elements composing a solve result:</p>
+<blockquote>
+<div><ul class="simple">
+<li>solve status,</li>
+<li>solver parameters,</li>
+<li>solver information</li>
+<li>output log</li>
+<li>solution, if any</li>
+</ul>
+</div></blockquote>
+<p>For convenience and compatibility, retrieving solution elements is made available directly from
+this solve result using direct accessors.</p>
+<p>Creates a new empty solve result.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>model</strong> &#8211; Related model</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_all_var_solutions">
+<code class="descname">get_all_var_solutions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_all_var_solutions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_all_var_solutions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the list of all variable solutions from this model solution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of all variable solutions (class CpoVarSolution).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_fail_status">
+<code class="descname">get_fail_status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_fail_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_fail_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the solving fail status.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Fail status, values in ALL_FAIL_STATUSES.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_info">
+<code class="descname">get_info</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a particular information attribute.
+Semantically equivalent to <cite>info[name]</cite> on this object, except that it returns None if not found.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Information attribute value, None if not found.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_infos">
+<code class="descname">get_infos</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_infos"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_infos" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the complete dictionary of information attributes.
+Identical to get the attribute &#8216;info&#8217; of this object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary of information attributes.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_number_of_constraints">
+<code class="descname">get_number_of_constraints</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_number_of_constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_number_of_constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the number of constraints in the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of constraints.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_number_of_integer_vars">
+<code class="descname">get_number_of_integer_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_number_of_integer_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_number_of_integer_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the number of integer variables in the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of integer variables.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_number_of_interval_vars">
+<code class="descname">get_number_of_interval_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_number_of_interval_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_number_of_interval_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the number of interval variables in the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of interval variables.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_number_of_sequence_vars">
+<code class="descname">get_number_of_sequence_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_number_of_sequence_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_number_of_sequence_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the number of sequence variables in the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of sequence variables.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_objective_values">
+<code class="descname">get_objective_values</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_objective_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_objective_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the numeric values of all objectives.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Array of all objective values, None if none.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_parameter">
+<code class="descname">get_parameter</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_parameter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_parameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a particular solving parameter.
+Semantically equivalent to &#8216;parameters[name]&#8217; on this object, except that it returns None if not found.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Parameter value, None if not found.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_parameters">
+<code class="descname">get_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the complete dictionary of solving parameters.
+Identical to get the attribute <cite>parameters</cite> of this object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary of parameters.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_solve_status">
+<code class="descname">get_solve_status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_solve_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_solve_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the solve status.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Solve status, values in ALL_SOLVE_STATUSES.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_solve_time">
+<code class="descname">get_solve_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_solve_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_solve_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the solve time required for this solution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">(float) Solve time in seconds.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_value">
+<code class="descname">get_value</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of a variable.</p>
+<p>For IntVar, value is an integer.
+For IntervalVar, value is a tuple (start, end, size), () if absent.
+For SequenceVar, value is list of interval variable solutions.
+For StateFunction, value is list of steps.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; Variable name, or model variable descriptor.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Variable value, None if variable not found.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.get_var_solution">
+<code class="descname">get_var_solution</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.get_var_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.get_var_solution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a variable solution from this model solution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; Variable name or variable expression.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Variable solution (class CpoVarSolution), None if not found.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.is_solution">
+<code class="descname">is_solution</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.is_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.is_solution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if this descriptor contains a valid solution to the problem.</p>
+<p>A solution is present if the solve status is &#8216;Feasible&#8217; or &#8216;Optimal&#8217;.
+Optimality of the solution should be tested with <cite>is_solution_optimal()</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if there is a solution.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.is_solution_optimal">
+<code class="descname">is_solution_optimal</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.is_solution_optimal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.is_solution_optimal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if this descriptor contains an optimal solution to the problem.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True if there is an optimal solution.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solution.CpoSolveResult.print_solution">
+<code class="descname">print_solution</code><span class="sig-paren">(</span><em>out=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoSolveResult.print_solution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoSolveResult.print_solution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints the solution on a given output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>out</strong> &#8211; Target output stream or output file, standard output if not given.</td>
 </tr>
 </tbody>
 </table>
@@ -577,6 +902,14 @@ Optimality of the solution should be tested with <cite>is_solution_optimal()</ci
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>Super class for solution to a variable.</p>
 <p>Creates a new solution for a variable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; Variable name, or object providing a name with a function get_name() or an attribute &#8216;name&#8217;.</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="docplex.cp.solution.CpoVarSolution.get_name">
 <code class="descname">get_name</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solution.html#CpoVarSolution.get_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solution.CpoVarSolution.get_name" title="Permalink to this definition">¶</a></dt>
@@ -619,6 +952,9 @@ This method is overloaded by each class extending this class.</p>
   <h4>Previous topic</h4>
   <p class="topless"><a href="docplex.cp.parameters.py.html"
                         title="previous chapter">docplex.cp.parameters.py module</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="docplex.cp.config.py.html"
+                        title="next chapter">docplex.cp.config.py module</a></p>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
@@ -645,6 +981,9 @@ This method is overloaded by each class extending this class.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
+        <li class="right" >
+          <a href="docplex.cp.config.py.html" title="docplex.cp.config.py module"
+             >next</a> |</li>
         <li class="right" >
           <a href="docplex.cp.parameters.py.html" title="docplex.cp.parameters.py module"
              >previous</a> |</li>
