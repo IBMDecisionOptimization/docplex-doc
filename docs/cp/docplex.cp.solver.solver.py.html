@@ -61,37 +61,57 @@
 <ul class="simple">
 </ul>
 </div>
-<span class="target" id="module-docplex.cp.solver.solver"></span><p>This module allows to solve a model represented by a CpoModel object.</p>
-<p>The solving is handled by the class CpoSolver that takes a CpoModel as parameter.
-This class uses information stored in the configuration (subtree &#8216;context.solver&#8217;
-to determine which appropriate CpoSolverAgent must be used to actually solve
-the model.</p>
-<p>Each solving implementation (for example CpoSolverDocloud for a solving on DOcplexcloud)
-uses specific parameters that are stored in the appropriate sub-tree of the configuration.
-For example, &#8216;context.solver.docloud&#8217; configuration subtree should contain
-the attributes &#8216;url&#8217; and &#8216;key&#8217; to allow a solving with DOcplexcloud.</p>
-<p>The basic method to call to solve a model is solve(), that returns an object CpoModelSolution
-that contain the solution.</p>
-<p>Some solver implementations, in particular local solvers, provide more functions such
-as the possibility to iterate on multiple solutions of a problem. This is available by calling
-search_next() as long as the returned solution is valid.</p>
-<p>The solver also acts as an iterator. All solutions can be retrieved using a loop like:</p>
+<span class="target" id="module-docplex.cp.solver.solver"></span><p>This module implements appropriate software to solve a CPO model represented by a
+<a class="reference internal" href="docplex.cp.model.py.html#docplex.cp.model.CpoModel" title="docplex.cp.model.CpoModel"><code class="xref py py-class docutils literal"><span class="pre">docplex.cp.model.CpoModel</span></code></a> object.</p>
+<p>It implements the following object classes:</p>
 <blockquote>
-<div><p>solver = CpoSolver(mdl)
-for sol in solver:</p>
-<blockquote>
-<div>sol.print_solution()</div></blockquote>
+<div><ul class="simple">
+<li><a class="reference internal" href="#docplex.cp.solver.solver.CpoSolver" title="docplex.cp.solver.solver.CpoSolver"><code class="xref py py-class docutils literal"><span class="pre">CpoSolver</span></code></a> contains the public interface allowing to make solving requests with a model.</li>
+<li><a class="reference internal" href="#docplex.cp.solver.solver.CpoSolverAgent" title="docplex.cp.solver.solver.CpoSolverAgent"><code class="xref py py-class docutils literal"><span class="pre">CpoSolverAgent</span></code></a> is an abstract class that is extended by the actual implementation(s) of
+the solving functions.</li>
+</ul>
 </div></blockquote>
+<p>The <a class="reference internal" href="#docplex.cp.solver.solver.CpoSolver" title="docplex.cp.solver.solver.CpoSolver"><code class="xref py py-class docutils literal"><span class="pre">CpoSolver</span></code></a> identifies and creates the required <a class="reference internal" href="#docplex.cp.solver.solver.CpoSolverAgent" title="docplex.cp.solver.solver.CpoSolverAgent"><code class="xref py py-class docutils literal"><span class="pre">CpoSolverAgent</span></code></a> depending on the configuration
+parameter <em>context.solver.agent&#8217; that contains the name of the agent to be used. This name is used to
+access the configuration context *context.solver.&lt;agent&gt;</em> that contains the details about this agent.</p>
+<p>For example, the default configuration refers to <em>docloud</em> as default solver agent, to solve model using <em>DOcplexcloud</em>
+services. This means that at least following configuration elements must be set:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span>context.solver.agent = &#39;docloud&#39;
+context.solver.docloud.url = &lt;URL of the service&gt;
+context.solver.docloud.key = &lt;Access key of the service&gt;
+</pre></div>
+</div>
+<p>The different methods that can be called on a CpoSolver object are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="xref py py-meth docutils literal"><span class="pre">solve()</span></code> simply solve the model and returns a solve result, if any.
+For convenience reason, this method is also directly available on the CpoModel object (<a class="reference internal" href="docplex.cp.model.py.html#docplex.cp.model.CpoModel.solve" title="docplex.cp.model.CpoModel.solve"><code class="xref py py-meth docutils literal"><span class="pre">docplex.cp.model.CpoModel.solve()</span></code></a>).</li>
+<li><code class="xref py py-meth docutils literal"><span class="pre">search_next()</span></code> and <code class="xref py py-meth docutils literal"><span class="pre">end_search()</span></code> allows to iterate on different solutions of the model.</li>
+<li><code class="xref py py-meth docutils literal"><span class="pre">refine_conflict()</span></code> calls the conflict refiner that identifies a minimal conflict for the infeasibility of
+the model.</li>
+<li><code class="xref py py-meth docutils literal"><span class="pre">propagate()</span></code> calls the propagation that communicates the domain reduction of a decision variable to
+all of the constraints that are stated over this variable.</li>
+</ul>
+</div></blockquote>
+<p>Except <code class="xref py py-meth docutils literal"><span class="pre">solve()</span></code>, these functions are only available with a local solver with release strictly greater than 12.6.3.
+When a method is not available, an exception <em>CpoNotSupportedException</em> is raised.</p>
+<p>If the methods <code class="xref py py-meth docutils literal"><span class="pre">search_next()</span></code> and <code class="xref py py-meth docutils literal"><span class="pre">end_search()</span></code> are available in the underlying solver agent,
+the <a class="reference internal" href="#docplex.cp.solver.solver.CpoSolver" title="docplex.cp.solver.solver.CpoSolver"><code class="xref py py-class docutils literal"><span class="pre">CpoSolver</span></code></a> object can acts as an iterator. All solutions can be retrieved using a loop like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">solver</span> <span class="o">=</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="n">mdl</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">sol</span> <span class="ow">in</span> <span class="n">solver</span><span class="p">:</span>
+    <span class="n">sol</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+</pre></div>
+</div>
 <p>A such solution iteration can be interrupted at any time by calling end_search() that returns
 a fail solution including the last solve status.</p>
 <dl class="class">
 <dt id="docplex.cp.solver.solver.CpoSolver">
 <em class="property">class </em><code class="descclassname">docplex.cp.solver.solver.</code><code class="descname">CpoSolver</code><span class="sig-paren">(</span><em>model</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolver" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>Generic CPO model solver</p>
-<p>This class is the visible solver that creates appropriate instance of solver agent according to
-configuration parameter context.solver.agent.</p>
-<p>Create a new CPO model solver</p>
+<p>This class represents the public API of the object allowing to solve a CPO model.</p>
+<p>It create the appropriate <a class="reference internal" href="#docplex.cp.solver.solver.CpoSolverAgent" title="docplex.cp.solver.solver.CpoSolverAgent"><code class="xref py py-class docutils literal"><span class="pre">CpoSolverAgent</span></code></a> that actually implements solving functions, depending
+on the value of the configuration parameter <em>context.solver.agent</em>.</p>
+<p>Constructor:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -102,14 +122,17 @@ configuration parameter context.solver.agent.</p>
 </table>
 <dl class="docutils">
 <dt>Optional args:</dt>
-<dd>context:        Global solving context. If not given, context is the default context that is set in config.py.
-params:         Solving parameters (CpoParameters) that overwrites those in solving context
-etc             All other context parameters that can be changed</dd>
+<dd>context:   Complete solving context. If not given, context is the default context that is set in config.py.
+params:    Solving parameters (CpoParameters) that overwrite those in the solving context
+url:       URL of the DOcplexcloud service that overwrites the one defined in the solving context.
+key:       Authentication key of the DOcplexcloud service that overwrites the one defined in the solving context.
+(others):  All other context parameters that can be changed.</dd>
 </dl>
 <dl class="method">
 <dt id="docplex.cp.solver.solver.CpoSolver.end_search">
 <code class="descname">end_search</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolver.end_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolver.end_search" title="Permalink to this definition">&para;</a></dt>
 <dd><p>End current search.</p>
+<p>This function is available only with local CPO solver with release number strictly greater than 12.6.3.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -141,11 +164,39 @@ if method not available in the solver agent.</td>
 <dt id="docplex.cp.solver.solver.CpoSolver.next">
 <code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolver.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolver.next" title="Permalink to this definition">&para;</a></dt>
 <dd><p>For solution iteration, get the next available solution.</p>
+<p>This function is available only with local CPO solver with release number strictly greater than 12.6.3.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Next model solution (object of class CpoModelSolution)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solver.solver.CpoSolver.propagate">
+<code class="descname">propagate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolver.propagate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolver.propagate" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method invokes the propagation on the current model.</p>
+<p>Constraint propagation is the process of communicating the domain reduction of a decision variable to
+all of the constraints that are stated over this variable.
+This process can result in more domain reductions.
+These domain reductions, in turn, are communicated to the appropriate constraints.
+This process continues until no more variable domains can be reduced or when a domain becomes empty
+and a failure occurs.
+An empty domain during the initial constraint propagation means that the model has no solution.</p>
+<p>The result is a object of class CpoSolveResult, the same than the one returned by solve() method.
+However, variable domains may not be completely defined.</p>
+<p>This function is available only with local CPO solver with release number strictly greater than 12.6.3.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Propagation result (object of class CpoSolveResult)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">CpoNotSupportedException</span></code> &#8211;
+method not available in this solver agent.</td>
 </tr>
 </tbody>
 </table>
@@ -159,11 +210,12 @@ if method not available in the solver agent.</td>
 particular cause for infeasibility.
 There may be other conflicts in the model; consequently, repair of a given conflict
 does not guarantee feasibility of the remaining model.</p>
+<p>This function is available only with local CPO solver with release number strictly greater than 12.6.3.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of constraints tah cause the conflict.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of constraints that cause the conflict (object of class CpoRefineConflictResult)</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">CpoNotSupportedException</span></code> &#8211;
 if method not available in the solver agent.</td>
@@ -176,6 +228,7 @@ if method not available in the solver agent.</td>
 <dt id="docplex.cp.solver.solver.CpoSolver.search_next">
 <code class="descname">search_next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolver.search_next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolver.search_next" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Get the next available solution.</p>
+<p>This function is available only with local CPO solver with release number strictly greater than 12.6.3.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -193,11 +246,17 @@ if method not available in the solver agent.</td>
 <dt id="docplex.cp.solver.solver.CpoSolver.solve">
 <code class="descname">solve</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolver.solve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolver.solve" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Solve the model</p>
+<p>This function solves the model using CP Optimizer&#8217;s built-in strategy.
+The built-in strategy is determined by setting the parameter SearchType (see docplex.cp.parameters).
+If the model contains an objective, then the optimal solution with respect to the objective will be calculated.
+Otherwise, a solution satisfying all problem constraints will be calculated.</p>
+<p>The function returns an object of the class CpoSolveResult (see docplex.cp.solution) that contains the solution
+if exists, plus different information on the solving process.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Model solution (object of class CpoModelSolution)</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Model solution (object of class CpoSolveResult)</td>
 </tr>
 </tbody>
 </table>
@@ -209,9 +268,9 @@ if method not available in the solver agent.</td>
 <dt id="docplex.cp.solver.solver.CpoSolverAgent">
 <em class="property">class </em><code class="descclassname">docplex.cp.solver.solver.</code><code class="descname">CpoSolverAgent</code><span class="sig-paren">(</span><em>model</em>, <em>params</em>, <em>context</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolverAgent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolverAgent" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>CPO model abstract solver agent</p>
-<p>This class is extended by actual solver agents of CPO models that can be addressed from CpoSolver generic class.</p>
-<p>Create a new solver</p>
+<p>This class is an abstract class that must be extended by every solver agent that intend
+to be called by <a class="reference internal" href="#docplex.cp.solver.solver.CpoSolver" title="docplex.cp.solver.solver.CpoSolver"><code class="xref py py-class docutils literal"><span class="pre">CpoSolver</span></code></a> to solve a CPO model.</p>
+<p>Constructor</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -231,7 +290,7 @@ if method not available in the solver agent.</td>
 <dl class="method">
 <dt id="docplex.cp.solver.solver.CpoSolverAgent.end">
 <code class="descname">end</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolverAgent.end"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolverAgent.end" title="Permalink to this definition">&para;</a></dt>
-<dd><p>End solver and release all resources.</p>
+<dd><p>End solver agent and release all resources.</p>
 </dd></dl>
 
 <dl class="method">
@@ -243,6 +302,32 @@ if method not available in the solver agent.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Last (fail) solve result with last solve information (type CpoSolveResult)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">CpoNotSupportedException</span></code> &#8211;
+method not available in this solver agent.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="docplex.cp.solver.solver.CpoSolverAgent.propagate">
+<code class="descname">propagate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/cp/solver/solver.html#CpoSolverAgent.propagate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.cp.solver.solver.CpoSolverAgent.propagate" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method invokes the propagation on the current model.</p>
+<p>Constraint propagation is the process of communicating the domain reduction of a decision variable to
+all of the constraints that are stated over this variable.
+This process can result in more domain reductions.
+These domain reductions, in turn, are communicated to the appropriate constraints.
+This process continues until no more variable domains can be reduced or when a domain becomes empty
+and a failure occurs.
+An empty domain during the initial constraint propagation means that the model has no solution.</p>
+<p>The result is a object of class CpoSolveResult, the same than the one returned by solve() method.
+However, in this case, variable domains may not be completely defined.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Propagation result (object of class CpoSolveResult)</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">CpoNotSupportedException</span></code> &#8211;
 method not available in this solver agent.</td>

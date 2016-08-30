@@ -69,10 +69,19 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">cplex_typecode</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_short_name</span> <span class="o">=</span> <span class="n">short_name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span> <span class="o">=</span> <span class="n">lb</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span> <span class="o">=</span> <span class="n">ub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_typecode</span> <span class="o">=</span> <span class="n">cplex_typecode</span>
+
+    <span class="k">def</span> <span class="nf">_check_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Variable bound expects number, got: {0!s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">get_cplex_typecode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cpx_typecode</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">short_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -166,7 +175,7 @@
 
     <span class="k">def</span> <span class="nf">one_letter_symbol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># INTERNAL: returns B,I,C</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
 
     <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -175,19 +184,7 @@
         <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">hash_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_letter_symbol</span><span class="p">())</span>
-
-    <span class="k">def</span> <span class="nf">process_var_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">candidate_bound</span><span class="p">,</span> <span class="n">is_lb</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="k">if</span> <span class="n">candidate_bound</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_lb</span> <span class="k">if</span> <span class="n">is_lb</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_ub</span>
-        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">candidate_bound</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">is_lb</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_lb</span><span class="p">(</span><span class="n">candidate_bound</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_ub</span><span class="p">(</span><span class="n">candidate_bound</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">m</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Variable bound is not a number: {0!s}&quot;</span><span class="p">,</span> <span class="n">candidate_bound</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_letter_symbol</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="BinaryVarType"><a class="viewcode-back" href="../../../docplex.mp.vartype.html#docplex.mp.vartype.BinaryVarType">[docs]</a><span class="k">class</span> <span class="nc">BinaryVarType</span><span class="p">(</span><span class="n">VarType</span><span class="p">):</span>
@@ -199,7 +196,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;binary&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;binary&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">cplex_typecode</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">compute_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_lb</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
@@ -243,21 +240,23 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plus_infinity</span><span class="o">=</span><span class="mf">1e+20</span><span class="p">):</span>
-        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">plus_infinity</span><span class="p">)</span>
+        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">plus_infinity</span><span class="p">,</span> <span class="n">cplex_typecode</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="o">=</span> <span class="n">plus_infinity</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_minus_infinity</span> <span class="o">=</span> <span class="o">-</span> <span class="n">plus_infinity</span>
 
     <span class="k">def</span> <span class="nf">compute_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_ub</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_number</span><span class="p">(</span><span class="n">candidate_ub</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="k">if</span> <span class="n">candidate_ub</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">candidate_ub</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">compute_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_lb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_number</span><span class="p">(</span><span class="n">candidate_lb</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minus_infinity</span> <span class="k">if</span> <span class="n">candidate_lb</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minus_infinity</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">candidate_lb</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ContinuousVarType.is_discrete"><a class="viewcode-back" href="../../../docplex.mp.vartype.html#docplex.mp.vartype.ContinuousVarType.is_discrete">[docs]</a>    <span class="k">def</span> <span class="nf">is_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Checks if this is a discrete type.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Boolean: False as this type is not a discrete type.</span>
+<span class="sd">            Boolean: False because this type is not a discrete type.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">False</span></div>
 
@@ -289,7 +288,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plus_infinity</span><span class="o">=</span><span class="mf">1e+20</span><span class="p">):</span>
-        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">plus_infinity</span><span class="p">)</span>
+        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">plus_infinity</span><span class="p">,</span> <span class="n">cplex_typecode</span><span class="o">=</span><span class="s1">&#39;I&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="o">=</span> <span class="n">plus_infinity</span>
 
     <span class="k">def</span> <span class="nf">compute_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_ub</span><span class="p">):</span>
@@ -323,6 +322,53 @@
 
     <span class="k">def</span> <span class="nf">one_letter_symbol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;I&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">VarType</span><span class="o">.</span><span class="n">hash_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SemiContinuousVarType"><a class="viewcode-back" href="../../../docplex.mp.vartype.html#docplex.mp.vartype.SemiContinuousVarType">[docs]</a><span class="k">class</span> <span class="nc">SemiContinuousVarType</span><span class="p">(</span><span class="n">VarType</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;SemiContinuousVarType()</span>
+
+<span class="sd">            This class models the :index:`semi-continuous` variable type and</span>
+<span class="sd">            is not meant to be instantiated. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plus_infinity</span><span class="o">=</span><span class="mf">1e+20</span><span class="p">):</span>
+        <span class="n">VarType</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">short_name</span><span class="o">=</span><span class="s2">&quot;semi&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">plus_infinity</span><span class="p">,</span> <span class="n">cplex_typecode</span><span class="o">=</span><span class="s1">&#39;S&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="o">=</span> <span class="n">plus_infinity</span>
+
+    <span class="k">def</span> <span class="nf">compute_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_ub</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_number</span><span class="p">(</span><span class="n">candidate_ub</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="k">if</span> <span class="n">candidate_ub</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">candidate_ub</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compute_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_lb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_number</span><span class="p">(</span><span class="n">candidate_lb</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">candidate_lb</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;semi-continuous variable expects strict positive lower bound, not: {0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">candidate_lb</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">candidate_lb</span>
+
+<div class="viewcode-block" id="SemiContinuousVarType.is_discrete"><a class="viewcode-back" href="../../../docplex.mp.vartype.html#docplex.mp.vartype.SemiContinuousVarType.is_discrete">[docs]</a>    <span class="k">def</span> <span class="nf">is_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if this is a discrete type.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: False because this type is not a discrete type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">False</span></div>
+
+<div class="viewcode-block" id="SemiContinuousVarType.accept_value"><a class="viewcode-back" href="../../../docplex.mp.vartype.html#docplex.mp.vartype.SemiContinuousVarType.accept_value">[docs]</a>    <span class="k">def</span> <span class="nf">accept_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numeric_value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if the value is within the minus infinity to positive infinity range.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            numeric_value: The candidate value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: True if the candidate value is a valid floating-point number</span>
+<span class="sd">            with respect to the model&#39;s infinity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">numeric_value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plus_infinity</span></div>
+
+    <span class="k">def</span> <span class="nf">one_letter_symbol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;S&#39;</span>
 
     <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">VarType</span><span class="o">.</span><span class="n">hash_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>

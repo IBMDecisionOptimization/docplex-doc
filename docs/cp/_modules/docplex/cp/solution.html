@@ -56,28 +56,43 @@
 <span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Representation of a solution of a constraint programming model.</span>
+<span class="sd">This module contains the different elements that represent a solution resulting</span>
+<span class="sd">from the solve of a model.</span>
 
-<span class="sd">This module implements one class per solution element:</span>
+<span class="sd">This module implements the following object classes to represent solution elements:</span>
 
-<span class="sd"> * CpoIntVarSolution: solution of an integer variable,</span>
-<span class="sd"> * CpoIntervalVarSolution: solution of an interval variable,</span>
-<span class="sd"> * CpoSequenceVarSolution: solution of a sequence variable,</span>
-<span class="sd"> * CpoStateFunctionSolution: solution of a state function, and</span>
-<span class="sd"> * CpoModelSolution: aggregation of all individual model element solutions,</span>
-<span class="sd"> * CpoSolveResult: result of a model solve, including model solution and other associated information</span>
-<span class="sd">   (solve details, log, etc)</span>
-<span class="sd"> * CpoRefineConflictResult: result of an invocation of the conflict refiner.</span>
+<span class="sd"> * :class:`CpoIntVarSolution`: solution of an integer variable,</span>
+<span class="sd"> * :class:`CpoIntervalVarSolution`: solution of an interval variable,</span>
+<span class="sd"> * :class:`CpoSequenceVarSolution`: solution of a sequence variable,</span>
+<span class="sd"> * :class:`CpoStateFunctionSolution`: solution of a state function, and</span>
+<span class="sd"> * :class:`CpoModelSolution`: aggregation of all individual model element solutions,</span>
+
+<span class="sd">and the following ones to represent results:</span>
+
+<span class="sd"> * :class:`CpoSolveResult`: result of a model solve, including a solution to the model (if any)</span>
+<span class="sd">   plus other technical information (solve details, log, etc)</span>
+<span class="sd"> * :class:`CpoRefineConflictResult`: result of an invocation of the conflict refiner.</span>
+
+<span class="sd">The solution objects (:class:`CpoModelSolution`, :class:`CpoIntVarSolution`, etc) can be used in multiple ways:</span>
+
+<span class="sd"> * To represent a *complete* (fully instantiated) solution, where each model has a unique fixed value, as returned</span>
+<span class="sd">   by a successful model solve.</span>
+<span class="sd"> * To represent a *partial* model solution, that is proposed as a solve starting point</span>
+<span class="sd">   (see :meth:`docplex.cp.model.CpoModel.set_starting_point`)</span>
+<span class="sd">   In this case, not all variables are present in the solution, and some of them may be partially instantiated.</span>
+<span class="sd"> * To represent a *partial* model solution that is returned by the solver as result of calling method</span>
+<span class="sd">   :meth:`docplex.cp.solver.solver.CpoSolver.propagate`.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">io</span>
 
 <span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="kn">import</span> <span class="n">CpoExpr</span><span class="p">,</span> <span class="n">INT_MIN</span><span class="p">,</span> <span class="n">INT_MAX</span><span class="p">,</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.parameters</span> <span class="kn">import</span> <span class="n">CpoParameters</span>
 
 <span class="c1">###############################################################################</span>
-<span class="c1">##  Public constants</span>
+<span class="c1">##  Constants</span>
 <span class="c1">###############################################################################</span>
 
 <span class="c1"># Solve status: Unknown</span>
@@ -102,6 +117,7 @@
 <span class="n">ALL_SOLVE_STATUSES</span> <span class="o">=</span> <span class="p">(</span><span class="n">SOLVE_STATUS_UNKNOWN</span><span class="p">,</span>
                       <span class="n">SOLVE_STATUS_INFEASIBLE</span><span class="p">,</span> <span class="n">SOLVE_STATUS_FEASIBLE</span><span class="p">,</span> <span class="n">SOLVE_STATUS_OPTIMAL</span><span class="p">,</span>
                       <span class="n">SOLVE_STATUS_JOB_ABORTED</span><span class="p">,</span> <span class="n">SOLVE_STATUS_JOB_FAILED</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot; List of all possible search statuses &quot;&quot;&quot;</span>
 
 <span class="c1"># Fail status: Unknown</span>
 <span class="n">FAIL_STATUS_UNKNOWN</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
@@ -135,6 +151,13 @@
                      <span class="n">FAIL_STATUS_FAILED_NORMALLY</span><span class="p">,</span> <span class="n">FAIL_STATUS_NOT_FAILED</span><span class="p">,</span>
                      <span class="n">FAIL_STATUS_ABORT</span><span class="p">,</span> <span class="n">FAIL_STATUS_EXCEPTION</span><span class="p">,</span> <span class="n">FAIL_STATUS_EXIT</span><span class="p">,</span> <span class="n">FAIL_STATUS_LABEL</span><span class="p">,</span>
                      <span class="n">FAIL_STATUS_TIME_LIMIT</span><span class="p">,</span> <span class="n">FAIL_STATUS_SEARCH_COMPLETED</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot; List of all possible fail statuses &quot;&quot;&quot;</span>
+
+<span class="c1"># Name of some useful CPO solver information attributes</span>
+<span class="n">INFO_NUMBER_OF_CONSTRAINTS</span>        <span class="o">=</span> <span class="s1">&#39;NumberOfConstraints&#39;</span>
+<span class="n">INFO_NUMBER_OF_INTEGER_VARIABLES</span>  <span class="o">=</span> <span class="s1">&#39;NumberOfIntegerVariables&#39;</span>
+<span class="n">INFO_NUMBER_OF_INTERVAL_VARIABLES</span> <span class="o">=</span> <span class="s1">&#39;NumberOfIntervalVariables&#39;</span>
+<span class="n">INFO_NUMBER_OF_SEQUENCE_VARIABLES</span> <span class="o">=</span> <span class="s1">&#39;NumberOfSequenceVariables&#39;</span>
 
 
 <span class="c1">###############################################################################</span>
@@ -142,12 +165,13 @@
 <span class="c1">###############################################################################</span>
 
 <div class="viewcode-block" id="CpoVarSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoVarSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoVarSolution</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Super class for solution to a variable. &quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; This class is a super class of all classes representing a solution to a variable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span>  <span class="c1"># Variable name</span>
                  <span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new solution for a variable.</span>
+        <span class="sd">&quot;&quot;&quot; Constructor:</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name: Variable name, or object providing a name with a function get_name() or an attribute &#39;name&#39;.</span>
@@ -167,7 +191,7 @@
         <span class="sd">&quot;&quot;&quot; Gets the name of the variable.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Variable name.</span>
+<span class="sd">            Name of the variable.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></div>
     
@@ -176,7 +200,7 @@
 <span class="sd">        This method is overloaded by each class extending this class.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            None.</span>
+<span class="sd">            Value of the variable, represented according to its semantic (see specific variable documentation).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">None</span></div>
 
@@ -192,17 +216,25 @@
 
 
 <div class="viewcode-block" id="CpoIntVarSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntVarSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoIntVarSolution</span><span class="p">(</span><span class="n">CpoVarSolution</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Solution to an integer variable. &quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; This class represents a solution to an integer variable.</span>
+
+<span class="sd">    The solution can be:</span>
+<span class="sd">     * *complete* when the value is a single integer,</span>
+<span class="sd">     * *partial* when the value is a domain, set of multiple values.</span>
+
+<span class="sd">    A domain is a list of discrete integer values and/or intervals of values represented by a tuple containing</span>
+<span class="sd">    interval min and max values (included).</span>
+
+<span class="sd">    For example, following are valid domains for an integer variable:</span>
+<span class="sd">     * 7 (complete solution)</span>
+<span class="sd">     * (1, 2, 4, 9)</span>
+<span class="sd">     * (2, 3, (5, 7), 9, (11, 13))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span>  <span class="c1"># Variable value / domain</span>
                 <span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new integer variable solution.</span>
-
-<span class="sd">        The solution can be complete if the value is a single integer, or partial if the value</span>
-<span class="sd">        is a domain, expressed as</span>
-<span class="sd">          * a list of integers or tuples denoting possible values or intervals</span>
-<span class="sd">          * a single tuple denoting a single interval</span>
+        <span class="sd">&quot;&quot;&quot; Constructor:</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name:  Variable name</span>
@@ -212,7 +244,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">_check_arg_domain</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">)</span>
         
 <div class="viewcode-block" id="CpoIntVarSolution.get_value"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntVarSolution.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets the variable value, or domain if partially instantiated.</span>
+        <span class="sd">&quot;&quot;&quot; Gets the value of the variable.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Variable value (integer), or domain (list of integers or intervals)</span>
@@ -225,34 +257,37 @@
         
 
 <div class="viewcode-block" id="CpoIntervalVarSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntervalVarSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoIntervalVarSolution</span><span class="p">(</span><span class="n">CpoVarSolution</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Solution to an interval variable. &quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; This class represents a solution to an interval variable.</span>
+
+<span class="sd">    The solution can be complete if all attribute values are integers, or partial if at least one</span>
+<span class="sd">    of them is an interval expressed as a tuple.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span>    <span class="c1"># Interval start</span>
                  <span class="s1">&#39;end&#39;</span><span class="p">,</span>      <span class="c1"># Interval end</span>
                  <span class="s1">&#39;size&#39;</span><span class="p">,</span>     <span class="c1"># Interval size</span>
+                 <span class="s1">&#39;length&#39;</span><span class="p">,</span>   <span class="c1"># Interval length</span>
                  <span class="s1">&#39;presence&#39;</span><span class="p">,</span> <span class="c1"># Presence indicator</span>
                 <span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">presence</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new interval variable solution.</span>
-
-<span class="sd">        The solution can be complete if all attribute values are integers, or partial if at least one</span>
-<span class="sd">        of them is an interval expressed as a tuple.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            name:     Name of the variable.</span>
-<span class="sd">            presence: Presence indicator (true for present, false for absent, None for undetermined). Default is None.</span>
-<span class="sd">            start:    Value of start, or tuple representing the start range</span>
-<span class="sd">            end:      Value of end, or tuple representing the end range</span>
-<span class="sd">            size:     Value of size, or tuple representing the size range</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># &quot;&quot;&quot; Constructor:</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#     name:     Name of the variable.</span>
+        <span class="c1">#     presence: Presence indicator (true for present, false for absent, None for undetermined). Default is None.</span>
+        <span class="c1">#     start:    Value of start, or tuple representing the start range. Default is None.</span>
+        <span class="c1">#     end:      Value of end, or tuple representing the end range. Default is None.</span>
+        <span class="c1">#     size:     Value of size, or tuple representing the size range. Default is None.</span>
+        <span class="c1"># &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoIntervalVarSolution</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">presence</span> <span class="o">=</span> <span class="n">presence</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">start</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end</span>   <span class="o">=</span> <span class="n">end</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">size</span>  <span class="o">=</span> <span class="n">size</span>
-        
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="bp">None</span>
+
 <div class="viewcode-block" id="CpoIntervalVarSolution.is_present"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntervalVarSolution.is_present">[docs]</a>    <span class="k">def</span> <span class="nf">is_present</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets whether the interval is present.</span>
+        <span class="sd">&quot;&quot;&quot; Check if the interval is present.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            True if interval is present.</span>
@@ -260,7 +295,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">presence</span> <span class="ow">is</span> <span class="bp">True</span></div>
 
 <div class="viewcode-block" id="CpoIntervalVarSolution.is_absent"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntervalVarSolution.is_absent">[docs]</a>    <span class="k">def</span> <span class="nf">is_absent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets whether the interval is absent.</span>
+        <span class="sd">&quot;&quot;&quot; Check if the interval is absent.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            True if interval is absent.</span>
@@ -268,7 +303,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">presence</span> <span class="ow">is</span> <span class="bp">False</span></div>
 
 <div class="viewcode-block" id="CpoIntervalVarSolution.is_optional"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntervalVarSolution.is_optional">[docs]</a>    <span class="k">def</span> <span class="nf">is_optional</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets whether the interval is optional.</span>
+        <span class="sd">&quot;&quot;&quot; Check if the interval is optional.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            True if interval is optional.</span>
@@ -279,7 +314,7 @@
         <span class="sd">&quot;&quot;&quot; Gets the interval start.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Interval start.</span>
+<span class="sd">            Interval start value, or domain (tuple (min, max)) if not fully instantiated</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span></div>
 
@@ -287,7 +322,7 @@
         <span class="sd">&quot;&quot;&quot; Gets the interval end.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Interval end.</span>
+<span class="sd">            Interval end value, or domain (tuple (min, max)) if not fully instantiated</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span></div>
 
@@ -295,75 +330,107 @@
         <span class="sd">&quot;&quot;&quot; Gets the interval size.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Interval size.</span>
+<span class="sd">            Interval size value, or domain (tuple (min, max)) if not fully instantiated</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span></div>
+
+<div class="viewcode-block" id="CpoIntervalVarSolution.get_length"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntervalVarSolution.get_length">[docs]</a>    <span class="k">def</span> <span class="nf">get_length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the interval length.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Interval length value, or domain (tuple (min, max)) if not fully instantiated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span></div>
 
 <div class="viewcode-block" id="CpoIntervalVarSolution.get_value"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoIntervalVarSolution.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the interval variable value as a tuple (start, end, size), or () if absent.</span>
 
+<span class="sd">        If the variable is absent, then the result is an empty tuple.</span>
+
+<span class="sd">        If the variable is fully instantiated, the result is a tuple of 3 integers (start, end, size).</span>
+<span class="sd">        The variable length, easy to compute as end - start, can also be retrieved by calling :meth:`get_length`.</span>
+
+<span class="sd">        If the variable is partially instantiated, the result is a tuple (start, end, size, length) where each</span>
+<span class="sd">        individual value can be an integer or an interval expressed as a tuple.</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            Interval variable value as tuple.</span>
+<span class="sd">            Interval variable value as a tuple.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_present</span><span class="p">()):</span>
-            <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">()</span></div>
     
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_present</span><span class="p">()):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;: (start=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_start</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;, end=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_end</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;, size=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_size</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_optional</span><span class="p">()):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;: optional(start=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_start</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;, end=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_end</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;, size=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_size</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;: absent&quot;</span></div>
-        
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">(),</span> <span class="s1">&#39;: &#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_absent</span><span class="p">()):</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;absent&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_optional</span><span class="p">()):</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;optional&quot;</span><span class="p">)</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;(start=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_start</span><span class="p">()))</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;, end=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_end</span><span class="p">()))</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;, size=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_size</span><span class="p">()))</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;, length=&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_length</span><span class="p">()))</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">res</span><span class="p">)</span></div>
+
      
 <div class="viewcode-block" id="CpoSequenceVarSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSequenceVarSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoSequenceVarSolution</span><span class="p">(</span><span class="n">CpoVarSolution</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Solution to a sequence variable. &quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; This class represents a solution to a sequence variable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;lvars&#39;</span><span class="p">,</span>  <span class="c1"># List of interval variable solutions</span>
                 <span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">lvars</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new sequence variable solution.</span>
+        <span class="sd">&quot;&quot;&quot; Constructor:</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            lvars: List of interval variables (objects CpoIntervalVarSolution).</span>
+<span class="sd">            lvars: List of interval variable solutions that are in this sequence (objects CpoIntervalVarSolution).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoSequenceVarSolution</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lvars</span> <span class="o">=</span> <span class="n">lvars</span>
         
 <div class="viewcode-block" id="CpoSequenceVarSolution.get_interval_variables"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSequenceVarSolution.get_interval_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_interval_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets the list of CpoIntervalVarSolution of this sequence.</span>
+        <span class="sd">&quot;&quot;&quot; Gets the list of CpoIntervalVarSolution in this sequence.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            List of CpoIntervalVarSolution of this sequence.</span>
+<span class="sd">            List of CpoIntervalVarSolution in this sequence.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lvars</span></div>
 
 <div class="viewcode-block" id="CpoSequenceVarSolution.get_value"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSequenceVarSolution.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets the list of CpoIntervalVarSolution of this sequence.</span>
+        <span class="sd">&quot;&quot;&quot; Gets the list of CpoIntervalVarSolution in this sequence.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            List of CpoIntervalVarSolution of this sequence.</span>
+<span class="sd">            List of CpoIntervalVarSolution in this sequence.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lvars</span></div>
     
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Convert this expression into a string &quot;&quot;&quot;</span>
-        <span class="c1">#print(&quot;List of variables: &quot; + str(self.lvars))</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;: (&quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">v</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lvars</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span></div>
         
      
 <div class="viewcode-block" id="CpoStateFunctionSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoStateFunctionSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoStateFunctionSolution</span><span class="p">(</span><span class="n">CpoVarSolution</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Solution to a step function. &quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; This class represents a solution to a step function.</span>
+
+<span class="sd">    A solution to a step function is represented by a list of steps.</span>
+<span class="sd">    A step is a triplet (start, end, value) that gives the value of the function on the interval [start, end).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;steps&#39;</span><span class="p">,</span>  <span class="c1"># List of function steps</span>
                 <span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">steps</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new state function solution.</span>
+        <span class="sd">&quot;&quot;&quot; Constructor:</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            steps: List of function steps (tuples (start, end, value)).</span>
+<span class="sd">            steps: List of function steps represented as tuples (start, end, value).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoStateFunctionSolution</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">steps</span> <span class="o">=</span> <span class="n">steps</span>
@@ -390,22 +457,27 @@
         
      
 <div class="viewcode-block" id="CpoModelSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoModelSolution</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Solution of a model.</span>
+    <span class="sd">&quot;&quot;&quot; This class represents a solution to a model. It contains the solutions of model variables plus</span>
+<span class="sd">    the value of objective, if any.</span>
 
-<span class="sd">    This object represent a solution of a the model. It contains the solutions of model variables,</span>
-<span class="sd">    handled in a map whose key is variable name, and value is</span>
-<span class="sd">    either CpoIntVarSolution, CpoIntervalVarSolution, CpoSequenceVarSolution, CpoStateFunctionSolution.</span>
+<span class="sd">    Each variable solution is accessed with its name</span>
+<span class="sd">    and its value is either :class:`CpoIntVarSolution`, :class:`CpoIntervalVarSolution`,</span>
+<span class="sd">    :class:`CpoSequenceVarSolution` or :class:`CpoStateFunctionSolution` depending on the type of the variable.</span>
 
-<span class="sd">    This object is used to handle a complete solution, where every variable has a final solution,</span>
-<span class="sd">    but also partial solutions where not all variables are defined, and/or with domains instead of discrete value.</span>
+<span class="sd">    The solution can be:</span>
+<span class="sd">      * *complete*, if each variable is assigned to a single value,</span>
+<span class="sd">      * *partial* if not all variables are defined, or if some variables are defined with domains that are not</span>
+<span class="sd">        restricted to a single value.</span>
+
+<span class="sd">    An instance of this class may be created explicitly by the programmer of the model to express a *starting point*</span>
+<span class="sd">    that can be passed to the model to optimize its solve</span>
+<span class="sd">    (see :meth:`docplex.cp.model.CpoModel.set_starting_point` for details).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;vars&#39;</span><span class="p">,</span>          <span class="c1"># Map of variable solutions</span>
                  <span class="s1">&#39;objvalues&#39;</span><span class="p">,</span>     <span class="c1"># Objective values</span>
                 <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new empty model solution.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoModelSolution</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vars</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objvalues</span> <span class="o">=</span> <span class="bp">None</span>
@@ -414,34 +486,34 @@
         <span class="sd">&quot;&quot;&quot; Set the numeric values of all objectives.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            ovals: Array of all objective values</span>
+<span class="sd">            ovals: Array of objective values</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objvalues</span> <span class="o">=</span> <span class="n">ovals</span>
 
 <div class="viewcode-block" id="CpoModelSolution.get_objective_values"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.get_objective_values">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the numeric values of all objectives.</span>
 
+<span class="sd">        If the solution is partial, each objective value may be an interval expressed as a tuple (min, max)</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            Array of all objective values, None if none.</span>
+<span class="sd">            Array of objective values, None if none.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objvalues</span></div>
 
 <div class="viewcode-block" id="CpoModelSolution.add_var_solution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.add_var_solution">[docs]</a>    <span class="k">def</span> <span class="nf">add_var_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vsol</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Add a variable solution to this model solution.</span>
+        <span class="sd">&quot;&quot;&quot; Add a solution to a variable to this model solution.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            vsol: Variable solution</span>
+<span class="sd">            vsol: Variable solution (object of a class extending :class:`CpoVarSolution`)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vsol</span><span class="p">,</span> <span class="n">CpoVarSolution</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vars</span><span class="p">[</span><span class="n">vsol</span><span class="o">.</span><span class="n">get_name</span><span class="p">()]</span> <span class="o">=</span> <span class="n">vsol</span></div>
 
 <div class="viewcode-block" id="CpoModelSolution.add_integer_var_solution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.add_integer_var_solution">[docs]</a>    <span class="k">def</span> <span class="nf">add_integer_var_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Add a new integer variable solution.</span>
+        <span class="sd">&quot;&quot;&quot; Add a new integer variable solution from its name and value..</span>
 
 <span class="sd">        The solution can be complete if the value is a single integer, or partial if the value</span>
-<span class="sd">        is a domain, expressed as</span>
-<span class="sd">          * a list of integers or tuples denoting possible values or intervals</span>
-<span class="sd">          * a single tuple denoting a single interval</span>
+<span class="sd">        is a domain, given as a list of integers or intervals expressed as tuples.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name:  Variable name</span>
@@ -470,7 +542,7 @@
 <span class="sd">        Args:</span>
 <span class="sd">            name: Variable name or variable expression.</span>
 <span class="sd">        Returns:</span>
-<span class="sd">            Variable solution (class CpoVarSolution), None if not found.</span>
+<span class="sd">            Variable solution (class extending :class:`CpoVarSolution`), None if not found.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
             <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
@@ -480,22 +552,27 @@
         <span class="sd">&quot;&quot;&quot; Gets the list of all variable solutions from this model solution.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            List of all variable solutions (class CpoVarSolution).</span>
+<span class="sd">            List of all variable solutions (class extending :class:`CpoVarSolution`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vars</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
 
 <div class="viewcode-block" id="CpoModelSolution.get_value"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the value of a variable.</span>
 
-<span class="sd">        For IntVar, value is an integer.</span>
-<span class="sd">        For IntervalVar, value is a tuple (start, end, size), () if absent.</span>
-<span class="sd">        For SequenceVar, value is list of interval variable solutions.</span>
-<span class="sd">        For StateFunction, value is list of steps.</span>
+<span class="sd">        This method first find the variable with :meth:`get_var_solution` and, if exists,</span>
+<span class="sd">        returns the result of a call to the method get_value() on this variable.</span>
+
+<span class="sd">        The result depends on the type of the variable. For details, please consult documentation of methods:</span>
+
+<span class="sd">         * :meth:`CpoIntVarSolution.get_value`</span>
+<span class="sd">         * :meth:`CpoIntervalVarSolution.get_value`</span>
+<span class="sd">         * :meth:`CpoSequenceVarSolution.get_value`</span>
+<span class="sd">         * :meth:`CpoStateFunctionSolution.get_value`</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name: Variable name, or model variable descriptor.</span>
 <span class="sd">        Returns:</span>
-<span class="sd">            Variable value, None if variable not found.</span>
+<span class="sd">            Variable value, None if variable is not found.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">var</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">):</span>
@@ -506,7 +583,7 @@
         <span class="sd">&quot;&quot;&quot; Add a json solution to this solution descriptor</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            jsol:   JSON document representing solution, or string containing its JSON representation.</span>
+<span class="sd">            jsol: JSON document representing solution, or string containing its JSON representation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Parse json string if needed</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">jsol</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
@@ -515,19 +592,25 @@
         <span class="c1"># Add objectives</span>
         <span class="n">ovals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;objectives&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ovals</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_set_objective_values</span><span class="p">(</span><span class="n">ovals</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_objective_values</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ovals</span><span class="p">])</span>
 
         <span class="c1"># Add integer variables</span>
         <span class="nb">vars</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;intVars&#39;</span><span class="p">,</span> <span class="p">())</span>
         <span class="k">for</span> <span class="n">vname</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_var_solution</span><span class="p">(</span><span class="n">CpoIntVarSolution</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="nb">vars</span><span class="p">[</span><span class="n">vname</span><span class="p">])))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_var_solution</span><span class="p">(</span><span class="n">CpoIntVarSolution</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span> <span class="n">_get_domain</span><span class="p">(</span><span class="nb">vars</span><span class="p">[</span><span class="n">vname</span><span class="p">])))</span>
 
         <span class="c1"># Add interval variables</span>
         <span class="nb">vars</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;intervalVars&#39;</span><span class="p">,</span> <span class="p">())</span>
         <span class="k">for</span> <span class="n">vname</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">:</span>
             <span class="n">v</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">[</span><span class="n">vname</span><span class="p">]</span>
             <span class="k">if</span> <span class="s1">&#39;start&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
-                <span class="n">vsol</span> <span class="o">=</span> <span class="n">CpoIntervalVarSolution</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]),</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;end&#39;</span><span class="p">]),</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]))</span>
+                <span class="c1"># Check partially instanciated</span>
+                <span class="k">if</span> <span class="s1">&#39;presence&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+                    <span class="n">vsol</span> <span class="o">=</span> <span class="n">CpoIntervalVarSolution</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span>  <span class="bp">True</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s1">&#39;presence&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="bp">None</span><span class="p">,</span>
+                                                  <span class="n">_get_domain</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]),</span> <span class="n">_get_domain</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;end&#39;</span><span class="p">]),</span> <span class="n">_get_domain</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]))</span>
+                    <span class="n">vsol</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">_get_domain</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">vsol</span> <span class="o">=</span> <span class="n">CpoIntervalVarSolution</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]),</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;end&#39;</span><span class="p">]),</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">vsol</span> <span class="o">=</span> <span class="n">CpoIntervalVarSolution</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add_var_solution</span><span class="p">(</span><span class="n">vsol</span><span class="p">)</span>
@@ -559,6 +642,9 @@
 <div class="viewcode-block" id="CpoModelSolution.print_solution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.print_solution">[docs]</a>    <span class="k">def</span> <span class="nf">print_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Prints the solution on a given output.</span>
 
+<span class="sd">        If the given output is a string, it is considered as a file name that is opened by this method</span>
+<span class="sd">        using &#39;utf-8&#39; encoding.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            out: Target output stream or output file, standard output if not given.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -567,9 +653,8 @@
             <span class="n">out</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
 
         <span class="c1"># Check file</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">make_directories</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_string</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">open_utf8</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_write_solution</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_solution</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
@@ -603,11 +688,9 @@
 
 
 <div class="viewcode-block" id="CpoRunResult"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoRunResult">[docs]</a><span class="k">class</span> <span class="nc">CpoRunResult</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Abstract class representing a run result.</span>
+    <span class="sd">&quot;&quot;&quot; This class is an abstract class extended by classes representing the result of a call to the solver.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new run result.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoRunResult</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solverLog</span> <span class="o">=</span> <span class="bp">None</span>                      <span class="c1"># Solver log</span>
 
@@ -620,7 +703,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">solverLog</span> <span class="o">=</span> <span class="n">log</span>
 
 <div class="viewcode-block" id="CpoRunResult.get_solver_log"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoRunResult.get_solver_log">[docs]</a>    <span class="k">def</span> <span class="nf">get_solver_log</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets the solver log.</span>
+        <span class="sd">&quot;&quot;&quot; Gets the log of the solver.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Solver log as a string, None if unknown.</span>
@@ -628,21 +711,20 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solverLog</span></div></div>
 
 <div class="viewcode-block" id="CpoSolveResult"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult">[docs]</a><span class="k">class</span> <span class="nc">CpoSolveResult</span><span class="p">(</span><span class="n">CpoRunResult</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Model solve result.</span>
+    <span class="sd">&quot;&quot;&quot; This class represents the result of a call to the solve of a model.</span>
 
-<span class="sd">    This object contains all the elements composing a solve result:</span>
-
+<span class="sd">    It contains the following elements:</span>
 <span class="sd">       * solve status,</span>
 <span class="sd">       * solver parameters,</span>
 <span class="sd">       * solver information</span>
 <span class="sd">       * output log</span>
-<span class="sd">       * solution, if any</span>
+<span class="sd">       * solution, if any (class :class:`CpoModelSolution`)</span>
 
-<span class="sd">    For convenience and compatibility, retrieving solution elements is made available directly from</span>
-<span class="sd">    this solve result using direct accessors.</span>
+<span class="sd">    If this result contains a solution, the methods implemented in the class :class:`CpoModelSolution`</span>
+<span class="sd">    to access solution elements are available directly from this class.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new empty solve result.</span>
+        <span class="sd">&quot;&quot;&quot; Constructor:</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">           model: Related model</span>
@@ -651,13 +733,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span> <span class="o">=</span> <span class="n">SOLVE_STATUS_UNKNOWN</span>   <span class="c1"># Solve status, with value in SOLVE_STATUS_*</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">=</span> <span class="n">FAIL_STATUS_UNKNOWN</span>     <span class="c1"># Fail status, with values in FAIL_STATUS_*</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbintvars</span> <span class="o">=</span> <span class="mi">0</span>                         <span class="c1"># Number of integer variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbintervalvars</span> <span class="o">=</span> <span class="mi">0</span>                    <span class="c1"># Number of interval variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbsequencevars</span> <span class="o">=</span> <span class="mi">0</span>                    <span class="c1"># Number of sequence variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbconstraints</span> <span class="o">=</span> <span class="mi">0</span>                     <span class="c1"># Number of constraints</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solveTime</span> <span class="o">=</span> <span class="mi">0</span>                         <span class="c1"># Solve time</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{}</span>                       <span class="c1"># Solving parameters map</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">infos</span> <span class="o">=</span> <span class="p">{}</span>                            <span class="c1"># Solving information attributes map</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">None</span>                     <span class="c1"># Solving parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">infos</span> <span class="o">=</span> <span class="bp">None</span>                          <span class="c1"># Solving information attributes map</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solution</span> <span class="o">=</span> <span class="n">CpoModelSolution</span><span class="p">()</span>         <span class="c1"># Solution</span>
 
     <span class="k">def</span> <span class="nf">_set_solve_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ssts</span><span class="p">):</span>
@@ -672,7 +750,7 @@
         <span class="sd">&quot;&quot;&quot; Gets the solve status.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Solve status, values in ALL_SOLVE_STATUSES.</span>
+<span class="sd">            Solve status, element of the global list :const:`ALL_SOLVE_STATUSES`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span></div>
 
@@ -688,7 +766,7 @@
         <span class="sd">&quot;&quot;&quot; Gets the solving fail status.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Fail status, values in ALL_FAIL_STATUSES.</span>
+<span class="sd">            Fail status, element of the global list :const:`ALL_FAIL_STATUSES`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span></div>
 
@@ -716,7 +794,7 @@
         <span class="sd">&quot;&quot;&quot; Checks if this descriptor contains a valid solution to the problem.</span>
 
 <span class="sd">        A solution is present if the solve status is &#39;Feasible&#39; or &#39;Optimal&#39;.</span>
-<span class="sd">        Optimality of the solution should be tested with `is_solution_optimal()`.</span>
+<span class="sd">        Optimality of the solution should be tested using method :meth:`is_solution_optimal()`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            True if there is a solution.</span>
@@ -727,17 +805,9 @@
         <span class="sd">&quot;&quot;&quot; Checks if this descriptor contains an optimal solution to the problem.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            True if there is an optimal solution.</span>
+<span class="sd">            True if there is a solution that is optimal.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span> <span class="ow">is</span> <span class="n">SOLVE_STATUS_OPTIMAL</span></div>
-
-    <span class="k">def</span> <span class="nf">_set_objective_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ovals</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Set the numeric values of all objectives.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            ovals: Array of all objective values</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">_set_objective_values</span><span class="p">(</span><span class="n">ovals</span><span class="p">)</span>
 
 <div class="viewcode-block" id="CpoSolveResult.get_objective_values"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_objective_values">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the numeric values of all objectives.</span>
@@ -747,60 +817,62 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_objective_values</span><span class="p">()</span></div>
 
-    <span class="k">def</span> <span class="nf">_set_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Set the solving parameters.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            params: Dictionary of parameters</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">params</span>
-
 <div class="viewcode-block" id="CpoSolveResult.get_parameters"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the complete dictionary of solving parameters.</span>
-<span class="sd">        Identical to get the attribute `parameters` of this object.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Dictionary of parameters.</span>
+<span class="sd">            Solving parameters (object of class CpoParameters), None if undefined.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span></div>
 
-<div class="viewcode-block" id="CpoSolveResult.get_parameter"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_parameter">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<div class="viewcode-block" id="CpoSolveResult.get_parameter"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_parameter">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Get a particular solving parameter.</span>
-<span class="sd">        Semantically equivalent to &#39;parameters[name]&#39; on this object, except that it returns None if not found.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Parameter value, None if not found.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span></div>
-
-    <span class="k">def</span> <span class="nf">_set_infos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infos</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Set the solving information attributes.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            infos: Dictionary of information attributes</span>
+<span class="sd">            name:    Name of the parameter to get</span>
+<span class="sd">            default: (optional) Default value if not found. None by default.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Parameter value, default value if not found.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">infos</span> <span class="o">=</span> <span class="n">infos</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">default</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_add_infos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infos</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add solving information to existing ones.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            infos: Dictionary of information attributes to append</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">infos</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">infos</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">infos</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">infos</span><span class="p">)</span>
 
 <div class="viewcode-block" id="CpoSolveResult.get_infos"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_infos">[docs]</a>    <span class="k">def</span> <span class="nf">get_infos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the complete dictionary of information attributes.</span>
-<span class="sd">        Identical to get the attribute &#39;info&#39; of this object.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Dictionary of information attributes.</span>
+<span class="sd">            Dictionary of information attributes, None if undefined.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">infos</span></div>
 
-<div class="viewcode-block" id="CpoSolveResult.get_info"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<div class="viewcode-block" id="CpoSolveResult.get_info"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets a particular information attribute.</span>
-<span class="sd">        Semantically equivalent to `info[name]` on this object, except that it returns None if not found.</span>
 
+<span class="sd">        Args:</span>
+<span class="sd">            name:    Name of the information to get</span>
+<span class="sd">            default: (optional) Default value if not found. None by default.</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            Information attribute value, None if not found.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">infos</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span></div>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">infos</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">default</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">infos</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_set_model_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbintvars</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbitvvars</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbseqvars</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nbctrs</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Set the general model attributes.</span>
+
+<span class="sd">        This method is called when solve is done on the cloud, when not all information is available from the solver.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            nbintvars: Number of integer variables</span>
@@ -808,10 +880,10 @@
 <span class="sd">            nbseqvars: Number of sequence variables</span>
 <span class="sd">            nbctrs:    Number of constraints</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbintvars</span> <span class="o">=</span> <span class="n">nbintvars</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbintervalvars</span> <span class="o">=</span> <span class="n">nbitvvars</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbconstraints</span> <span class="o">=</span> <span class="n">nbctrs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbsequencevars</span> <span class="o">=</span> <span class="n">nbseqvars</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_infos</span><span class="p">({</span><span class="n">INFO_NUMBER_OF_INTEGER_VARIABLES</span><span class="p">:</span> <span class="n">nbintvars</span><span class="p">,</span>
+                         <span class="n">INFO_NUMBER_OF_INTERVAL_VARIABLES</span><span class="p">:</span> <span class="n">nbitvvars</span><span class="p">,</span>
+                         <span class="n">INFO_NUMBER_OF_SEQUENCE_VARIABLES</span><span class="p">:</span> <span class="n">nbseqvars</span><span class="p">,</span>
+                         <span class="n">INFO_NUMBER_OF_CONSTRAINTS</span><span class="p">:</span> <span class="n">nbctrs</span><span class="p">})</span>
 
     <span class="k">def</span> <span class="nf">_set_solve_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Set the solve time required for this solution.</span>
@@ -835,7 +907,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Number of integer variables.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbintvars</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">INFO_NUMBER_OF_INTEGER_VARIABLES</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="CpoSolveResult.get_number_of_interval_vars"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_number_of_interval_vars">[docs]</a>    <span class="k">def</span> <span class="nf">get_number_of_interval_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the number of interval variables in the model.</span>
@@ -843,7 +915,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Number of interval variables.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbintervalvars</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">INFO_NUMBER_OF_INTERVAL_VARIABLES</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="CpoSolveResult.get_number_of_sequence_vars"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_number_of_sequence_vars">[docs]</a>    <span class="k">def</span> <span class="nf">get_number_of_sequence_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the number of sequence variables in the model.</span>
@@ -851,7 +923,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Number of sequence variables.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbsequencevars</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">INFO_NUMBER_OF_SEQUENCE_VARIABLES</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="CpoSolveResult.get_number_of_constraints"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_number_of_constraints">[docs]</a>    <span class="k">def</span> <span class="nf">get_number_of_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the number of constraints in the model.</span>
@@ -859,15 +931,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Number of constraints.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbconstraints</span></div>
-
-    <span class="k">def</span> <span class="nf">_add_var_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vsol</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Add a variable solution to this model solution.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            vsol: Variable solution</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">add_var_solution</span><span class="p">(</span><span class="n">vsol</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">INFO_NUMBER_OF_CONSTRAINTS</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="CpoSolveResult.get_var_solution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_var_solution">[docs]</a>    <span class="k">def</span> <span class="nf">get_var_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets a variable solution from this model solution.</span>
@@ -898,7 +962,7 @@
 <span class="sd">        Args:</span>
 <span class="sd">            name: Variable name, or model variable descriptor.</span>
 <span class="sd">        Returns:</span>
-<span class="sd">            Variable value, None if variable not found.</span>
+<span class="sd">            Variable value, None if variable is not found.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
 
@@ -922,21 +986,18 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">=</span> <span class="n">FAIL_STATUS_SEARCH_COMPLETED</span>
 
         <span class="c1"># Add parameters</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_parameters</span><span class="p">(</span><span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;parameters&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">prms</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;parameters&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">CpoParameters</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">prms</span><span class="p">)</span>
 
         <span class="c1"># Add information attributes</span>
-        <span class="n">cpinf</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cpInfo&#39;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_infos</span><span class="p">(</span><span class="n">cpinf</span><span class="p">)</span>
+        <span class="n">cpinf</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cpInfo&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cpinf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_infos</span><span class="p">(</span><span class="n">cpinf</span><span class="p">)</span>
 
         <span class="c1"># Add solution</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">_add_json_solution</span><span class="p">(</span><span class="n">jsol</span><span class="p">)</span>
-
-        <span class="c1"># Retrieve critical solving information</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbconstraints</span> <span class="o">=</span> <span class="n">cpinf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;NumberOfConstraints&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbconstraints</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbintvars</span> <span class="o">=</span> <span class="n">cpinf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;NumberOfIntegerVariables&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbintvars</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbintervalvars</span> <span class="o">=</span> <span class="n">cpinf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;NumberOfIntervalVariables&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbintervalvars</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nbsequencevars</span> <span class="o">=</span> <span class="n">cpinf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;NumberOfSequenceVariables&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbsequencevars</span><span class="p">)</span>
-
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Overloading of [] to get a variable solution from this model solution</span>
@@ -951,6 +1012,9 @@
 <div class="viewcode-block" id="CpoSolveResult.print_solution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.print_solution">[docs]</a>    <span class="k">def</span> <span class="nf">print_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Prints the solution on a given output.</span>
 
+<span class="sd">        If the given output is a string, it is considered as a file name that is opened by this method</span>
+<span class="sd">        using &#39;utf-8&#39; encoding.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            out: Target output stream or output file, standard output if not given.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -959,9 +1023,8 @@
             <span class="n">out</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
 
         <span class="c1"># Check file</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">make_directories</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_string</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">open_utf8</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_write_solution</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_solution</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
@@ -1001,7 +1064,7 @@
 
 
 <div class="viewcode-block" id="CpoRefineConflictResult"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoRefineConflictResult">[docs]</a><span class="k">class</span> <span class="nc">CpoRefineConflictResult</span><span class="p">(</span><span class="n">CpoRunResult</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Model conflict refiner result.</span>
+    <span class="sd">&quot;&quot;&quot; This class represents the result of a call to the conflict refiner.</span>
 
 <span class="sd">    A conflict is a subset of the constraints and/or variables of the model which are</span>
 <span class="sd">    mutually contradictory.</span>
@@ -1018,11 +1081,11 @@
 <span class="sd">    conflict analysis.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Creates a new empty conflict refiner result.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">           model: Related model</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># &quot;&quot;&quot; Creates a new empty conflict refiner result.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#    model: Related model</span>
+        <span class="c1"># &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoRefineConflictResult</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">member_constraints</span> <span class="o">=</span> <span class="p">[]</span>    <span class="c1"># List of member constraints</span>
@@ -1103,6 +1166,9 @@
 <div class="viewcode-block" id="CpoRefineConflictResult.print_conflict"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoRefineConflictResult.print_conflict">[docs]</a>    <span class="k">def</span> <span class="nf">print_conflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Prints this conflict on a given output.</span>
 
+<span class="sd">        If the given output is a string, it is considered as a file name that is opened by this method</span>
+<span class="sd">        using &#39;utf-8&#39; encoding.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            out: Target output stream or output file, standard output if not given.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1111,9 +1177,8 @@
             <span class="n">out</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
 
         <span class="c1"># Check file</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="n">utils</span><span class="o">.</span><span class="n">make_directories</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_string</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">open_utf8</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_write_conflict</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_conflict</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
@@ -1131,12 +1196,12 @@
         <span class="k">if</span> <span class="n">lc</span><span class="p">:</span>
             <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Member constraints:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">lc</span><span class="p">:</span>
-                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;   {}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;   {}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_build_conflict_constraint_string</span><span class="p">(</span><span class="n">c</span><span class="p">)))</span>
         <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_possible_constraints</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">lc</span><span class="p">:</span>
             <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Possible member constraints:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">lc</span><span class="p">:</span>
-                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;   {}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;   {}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_build_conflict_constraint_string</span><span class="p">(</span><span class="n">c</span><span class="p">)))</span>
         <span class="c1"># Print variables in the conflict</span>
         <span class="n">lc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_member_variables</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">lc</span><span class="p">:</span>
@@ -1171,6 +1236,35 @@
 <span class="n">_CONSTANTS_VALUES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;intmin&#39;</span><span class="p">:</span> <span class="n">INT_MIN</span><span class="p">,</span> <span class="s1">&#39;intmax&#39;</span><span class="p">:</span> <span class="n">INT_MAX</span><span class="p">,</span> <span class="s1">&#39;intervalmin&#39;</span><span class="p">:</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="s1">&#39;intervalmax&#39;</span><span class="p">:</span> <span class="n">INTERVAL_MAX</span><span class="p">,</span>
                      <span class="s1">&#39;NaN&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span> <span class="s1">&#39;Infinity&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="s1">&#39;-Infinity&#39;</span><span class="p">:</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)}</span>
 
+<span class="c1"># Marker of interval with holes</span>
+<span class="n">_HOLE_MARKER</span> <span class="o">=</span> <span class="s2">&quot;holes&quot;</span>
+
+<span class="k">def</span> <span class="nf">_get_domain</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert a solution value into domain.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val: Value to convert</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Variable domain</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_array</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">is_array</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+                <span class="n">vl</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">vl</span> <span class="o">==</span> <span class="mi">2</span><span class="p">):</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+                <span class="k">elif</span> <span class="n">vl</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">_HOLE_MARKER</span><span class="p">))</span>
+                    <span class="k">assert</span> <span class="n">v</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="n">_HOLE_MARKER</span><span class="p">,</span> <span class="s2">&quot;Domain interval with 3 elements must contains &#39;{}&#39; as last one&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_HOLE_MARKER</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s2">&quot;Domain interval should contain only 2 elements&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
 <span class="k">def</span> <span class="nf">_get_num_value</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Convert a solution value into number.</span>
 <span class="sd">    Interpret intmin, intmax, intervalmin, intervalmax, NaN, Infinity if any.</span>
@@ -1180,15 +1274,14 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        Converted value, itself if not found</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span><span class="p">(</span><span class="n">_CONSTANTS_VALUES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">_CONSTANTS_VALUES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
 
 <span class="k">def</span> <span class="nf">_check_arg_domain</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Check that an argument is a correct domain and raise error if wrong</span>
 
 <span class="sd">    Domain is:</span>
 <span class="sd">       * a single integer for a fixed domain</span>
-<span class="sd">       * a list of integers or tuples denoting possible values or intervals</span>
-<span class="sd">       * a single tuple denoting a single interval</span>
+<span class="sd">       * a list of integers or intervals expressed as tuples.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        val:  Argument value</span>
@@ -1201,15 +1294,44 @@
     <span class="c1"># Check single integer</span>
     <span class="k">if</span> <span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">val</span>
-    <span class="c1"># Check single interval</span>
-    <span class="k">if</span> <span class="n">is_interval_tuple</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
-    <span class="c1"># Check list og integers or tuples</span>
+    <span class="c1"># Check list of integers or tuples</span>
     <span class="k">assert</span> <span class="n">is_array</span><span class="p">(</span><span class="n">val</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a list of integers and/or intervals (tuples of 2 integers)&quot;</span>
     <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">val</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">is_int</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
-            <span class="k">assert</span> <span class="n">_is_interval_tuple</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a list of integers and/or intervals (tuples of 2 integers)&quot;</span>
+            <span class="k">assert</span> <span class="n">_is_domain_interval</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;&#39; should be a list of integers and/or intervals (tuples of 2 integers)&quot;</span>
     <span class="k">return</span> <span class="n">val</span>
+
+
+<span class="k">def</span> <span class="nf">_is_domain_interval</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check if a value is representing a valid domain interval</span>
+<span class="sd">    Args:</span>
+<span class="sd">        val:  Value to check</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if value is a tuple representing an interval</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    <span class="n">vl</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">vl</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">if</span> <span class="n">vl</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="n">_HOLE_MARKER</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+
+<span class="k">def</span> <span class="nf">_build_conflict_constraint_string</span><span class="p">(</span><span class="n">ctr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Build the string used to represent a constraint in conflict refiner</span>
+<span class="sd">    Args:</span>
+<span class="sd">        ctr:  Constraint to print</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Constraint string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cn</span> <span class="o">=</span> <span class="n">ctr</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">cn</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">cn</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">ctr</span><span class="o">.</span><span class="n">_get_expr_string</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">ctr</span><span class="o">.</span><span class="n">_to_string</span><span class="p">()</span>
 
 
 </pre></div>

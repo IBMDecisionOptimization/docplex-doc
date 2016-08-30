@@ -1,0 +1,852 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    
+    <title>docplex.mp.constr &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.constr</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="kn">import</span> <span class="n">ModelingObject</span><span class="p">,</span> <span class="n">Priority</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">_ComparisonUtils</span><span class="p">,</span> <span class="n">ComparisonType</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_number</span>
+
+
+<span class="k">class</span> <span class="nc">AbstractConstraint</span><span class="p">(</span><span class="n">ModelingObject</span><span class="p">):</span>
+    <span class="c1"># noinspection PyRedundantParentheses</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_priority&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">ModelingObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span>
+
+    <span class="k">def</span> <span class="nf">set_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newprio</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span> <span class="o">=</span> <span class="n">Priority</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">newprio</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">error_handler</span><span class="p">,</span> <span class="n">accept_none</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="n">priority</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_priority</span><span class="p">,</span> <span class="n">set_priority</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_mandatory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Sets the constraint as mandatory.</span>
+
+<span class="sd">        This prevents relaxation from relaxing this constraint.</span>
+<span class="sd">        To revert this, set the priority to any non-mandatory priprity, or None.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span> <span class="o">=</span> <span class="n">Priority</span><span class="o">.</span><span class="n">MANDATORY</span>
+
+    <span class="k">def</span> <span class="nf">is_mandatory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Priority</span><span class="o">.</span><span class="n">MANDATORY</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_priority</span>
+
+
+    <span class="k">def</span> <span class="nf">_unsupported_relational_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_string</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Cannot use relational operator {1} on linear constraint: {0!s}&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">op_string</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unsupported_relational_op</span><span class="p">(</span><span class="s2">&quot;&lt;=&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unsupported_relational_op</span><span class="p">(</span><span class="s2">&quot;&gt;=&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unsupported_relational_op</span><span class="p">(</span><span class="s2">&quot;&lt;&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unsupported_relational_op</span><span class="p">(</span><span class="s2">&quot;&gt;&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="c1"># def __eq__(self, e):</span>
+    <span class="c1"># self._unsupported_relational_op(&quot;==&quot;, e)</span>
+
+    <span class="k">def</span> <span class="nf">_no_linear_ct_in_logical_test_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;cannot convert a constraint to boolean: {0!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__nonzero__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_no_linear_ct_in_logical_test_error</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># python 3 version of nonzero</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_no_linear_ct_in_logical_test_error</span><span class="p">()</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">contains_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">dvar</span> <span class="ow">is</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">compute_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slack</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="c1"># noinspection PyMethodMayBeStatic</span>
+    <span class="k">def</span> <span class="nf">notify_deleted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">short_typename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;constraint&quot;</span>
+
+    <span class="k">def</span> <span class="nf">is_trivial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">is_linear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+
+<span class="c1"># noinspection PyAbstractClass</span>
+<span class="k">class</span> <span class="nc">BinaryConstraint</span><span class="p">(</span><span class="n">AbstractConstraint</span><span class="p">):</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;_ctype&quot;</span><span class="p">,</span> <span class="s2">&quot;_left_expr&quot;</span><span class="p">,</span> <span class="s2">&quot;_right_expr&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">AbstractConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span> <span class="o">=</span> <span class="n">ctype</span>
+        <span class="c1"># noinspection PyPep8</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>  <span class="o">=</span> <span class="n">left_expr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span> <span class="o">=</span> <span class="n">right_expr</span>
+
+    <span class="k">def</span> <span class="nf">get_constraint_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the type of the constraint; type is an enumerated value</span>
+<span class="sd">        of type :class:`ComparisonType`, with three possible values:</span>
+
+<span class="sd">        - LE for e1 &lt;= e2 constraints</span>
+
+<span class="sd">        - EQ for e1 == e2 constraints</span>
+
+<span class="sd">        - GE for e1 &gt;= e2 constraints</span>
+
+<span class="sd">        where e1 and e2 denote linear expressions.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">left_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the left expression in the constraint.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            (X+Y &lt;= Z+1) has left expression (X+Y).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">right_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the right expression in the constraint.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            (X+Y &lt;= Z+1) has right expression (Z+1).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a string representation of the constraint.</span>
+
+<span class="sd">        The operators in this representation are the usual operators &lt;=, ==, and &gt;=.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            The constraint (X+Y &lt;= Z+1) is represented as &quot;X+Y &lt;= Z+1&quot;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">left_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+        <span class="n">right_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">u&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">left_string</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span><span class="o">.</span><span class="n">get_operator_symbol</span><span class="p">(),</span>
+                              <span class="n">right_string</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rhs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">right_cst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">constant</span>
+        <span class="n">left_cst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">constant</span>
+        <span class="k">return</span> <span class="n">right_cst</span> <span class="o">-</span> <span class="n">left_cst</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">classname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span>
+        <span class="n">user_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">typename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">short_name</span>
+        <span class="n">sleft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">truncated_str</span><span class="p">()</span>
+        <span class="n">sright</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">truncated_str</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.{0}[{1}]({2!s},{3},{4!s})&quot;</span><span class="o">.</span> \
+            <span class="n">format</span><span class="p">(</span><span class="n">classname</span><span class="p">,</span> <span class="n">user_name</span><span class="p">,</span> <span class="n">sleft</span><span class="p">,</span> <span class="n">typename</span><span class="p">,</span> <span class="n">sright</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_is_trivially_feasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL : assume self is trivial()</span>
+        <span class="n">op_func</span> <span class="o">=</span> <span class="n">_ComparisonUtils</span><span class="o">.</span><span class="n">get_python_operator_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">op_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">)</span> <span class="k">if</span> <span class="n">op_func</span> <span class="k">else</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">_is_trivially_infeasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: assume self is trivial .</span>
+        <span class="n">op_func</span> <span class="o">=</span> <span class="n">_ComparisonUtils</span><span class="o">.</span><span class="n">get_python_operator_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">op_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">)</span> <span class="k">if</span> <span class="n">op_func</span> <span class="k">else</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">is_trivial_feasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_trivial</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_trivially_feasible</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">is_trivial_infeasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_trivial</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_trivially_infeasible</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_generate_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">for</span> <span class="n">lv</span><span class="p">,</span> <span class="n">lk</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
+            <span class="n">net_k</span> <span class="o">=</span> <span class="n">lk</span> <span class="o">-</span> <span class="n">right_expr</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">net_k</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">lv</span><span class="p">,</span> <span class="n">net_k</span>
+        <span class="k">for</span> <span class="n">rv</span><span class="p">,</span> <span class="n">rk</span> <span class="ow">in</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">rv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">left_expr</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">rk</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">rv</span><span class="p">,</span> <span class="o">-</span><span class="n">rk</span>
+
+    <span class="k">def</span> <span class="nf">_generate_opposite_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">v</span><span class="p">,</span> <span class="o">-</span><span class="n">k</span>
+
+
+    <span class="k">def</span> <span class="nf">_iter_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">if</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_opposite_linear_coefs</span><span class="p">(</span><span class="n">right_expr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Iterates over all variables mentioned in the constraint.</span>
+
+<span class="sd">        *Note:* This includes variables that are mentioned with a zero coefficient. For example,</span>
+<span class="sd">        the iterator on the following constraint:</span>
+
+<span class="sd">         X &lt;= X+Y + 1</span>
+
+<span class="sd">        will return X and Y, although X is mentioned with a zero coefficient.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An iterator object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_ordered_vars</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">generate_ordered_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span>
+        <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">lv</span>
+        <span class="k">for</span> <span class="n">rv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">rv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">rv</span>
+
+
+<div class="viewcode-block" id="LinearConstraint"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.LinearConstraint">[docs]</a><span class="k">class</span> <span class="nc">LinearConstraint</span><span class="p">(</span><span class="n">BinaryConstraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The class that models all constraints of the form `&lt;expr1&gt; &lt;OP&gt; &lt;expr2&gt;`,</span>
+<span class="sd">            where &lt;expr1&gt; and &lt;expr2&gt; are linear expressions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">BinaryConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_linear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
+        <span class="n">copied_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">copied_right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">copy_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">LinearConstraint</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">copied_left</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">copied_right</span><span class="p">,</span> <span class="n">copy_name</span><span class="p">)</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the type of the constraint; type is an enumerated value</span>
+<span class="sd">        of type :class:`ComparisonType`, with three possible values:</span>
+
+<span class="sd">        - LE for e1 &lt;= e2 constraints</span>
+
+<span class="sd">        - EQ for e1 == e2 constraints</span>
+
+<span class="sd">        - GE for e1 &gt;= e2 constraints</span>
+
+<span class="sd">        where e1 and e2 denote linear expressions.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">left_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the left expression in the constraint.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            (X+Y &lt;= Z+1) has left expression (X+Y).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">right_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the right expression in the constraint.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            (X+Y &lt;= Z+1) has right expression (Z+1).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span>
+
+<div class="viewcode-block" id="LinearConstraint.to_string"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.LinearConstraint.to_string">[docs]</a>    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a string representation of the constraint.</span>
+
+<span class="sd">        The operators in this representation are the usual operators &lt;=, ==, and &gt;=.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            The constraint (X+Y &lt;= Z+1) is represented as &quot;X+Y &lt;= Z+1&quot;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">BinaryConstraint</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">compute_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slack</span><span class="p">):</span>
+        <span class="n">ctype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span>
+        <span class="k">if</span> <span class="n">ctype</span> <span class="o">==</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">EQ</span><span class="p">:</span>
+            <span class="n">infeas</span> <span class="o">=</span> <span class="n">slack</span>
+        <span class="k">elif</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">LE</span> <span class="o">==</span> <span class="n">ctype</span><span class="p">:</span>
+            <span class="n">infeas</span> <span class="o">=</span> <span class="n">slack</span> <span class="k">if</span> <span class="n">slack</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">GE</span> <span class="o">==</span> <span class="n">ctype</span><span class="p">:</span>
+            <span class="n">infeas</span> <span class="o">=</span> <span class="n">slack</span> <span class="k">if</span> <span class="n">slack</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">infeas</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">infeas</span>
+
+
+    <span class="k">def</span> <span class="nf">is_trivial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Checks whether the constraint is equivalent to a comparison between numbers.</span>
+        <span class="c1"># For example, x &lt;= x+1 is trivial, but 1.5 X &lt;= X + 1 is not.</span>
+        <span class="n">self_left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>
+        <span class="n">self_right_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span>
+        <span class="k">if</span> <span class="n">self_right_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">self_left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">self_left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">self_right_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="n">self_left_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">self_left_expr</span><span class="o">.</span><span class="n">unchecked_get_coef</span><span class="p">(</span><span class="n">lv</span><span class="p">)</span> <span class="o">!=</span> <span class="n">self_right_expr</span><span class="o">.</span><span class="n">unchecked_get_coef</span><span class="p">(</span><span class="n">lv</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+            <span class="k">for</span> <span class="n">rv</span> <span class="ow">in</span> <span class="n">self_right_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">self_left_expr</span><span class="o">.</span><span class="n">unchecked_get_coef</span><span class="p">(</span><span class="n">rv</span><span class="p">)</span> <span class="o">!=</span> <span class="n">self_right_expr</span><span class="o">.</span><span class="n">unchecked_get_coef</span><span class="p">(</span><span class="n">rv</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">True</span>
+
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: define ranges with operators.</span>
+        <span class="c1"># Beware one must use parentheses as in r = (1 &lt;= x) &lt;= 2</span>
+        <span class="c1"># Chained comparisons like: 1 &lt;= x &lt;= 2 will fail as Python</span>
+        <span class="c1"># generates an &quot;and&quot; of two constraints (1&lt;=x) and (x&lt;=2) but</span>
+        <span class="c1"># constraints _cannot_ be converted to booleans.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;operator &lt;= on constraint requires numeric argument, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">GE</span><span class="p">:</span>
+            <span class="n">rhs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span>
+            <span class="k">if</span> <span class="n">rhs</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+                <span class="n">range_min</span> <span class="o">=</span> <span class="n">rhs</span><span class="o">.</span><span class="n">constant</span>
+                <span class="n">range_max</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">range_constraint</span><span class="p">(</span><span class="n">range_min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">range_max</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;operator &lt;= requires a constraint with numeric RHS, rhs is: {0!s}&quot;</span><span class="p">,</span> <span class="n">rhs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;operator &lt;= is only allowed for LE constraints, type is: {0!s}&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># INTERNAL: define ranges with operators.</span>
+        <span class="c1"># Beware one must use parentheses as in r = (1 &lt;= x) &lt;= 2</span>
+        <span class="c1"># Chained comparisons like: 1 &lt;= x &lt;= 2 will fail as Python</span>
+        <span class="c1"># generates an &quot;and&quot; of two constraints (1&lt;=x) and (x&lt;=2) but</span>
+        <span class="c1"># constraints _cannot_ be converted to booleans.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;operator &gt;= on constraints requires number argument, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">LE</span><span class="p">:</span>
+            <span class="n">rhs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span>
+            <span class="k">if</span> <span class="n">rhs</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+                <span class="n">range_max</span> <span class="o">=</span> <span class="n">rhs</span><span class="o">.</span><span class="n">constant</span>
+                <span class="n">range_min</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">range_constraint</span><span class="p">(</span><span class="n">range_min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">range_max</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;operator &gt;= requires a constraint with numeric RHS, got: {0!s}&quot;</span><span class="p">,</span> <span class="n">rhs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;operator &gt;= is only allowed for GE constraints, not {0!s}&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LinearConstraint.iter_variables"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.LinearConstraint.iter_variables">[docs]</a>    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Iterates over all variables mentioned in the constraint.</span>
+
+<span class="sd">        *Note:* This includes variables that are mentioned with a zero coefficient. For example,</span>
+<span class="sd">        the iterator on the following constraint:</span>
+
+<span class="sd">         X &lt;= X+Y + 1</span>
+
+<span class="sd">        will return X and Y, although X is mentioned with a zero coefficient.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An iterator object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_ordered_vars</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">generate_ordered_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span>
+        <span class="k">for</span> <span class="n">lv</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">lv</span>
+        <span class="k">for</span> <span class="n">rv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">rv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">rv</span>
+
+    <span class="k">def</span> <span class="nf">fast_get_coef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">iter_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>
+        <span class="n">right_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span>
+        <span class="k">if</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_opposite_linear_coefs</span><span class="p">(</span><span class="n">right_expr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_generate_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span> <span class="nc">_DummyFeasibleConstraint</span><span class="p">(</span><span class="n">LinearConstraint</span><span class="p">):</span>
+    <span class="c1"># INTERNAL</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero_expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">ctname</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;dummy_feasible_ct&quot;</span>
+        <span class="n">LinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+                                  <span class="n">left_expr</span><span class="o">=</span><span class="n">zero_expr</span><span class="p">,</span>
+                                  <span class="n">ctype</span><span class="o">=</span><span class="n">ComparisonType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span>
+                                  <span class="n">right_expr</span><span class="o">=</span><span class="n">zero_expr</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="n">ctname</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.LinearConstraint._TrivialFeasible&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">_DummyInfeasibleConstraint</span><span class="p">(</span><span class="n">LinearConstraint</span><span class="p">):</span>
+    <span class="c1"># INTERNAL</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">zero</span><span class="p">,</span> <span class="n">one</span><span class="p">):</span>
+        <span class="n">LinearConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span>
+                                  <span class="n">left_expr</span><span class="o">=</span><span class="n">zero</span><span class="p">,</span>
+                                  <span class="n">ctype</span><span class="o">=</span><span class="n">ComparisonType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span>
+                                  <span class="n">right_expr</span><span class="o">=</span><span class="n">one</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_dummy_infeasible_ct_&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.LinearConstraint.TrivialInfeasible&quot;</span>
+
+
+<div class="viewcode-block" id="RangeConstraint"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.RangeConstraint">[docs]</a><span class="k">class</span> <span class="nc">RangeConstraint</span><span class="p">(</span><span class="n">AbstractConstraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This class models range constraints.</span>
+
+<span class="sd">    A range constraint states that an expression must stay between two</span>
+<span class="sd">    values, `lb` and `ub`.</span>
+
+<span class="sd">    This class is not meant to be instantiated by the user.</span>
+<span class="sd">    To create a range constraint, use the factory method :func:`docplex.mp.model.Model.add_range`</span>
+<span class="sd">    defined on :class:`docplex.mp.model.Model`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">expr</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">AbstractConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="s1">&#39;RangeConstraint.lb&#39;</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">ub</span><span class="p">,</span> <span class="s1">&#39;RangeConstraint.ub&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span> <span class="o">=</span> <span class="n">ub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span> <span class="o">=</span> <span class="n">lb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span> <span class="o">=</span> <span class="n">expr</span>
+
+    <span class="k">def</span> <span class="nf">is_linear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">!=</span> <span class="n">RangeConstraint</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">lb</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">ub</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">equals_expr</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">expr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">short_typename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;range&quot;</span>
+
+    <span class="k">def</span> <span class="nf">is_trivial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_is_trivially_feasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL : assume self is trivial()</span>
+        <span class="n">expr_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">constant</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span> <span class="o">&lt;=</span> <span class="n">expr_num</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span>
+
+    <span class="k">def</span> <span class="nf">_is_trivially_infeasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL : assume self is trivial()</span>
+        <span class="n">expr_num</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">constant</span>
+        <span class="k">return</span> <span class="n">expr_num</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span> <span class="ow">or</span> <span class="n">expr_num</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span>
+
+    <span class="k">def</span> <span class="nf">compute_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slack</span><span class="p">):</span>
+        <span class="c1"># compatible with cplex...</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">slack</span>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the linear expression of the range constraint.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">lb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the lower bound of the range constraint.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ub</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the upper bound of the range constraint.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span>
+
+    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span>
+
+<div class="viewcode-block" id="RangeConstraint.iter_variables"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.RangeConstraint.iter_variables">[docs]</a>    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Iterates over all the variables of the range constraint.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">           An iterator object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">rhs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lb</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">constant</span>
+
+    <span class="k">def</span> <span class="nf">fast_get_coef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="o">.</span><span class="n">unchecked_get_coef</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
+        <span class="n">copied_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">copy_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="bp">None</span>
+        <span class="n">copied_range</span> <span class="o">=</span> <span class="n">RangeConstraint</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">copied_expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ub</span><span class="p">,</span> <span class="n">copy_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">copied_range</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;{0} &lt;= {1!s} &lt;= {2}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ub</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RangeConstraint.__str__"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.RangeConstraint.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a string representation of the range constraint.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            1 &lt;= x+y+z &lt;= 3 represents the range constraint where the expression (x+y+z) is</span>
+<span class="sd">            constrained to stay between 1 and 3.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">printable_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.RangeConstraint[{0}]({1},{2!s},{3})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">printable_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="p">,</span>
+                                                                              <span class="bp">self</span><span class="o">.</span><span class="n">ub</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="IndicatorConstraint"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.IndicatorConstraint">[docs]</a><span class="k">class</span> <span class="nc">IndicatorConstraint</span><span class="p">(</span><span class="n">AbstractConstraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This class models indicator constraints.</span>
+
+<span class="sd">    An indicator constraint links (one-way) the value of a binary variable to the satisfaction of a linear constraint.</span>
+<span class="sd">    If the binary variable equals the active value, then the constraint is satisfied, but otherwise the constraint</span>
+<span class="sd">    may or may not be satisfied.</span>
+
+<span class="sd">    This class is not meant to be instantiated by the user.</span>
+
+<span class="sd">    To create an indicator constraint, use the factory method :func:`docplex.mp.model.Model.add_indicator`</span>
+<span class="sd">    defined on :class:`docplex.mp.model.Model`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_binary_var&#39;</span><span class="p">,</span> <span class="s1">&#39;_linear_ct&#39;</span><span class="p">,</span> <span class="s1">&#39;_active_value&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">binary_var</span><span class="p">,</span> <span class="n">linear_ct</span><span class="p">,</span> <span class="n">active_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">AbstractConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_binary_var</span> <span class="o">=</span> <span class="n">binary_var</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_linear_ct</span> <span class="o">=</span> <span class="n">linear_ct</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_value</span> <span class="o">=</span> <span class="n">active_value</span>
+        <span class="k">if</span> <span class="n">linear_ct</span><span class="o">.</span><span class="n">is_trivial</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Using trivial linear constraint in indicator, binary: {0!s}, ct: {1!s}&quot;</span><span class="p">,</span> <span class="n">binary_var</span><span class="p">,</span>
+                         <span class="n">linear_ct</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">!=</span> <span class="n">IndicatorConstraint</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_value</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">active_value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_var</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">binary_var</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_ct</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">linear_ct</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">short_typename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;indicator&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">active_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">indicator_var</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_var</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">linear_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_ct</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">logical_rhs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This property returns the target right-hand side used to trigger the linear constraint. Returns 1 if not complemented, else 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_value</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
+        <span class="n">copied_binary</span> <span class="o">=</span> <span class="n">var_map</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">indicator_var</span><span class="p">]</span>
+        <span class="n">copied_linear_ct</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear_constraint</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">copy_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="bp">None</span>
+        <span class="n">copied_indicator</span> <span class="o">=</span> <span class="n">IndicatorConstraint</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span>
+                                               <span class="n">copied_binary</span><span class="p">,</span>
+                                               <span class="n">copied_linear_ct</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">active_value</span><span class="p">,</span>
+                                               <span class="n">copy_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">copied_indicator</span>
+
+<div class="viewcode-block" id="IndicatorConstraint.invalidate"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.IndicatorConstraint.invalidate">[docs]</a>    <span class="k">def</span> <span class="nf">invalidate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the binary variable to the opposite of its active value.</span>
+<span class="sd">        Typically used by indicator constraints with a trivial infeasible linear part.</span>
+<span class="sd">        For example, z=1 -&gt; 4 &lt;= 3 sets z to 0 and</span>
+<span class="sd">        z=0 -&gt; 4 &lt;= 3 sets z to 1.</span>
+<span class="sd">        This is equivalent to if z=a =&gt; False, then z *cannot* be equal to a.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_value</span><span class="p">:</span>
+            <span class="c1"># set to 1 : lb = 1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indicator_var</span><span class="o">.</span><span class="n">lb</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="mi">1</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_value</span><span class="p">:</span>
+            <span class="c1"># set to 0 ub = 0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">indicator_var</span><span class="o">.</span><span class="n">ub</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Unexpected active value for indicator constraint: {0!s}, value is: {1!s}, expecting 0 or 1&quot;</span><span class="p">,</span>  <span class="c1"># pragma: no cover</span>
+                       <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_value</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span></div>
+
+    <span class="k">def</span> <span class="nf">iter_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_var</span>
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_ct</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">v</span>
+
+<div class="viewcode-block" id="IndicatorConstraint.to_string"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.IndicatorConstraint.to_string">[docs]</a>    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Displays the indicator constraint in the LP style:</span>
+<span class="sd">        z = 1 -&gt; x+y+z == 2</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;{0!s} = {1} -&gt; {2!s}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_binary_var</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logical_rhs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear_constraint</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">compute_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slack</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="QuadraticConstraint"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.QuadraticConstraint">[docs]</a><span class="k">class</span> <span class="nc">QuadraticConstraint</span><span class="p">(</span><span class="n">BinaryConstraint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The class models quadratic constraints.</span>
+
+<span class="sd">        Quadratic constraints are of the form `&lt;qexpr1&gt; &lt;OP&gt; &lt;qexpr2&gt;`,</span>
+<span class="sd">        where at least one of &lt;qexpr1&gt; or &lt;qexpr2&gt; is a quadratic expression.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">):</span>
+        <span class="c1"># noinspection PyPep8</span>
+        <span class="n">copied_left_expr</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">copied_right_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">var_map</span><span class="p">)</span>
+        <span class="n">copy_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">QuadraticConstraint</span><span class="p">(</span><span class="n">target_model</span><span class="p">,</span> <span class="n">copied_left_expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">copied_right_expr</span><span class="p">,</span> <span class="n">copy_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compute_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slack</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">BinaryConstraint</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">left_expr</span><span class="o">=</span><span class="n">left_expr</span><span class="p">,</span>
+                                  <span class="n">ctype</span><span class="o">=</span><span class="n">ctype</span><span class="p">,</span>
+                                  <span class="n">right_expr</span><span class="o">=</span><span class="n">right_expr</span><span class="p">,</span>
+                                  <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_linear_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">expr</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">expr</span><span class="o">.</span><span class="n">linear_part</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">expr</span>
+
+    <span class="k">def</span> <span class="nf">is_trivial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">nqk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_net_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">nqk</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="c1"># now check linear parts</span>
+
+        <span class="k">for</span> <span class="n">lv</span><span class="p">,</span> <span class="n">lk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_net_linear_coefs</span><span class="p">():</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">lk</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">iter_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">linear_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_linear_part</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">)</span>
+        <span class="n">linear_right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_linear_part</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_net_linear_coefs2</span><span class="p">(</span><span class="n">linear_left</span><span class="p">,</span> <span class="n">linear_right</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">iter_net_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>
+        <span class="n">right_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_opposite_quads</span><span class="p">(</span><span class="n">right_expr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_ordered_net_quads</span><span class="p">(</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">generate_opposite_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="n">q</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">qv</span><span class="p">,</span> <span class="o">-</span><span class="n">qk</span>
+
+    <span class="k">def</span> <span class="nf">generate_ordered_net_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qleft</span><span class="p">,</span> <span class="n">qright</span><span class="p">):</span>
+        <span class="c1"># left first, then right</span>
+        <span class="k">for</span> <span class="n">lqv</span><span class="p">,</span> <span class="n">lqk</span> <span class="ow">in</span> <span class="n">qleft</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="n">net_k</span> <span class="o">=</span> <span class="n">lqk</span> <span class="o">-</span> <span class="n">qright</span><span class="o">.</span><span class="n">_get_quadratic_coefficient_from_var_pair</span><span class="p">(</span><span class="n">lqv</span><span class="p">)</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">net_k</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">lqv</span><span class="p">,</span> <span class="n">net_k</span>
+        <span class="k">for</span> <span class="n">rqv</span><span class="p">,</span> <span class="n">rqk</span> <span class="ow">in</span> <span class="n">qright</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">qleft</span><span class="o">.</span><span class="n">contains_quad</span><span class="p">(</span><span class="n">rqv</span><span class="p">)</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">rqk</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">rqv</span><span class="p">,</span> <span class="o">-</span><span class="n">rqk</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM&reg;.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    
+    <title>docplex.mp.conflict_refiner &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.conflict_refiner</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span><span class="p">,</span> <span class="n">Iterable</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">CplexCtSenseToPython</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+
+<span class="n">TConflictConstraint</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;_TConflictConstraint&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;element&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="VarUbConstraintWrapper"><a class="viewcode-back" href="../../../docplex.mp.conflict_refiner.html#docplex.mp.conflict_refiner.VarUbConstraintWrapper">[docs]</a><span class="k">class</span> <span class="nc">VarUbConstraintWrapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is a wrapper for a model variable and its associated upper bound.</span>
+
+<span class="sd">    Instances of this class are created by the ``refine_conflict`` method when the conflict involves</span>
+<span class="sd">    a variable upper bound. Each of these instances is then referenced by a ``TConflictConstraint`` namedtuple</span>
+<span class="sd">    in the conflict list returned by ``refine_conflict``.</span>
+<span class="sd">    </span>
+<span class="sd">    To check whether the upper bound of a variable causes a conflict, wrap the variable and</span>
+<span class="sd">    include the resulting constraint in a ConstraintsGroup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_var</span> <span class="o">=</span> <span class="n">var</span>
+
+    <span class="k">def</span> <span class="nf">get_var</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span>
+
+    <span class="k">def</span> <span class="nf">get_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="o">.</span><span class="n">get_ub</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="o">.</span><span class="n">get_index</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_index</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">var_ub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ub</span><span class="p">()</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="n">CplexCtSenseToPython</span><span class="o">.</span><span class="n">cplex_ctsense_to_python_op</span><span class="p">(</span><span class="s1">&#39;L&#39;</span><span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_var</span><span class="p">(),</span> <span class="n">var_ub</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ct</span></div>
+
+
+<div class="viewcode-block" id="VarLbConstraintWrapper"><a class="viewcode-back" href="../../../docplex.mp.conflict_refiner.html#docplex.mp.conflict_refiner.VarLbConstraintWrapper">[docs]</a><span class="k">class</span> <span class="nc">VarLbConstraintWrapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is a wrapper for a model variable and its associated lower bound.</span>
+
+<span class="sd">    Instances of this class are created by the ``refine_conflict`` method when the conflict involves</span>
+<span class="sd">    a variable lower bound. Each of these instances is then referenced by a ``TConflictConstraint`` namedtuple</span>
+<span class="sd">    in the conflict list returned by ``refine_conflict``.</span>
+
+<span class="sd">    To check whether the lower bound of a variable causes a conflict, wrap the variable and</span>
+<span class="sd">    include the resulting constraint in a ConstraintsGroup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_var</span> <span class="o">=</span> <span class="n">var</span>
+
+    <span class="k">def</span> <span class="nf">get_var</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span>
+
+    <span class="k">def</span> <span class="nf">get_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="o">.</span><span class="n">get_lb</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="o">.</span><span class="n">get_index</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_index</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">var_lb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lb</span><span class="p">()</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="n">CplexCtSenseToPython</span><span class="o">.</span><span class="n">cplex_ctsense_to_python_op</span><span class="p">(</span><span class="s1">&#39;G&#39;</span><span class="p">)</span>
+        <span class="n">ct</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_var</span><span class="p">(),</span> <span class="n">var_lb</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ct</span></div>
+
+
+<div class="viewcode-block" id="ConstraintsGroup"><a class="viewcode-back" href="../../../docplex.mp.conflict_refiner.html#docplex.mp.conflict_refiner.ConstraintsGroup">[docs]</a><span class="k">class</span> <span class="nc">ConstraintsGroup</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is a container for the definition of a group of constraints.</span>
+<span class="sd">    A preference for conflict refinement is associated to the group.</span>
+
+<span class="sd">    Groups may be assigned preference. A group with a higher preference is more likely to be included in the conflict.</span>
+<span class="sd">    A negative value specifies that the corresponding group should not be considered in the computation</span>
+<span class="sd">    of a conflict. In other words, such groups are not considered part of the model. Groups with a preference of 0 (zero)</span>
+<span class="sd">    are always considered to be part of the conflict.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        preference: A floating-point number that specifies the preference for the group. The higher the number, the</span>
+<span class="sd">                    higher the preference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preference</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_preference</span> <span class="o">=</span> <span class="n">preference</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">get_preference</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_preference</span>
+
+    <span class="k">def</span> <span class="nf">set_preference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_preference</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="n">preference</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_preference</span><span class="p">,</span> <span class="n">set_preference</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cts</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">cts</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">cts</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_group_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cts</span></div>
+
+
+<div class="viewcode-block" id="ConflictRefiner"><a class="viewcode-back" href="../../../docplex.mp.conflict_refiner.html#docplex.mp.conflict_refiner.ConflictRefiner">[docs]</a><span class="k">class</span> <span class="nc">ConflictRefiner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; This class is an abstract algorithm; it operates on interfaces.</span>
+
+<span class="sd">    A conflict is a set of mutually contradictory constraints and bounds within a model.</span>
+<span class="sd">    Given an infeasible model, the conflict refiner can identify conflicting constraints and bounds</span>
+<span class="sd">    within it. CPLEX refines an infeasible model by examining elements that can be removed from the</span>
+<span class="sd">    conflict to arrive at a minimal conflict.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="ConflictRefiner.refine_conflict"><a class="viewcode-back" href="../../../docplex.mp.conflict_refiner.html#docplex.mp.conflict_refiner.ConflictRefiner.refine_conflict">[docs]</a>    <span class="k">def</span> <span class="nf">refine_conflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mdl</span><span class="p">,</span> <span class="n">preferences</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Starts the conflict refiner on the model.</span>
+
+<span class="sd">        If CPLEX is available, the conflict refinement operation will be performed using the native CPLEX.</span>
+<span class="sd">        If CPLEX is not available, the conflict refinement operation will be started on DOcplexcloud.</span>
+<span class="sd">        The DOcplexcloud connection parameters are checked in the following order:</span>
+
+<span class="sd">            - If ``kwargs`` contains valid ``url`` and ``key`` values, they are used.</span>
+<span class="sd">            - If ``kwargs`` contains a ``context`` and that context contains a</span>
+<span class="sd">              valid ``solver.docloud.url`` and ``solver.docloud.key`` values,</span>
+<span class="sd">              those values are used. Other attributes of ``solver.docloud``</span>
+<span class="sd">              can also be used. See :class:`docplex.mp.context.Context`.</span>
+<span class="sd">            - Finally, the model&#39;s attribute ``context`` is used. This ``context``</span>
+<span class="sd">              is set at model creation time.</span>
+
+<span class="sd">        If CPLEX is not available and the model has no valid credentials, an error is raised, because there is</span>
+<span class="sd">        no way to perform the conflict refinement.</span>
+
+<span class="sd">        Note that if the ``url`` and ``key`` parameters are present and the</span>
+<span class="sd">        values of the parameters are not in the ignored url or key list,</span>
+<span class="sd">        the conflict refinement operation will be started on DOcplexcloud even if CPLEX is</span>
+<span class="sd">        available.</span>
+
+<span class="sd">        Example::</span>
+
+<span class="sd">            # forces the conflict refiner on DOcplexcloud with the specified url and keys</span>
+<span class="sd">            crefiner.refine_conflict(url=&#39;https://foo.com&#39;, key=&#39;bar&#39;)</span>
+
+<span class="sd">        Example::</span>
+
+<span class="sd">            # set some DOcplexcloud credentials, but depend on another</span>
+<span class="sd">            # method to decide if conflict refiner is local or not</span>
+<span class="sd">            ctx.solver.docloud.url = &#39;https://foo.com&#39;</span>
+<span class="sd">            ctx.solver.docloud.key = &#39;bar&#39;</span>
+<span class="sd">            agent = &#39;local&#39; if method_that_decides_if_solve_is_local() or &#39;docloud&#39;</span>
+<span class="sd">            crefiner.conflict_refiner(context=ctx, agent=agent)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mdl: The model to be relaxed.</span>
+<span class="sd">            preferences: A dictionary defining constraint preferences.</span>
+<span class="sd">            groups: A list of ConstraintsGroups.</span>
+<span class="sd">            kwargs: Accepts named arguments similar to solve.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A list of ``TConflictConstraint`` namedtuples, each tuple corresponding to a constraint that is</span>
+<span class="sd">            involved in the conflict.</span>
+<span class="sd">            The fields of the ``TConflictConstraint`` namedtuple are:</span>
+<span class="sd">                - the name of the constraint or None if the constraint corresponds to a variable lower or upper bound.</span>
+<span class="sd">                - a reference to the constraint or to a wrapper representing a Var upper or lower bound.</span>
+<span class="sd">                - a ``docplex.mp.constants.ConflictStatus`` object that indicates the</span>
+<span class="sd">                  conflict status type (Excluded, Possible_member, Member...).</span>
+<span class="sd">            This list is empty if no conflict is found by the conflict refiner.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># take into account local argument overrides</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">prepare_actual_context</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># log stuff</span>
+        <span class="n">saved_context_log_output</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log_output</span>
+        <span class="n">saved_log_output_stream</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">get_log_output</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">set_log_output</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log_output</span><span class="p">)</span>
+
+            <span class="n">forced_docloud</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_must_use_docloud</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="n">have_credentials</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span><span class="p">:</span>
+                <span class="n">have_credentials</span><span class="p">,</span> <span class="n">error_message</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span><span class="o">.</span><span class="n">check_credentials</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">error_message</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">error_message</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">forced_docloud</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">have_credentials</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_conflict_cloud</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">preferences</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mdl</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;DOcplexcloud context has no valid credentials: {0!s}&quot;</span><span class="p">,</span>
+                               <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span><span class="p">)</span>
+            <span class="c1"># from now on docloud_context is None</span>
+            <span class="k">elif</span> <span class="n">mdl</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">has_cplex</span><span class="p">:</span>
+                <span class="c1"># if CPLEX is installed go for it</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_conflict_local</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">preferences</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">have_credentials</span><span class="p">:</span>
+                <span class="c1"># no context passed as argument, no Cplex installed, try model&#39;s own context</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_refine_conflict_cloud</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">preferences</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># no way to solve.. really</span>
+                <span class="k">return</span> <span class="n">mdl</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;CPLEX DLL not found: please provide DOcplexcloud credentials&quot;</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">saved_log_output_stream</span> <span class="o">!=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">get_log_output</span><span class="p">():</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">set_log_output_as_stream</span><span class="p">(</span><span class="n">saved_log_output_stream</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">saved_context_log_output</span> <span class="o">!=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log_output</span><span class="p">:</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log_output</span> <span class="o">=</span> <span class="n">saved_context_log_output</span></div>
+
+    <span class="k">def</span> <span class="nf">_refine_conflict_cloud</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mdl</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">preferences</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This method handles invocation of the conflict refiner feature by configuring and submitting a job</span>
+<span class="sd">        to DOcplexcloud and then parsing the result file that is returned.</span>
+
+<span class="sd">        :param context:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">docloud_context</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">docloud</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">cplex_parameters</span>
+        <span class="c1"># see if we can reuse the local docloud engine if any?</span>
+        <span class="n">docloud_engine</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_engine_factory</span><span class="o">.</span><span class="n">new_docloud_engine</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">mdl</span><span class="p">,</span>
+                                                                <span class="n">docloud_context</span><span class="o">=</span><span class="n">docloud_context</span><span class="p">,</span>
+                                                                <span class="n">log_output</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log_output_as_stream</span><span class="p">)</span>
+
+        <span class="n">mdl</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">()</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">_fire_start_solve_listeners</span><span class="p">()</span>
+        <span class="n">conflict</span> <span class="o">=</span> <span class="n">docloud_engine</span><span class="o">.</span><span class="n">refine_conflict</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">preferences</span><span class="o">=</span><span class="n">preferences</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+
+        <span class="n">mdl</span><span class="o">.</span><span class="n">_fire_end_solve_listeners</span><span class="p">(</span><span class="n">conflict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="k">return</span> <span class="n">conflict</span>
+
+    <span class="k">def</span> <span class="nf">_refine_conflict_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mdl</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">preferences</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; TODO: add documentation</span>
+
+<span class="sd">        :param context:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">cplex_parameters</span>
+        <span class="n">self_engine</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">get_engine</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">self_engine</span><span class="o">.</span><span class="n">refine_conflict</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">preferences</span><span class="p">,</span> <span class="n">groups</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="ConflictRefiner.display_conflicts"><a class="viewcode-back" href="../../../docplex.mp.conflict_refiner.html#docplex.mp.conflict_refiner.ConflictRefiner.display_conflicts">[docs]</a>    <span class="k">def</span> <span class="nf">display_conflicts</span><span class="p">(</span><span class="n">conflicts</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method displays a formatted representation of the conflicts that are provided.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">           conflicts: A list of ``TConflictConstraint`` namedtuples, one that was returned</span>
+<span class="sd">                      by the `refine_conflict()` method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Conflict set:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">conflict</span> <span class="ow">in</span> <span class="n">conflicts</span><span class="p">:</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">conflict</span><span class="o">.</span><span class="n">status</span>
+            <span class="n">ct</span> <span class="o">=</span> <span class="n">conflict</span><span class="o">.</span><span class="n">element</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">conflict</span><span class="o">.</span><span class="n">element</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conflict</span><span class="o">.</span><span class="n">element</span><span class="p">,</span> <span class="n">VarLbConstraintWrapper</span><span class="p">)</span> \
+                    <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conflict</span><span class="o">.</span><span class="n">element</span><span class="p">,</span> <span class="n">VarUbConstraintWrapper</span><span class="p">):</span>
+                <span class="n">ct</span> <span class="o">=</span> <span class="n">conflict</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">get_constraint</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">conflict</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">{} (status code: {}): {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">ct</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">{} (status code: {}) - {}: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">conflict</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ct</span><span class="p">))</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, IBM&reg;.
+    </div>
+  </body>
+</html>

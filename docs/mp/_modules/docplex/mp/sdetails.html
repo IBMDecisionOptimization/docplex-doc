@@ -70,13 +70,17 @@
 
     <span class="n">_unknown_label</span> <span class="o">=</span> <span class="s2">&quot;*unknown*&quot;</span>
 
-    <span class="n">_NO_GAP</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>  <span class="c1"># value used when no gap is available</span>
+    <span class="n">NOT_A_NUM</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+
+    <span class="n">_NO_GAP</span> <span class="o">=</span> <span class="n">NOT_A_NUM</span>  <span class="c1"># value used when no gap is available</span>
+    <span class="n">_NO_BEST_BOUND</span> <span class="o">=</span> <span class="n">NOT_A_NUM</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                  <span class="n">status_code</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">status_string</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">problem_type</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">ncolumns</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nonzeros</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                 <span class="n">miprelgap</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+                 <span class="n">miprelgap</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">best_bound</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status_code</span> <span class="o">=</span> <span class="n">status_code</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span> <span class="o">=</span> <span class="n">status_string</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_label</span>
@@ -87,6 +91,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_solution_method</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
         <span class="c1"># --</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_NO_GAP</span> <span class="k">if</span> <span class="n">miprelgap</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">miprelgap</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_NO_BEST_BOUND</span> <span class="k">if</span> <span class="n">best_bound</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">best_bound</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_md5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_label</span>
 
@@ -99,6 +104,8 @@
                        <span class="p">}</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span><span class="p">):</span>
             <span class="n">worker_dict</span><span class="p">[</span><span class="s2">&quot;PROGRESS_GAP&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span><span class="p">):</span>
+            <span class="n">worker_dict</span><span class="p">[</span><span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span>
         <span class="k">return</span> <span class="n">worker_dict</span>
 
     <span class="n">_problemtype_map</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;LP&quot;</span><span class="p">,</span>
@@ -144,6 +151,7 @@
                     <span class="p">(</span><span class="s2">&quot;_ncolumns&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.columns&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
                     <span class="p">(</span><span class="s2">&quot;_linear_nonzeros&quot;</span><span class="p">,</span> <span class="s2">&quot;MODEL_DETAIL_NON_ZEROS&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
                     <span class="p">(</span><span class="s2">&quot;_miprelgap&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.miprelgap&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">_NO_GAP</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;_best_bound&#39;</span><span class="p">,</span> <span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">_NO_BEST_BOUND</span><span class="p">),</span>
                     <span class="p">(</span><span class="s2">&quot;_md5&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.model.md5&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
                     <span class="p">)</span>
 
@@ -281,6 +289,16 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span></div>
 
     <span class="n">mip_relative_gap</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_mip_relative_gap</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SolveDetails.get_best_bound"><a class="viewcode-back" href="../../../docplex.mp.sdetails.html#docplex.mp.sdetails.SolveDetails.get_best_bound">[docs]</a>    <span class="k">def</span> <span class="nf">get_best_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the MIP best bound at the end of the solve.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            * This property returns NaN when the problem is not a MIP.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span></div>
+
+    <span class="n">best_bound</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_best_bound</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;docplex.mp.solution.SolveDetails(time={0:g}, status={2:s})&quot;</span> \

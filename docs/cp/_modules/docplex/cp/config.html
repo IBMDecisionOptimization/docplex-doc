@@ -55,44 +55,59 @@
 <span class="c1"># --------------------------------------------------------------------------</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Configuration of the CPO Python API</span>
+<span class="sd">Configuration of the CP Optimizer Python API</span>
 
 <span class="sd">This module is the top-level handler of the configuration parameters for</span>
-<span class="sd">the Python API to CPO. It contains the default values of the different</span>
+<span class="sd">the CP Optimizer Python API. It contains the default values of the different</span>
 <span class="sd">configuration parameters.</span>
 
 <span class="sd">It should NOT be changed directly.</span>
-<span class="sd">The preferable way is to add at least one of the</span>
-<span class="sd">following files that contain the changes to be performed:</span>
+<span class="sd">The preferable way is to add at least one of the following files that contain the changes</span>
+<span class="sd">to be performed:</span>
 
-<span class="sd">* cpo_config.py, a local set of changes on these parameters,</span>
-<span class="sd">* cpo_config_&lt;hostname&gt;.py, a hostname dependent set of changes.</span>
+<span class="sd"> * *cpo_config.py*, a local set of changes on these parameters,</span>
+<span class="sd"> * *cpo_config_&lt;hostname&gt;.py*, a hostname dependent set of changes.</span>
+<span class="sd"> * *docloud_config.py* (for DOcloud url and key, file shared with docplex.mp package).</span>
 
-<span class="sd">Final set of parameters is obtained by loading first this module,</span>
-<span class="sd">then cpo_config.py and finally cpo_config_&lt;hostname&gt;.py.</span>
-<span class="sd">These modules should be visible from the PYTHONPATH and are loaded in</span>
+<span class="sd">Final set of parameters is obtained by reading first this module, and then those</span>
+<span class="sd">listed above.</span>
+<span class="sd">These modules should be visible from the *PYTHONPATH* and are loaded in</span>
 <span class="sd">this order to overwrite default values.</span>
 
-<span class="sd">If called as main, this module prints the configuration on standard output.</span>
+<span class="sd">This module also defines two global variables:</span>
+
+<span class="sd"> * *DOCLOUD_CONTEXT*, that contains the configuration necessary to solve a model on DOcloud.</span>
+<span class="sd">   This context is the context by default, referenced by the global variable &#39;context&#39;.</span>
+<span class="sd"> * *LOCAL_CONTEXT*, that contains the configuration appropriate to solve a model with a local</span>
+<span class="sd">   installation of the CPO solver.</span>
+<span class="sd">   This configuration is not available for solver with version lower or equal to 12.6.3.</span>
+
+<span class="sd">The method :meth:`set_default` allows to set the default configuration to one that is predefined,</span>
+<span class="sd">or another that has been totally customized.</span>
+
+<span class="sd">If called as main, this module prints the actual configuration on standard output, including</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="kn">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">CpoException</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.parameters</span> <span class="kn">import</span> <span class="n">CpoParameters</span><span class="p">,</span> <span class="n">ALL_PARAMETER_NAMES</span>
 
-<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">platform</span>
+
+<span class="n">EXE_EXTENSION</span> <span class="o">=</span> <span class="s2">&quot;.exe&quot;</span> <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Windows&#39;</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
 
 
 <span class="c1">##############################################################################</span>
-<span class="c1">## Default configuration parameters</span>
+<span class="c1">## Define default context for DOcloud solving</span>
 <span class="c1">##############################################################################</span>
 
 <span class="c1">#-----------------------------------------------------------------------------</span>
 <span class="c1"># Global context</span>
 
 <span class="c1"># Create default context infrastructure</span>
-<span class="n">context</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">Context</span><span class="p">(),</span>
-                  <span class="n">params</span><span class="o">=</span><span class="n">CpoParameters</span><span class="p">(),</span>
-                  <span class="n">solver</span><span class="o">=</span><span class="n">Context</span><span class="p">())</span>
+<span class="n">DOCLOUD_CONTEXT</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">Context</span><span class="p">(),</span>
+                          <span class="n">params</span><span class="o">=</span><span class="n">CpoParameters</span><span class="p">(),</span>
+                          <span class="n">solver</span><span class="o">=</span><span class="n">Context</span><span class="p">())</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">DOCLOUD_CONTEXT</span>
 
 <span class="c1"># Default log output</span>
 <span class="n">context</span><span class="o">.</span><span class="n">log_output</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
@@ -115,6 +130,13 @@
 
 <span class="c1"># Name of the directory where store copy of the generated CPO files. None for no dump.</span>
 <span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="c1"># Expression cache</span>
+<span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">Context</span><span class="p">()</span>
+<span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">10000</span>
+<span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="bp">True</span>
+
+
 
 
 <span class="c1">#-----------------------------------------------------------------------------</span>
@@ -200,11 +222,32 @@
 
 
 <span class="c1">##############################################################################</span>
+<span class="c1">## Define context for local solving</span>
+<span class="c1">##############################################################################</span>
+
+<span class="n">LOCAL_CONTEXT</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">TimeLimit</span> <span class="o">=</span> <span class="bp">None</span>
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">trace_log</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="s1">&#39;local&#39;</span>
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">max_threads</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="n">class_name</span> <span class="o">=</span> <span class="s2">&quot;docplex.cp.solver.solver_angel.CpoSolverAngel&quot;</span><span class="p">,</span>
+                                     <span class="nb">execfile</span>   <span class="o">=</span> <span class="s2">&quot;cpoptimizer&quot;</span> <span class="o">+</span> <span class="n">EXE_EXTENSION</span><span class="p">,</span>
+                                     <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;-angel&#39;</span><span class="p">],</span>
+                                     <span class="n">log_prefix</span> <span class="o">=</span> <span class="s2">&quot;[Angel] &quot;</span><span class="p">)</span>
+
+
+<span class="c1">##############################################################################</span>
 <span class="c1">## Public functions</span>
 <span class="c1">##############################################################################</span>
 
 <div class="viewcode-block" id="get_default"><a class="viewcode-back" href="../../../docplex.cp.config.py.html#docplex.cp.config.get_default">[docs]</a><span class="k">def</span> <span class="nf">get_default</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot; Get the default context</span>
+
+<span class="sd">    Default context is also accessible with the global variable &#39;context&#39; in this module.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Current default context</span>
@@ -212,12 +255,12 @@
     <span class="k">return</span> <span class="n">context</span></div>
 
 <div class="viewcode-block" id="set_default"><a class="viewcode-back" href="../../../docplex.cp.config.py.html#docplex.cp.config.set_default">[docs]</a><span class="k">def</span> <span class="nf">set_default</span><span class="p">(</span><span class="n">ctx</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Set the default context</span>
+    <span class="sd">&quot;&quot;&quot; Set the default context.</span>
+
+<span class="sd">    Default context becomes accessible in the global variable &#39;context&#39; in this module.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        ctx: New default context</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        Current default context</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">ctx</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
         <span class="n">ctx</span> <span class="o">=</span> <span class="n">Context</span><span class="p">()</span>
