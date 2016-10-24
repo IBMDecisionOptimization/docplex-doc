@@ -168,15 +168,17 @@ among &lt;= (less than or equal), == (equal), and &gt;= (greater than or equal).
 <dl class="method">
 <dt id="docplex.mp.model.Model.add_constraints">
 <code class="descname">add_constraints</code><span class="sig-paren">(</span><em>cts</em>, <em>names=None</em>, <em>do_check=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.add_constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.add_constraints" title="Permalink to this definition">&para;</a></dt>
-<dd><p>Adds a collection of constraints to the model in one operation.</p>
+<dd><p>Adds a collection of linear constraints to the model in one operation.</p>
 <p>Each constraint in the collection is added to the model, if it was not already added.
 If present, the <cite>names</cite> collection is used to set names to the constraints.</p>
+<p>Note: The <cite>cts</cite> argument can be a collection of (constraint, name) tuples such
+as <cite>mdl.add_constraints([(x &gt;=3, &#8216;ct0&#8217;), (x + y == 1, &#8216;ct1&#8217;)])</cite>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>cts</strong> &#8211; A collection of constraints or an iterator over a collection of constraints.</li>
+<li><strong>cts</strong> &#8211; A collection of linear constraints or an iterator over a collection of linear constraints.</li>
 <li><strong>names</strong> &#8211; An optional collection or iterator on strings.</li>
 </ul>
 </td>
@@ -229,14 +231,22 @@ Typical use is with decision expressions, the evaluation of which return the exp
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>kpi_arg</strong> &#8211; Accepted arguments are either an expression, a lambda function with one argument or
 an instance of a subclass of abstract class KPI.</li>
-<li><strong>publish_name</strong> (<em>string</em>) &#8211; The published name of the KPI: a nonempty, unique, string. KPIs are identified by their published names.</li>
+<li><strong>publish_name</strong> (<em>string, optional</em>) &#8211; The published name of the KPI.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If no publish_name is provided, DOcplex will use the name of the argument. If none,
+it will use the string representation of the argument.</p>
+</div>
 <p class="rubric">Example</p>
-<p><cite>model.add_kpi(x+y+z, &#8220;Total Profit&#8221;)</cite> adds the expression <cite>(x+y+z)</cite> as a KPI with the name &#8220;Total Profit&#8221;.</p>
+<p><cite>model.add_kpi(x+y+z, &#8220;Total Profit&#8221;)</cite> adds the expression <cite>(x+y+z)</cite> as a KPI with the name &#8220;Total Profit&#8221;.
+<cite>model.add_kpi(x+y+z)</cite> adds the expression <cite>(x+y+z)</cite> as a KPI with the name &#8220;x+y+z&#8221;, assumng variables x,y,z have</p>
+<blockquote>
+<div>names &#8216;x&#8217;, &#8216;y&#8217;, &#8216;z&#8217; (resp.)</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -458,7 +468,7 @@ like &#8220;k1&#8221;, &#8220;k2&#8221;, ... then variables will be named &#8220
 
 <dl class="method">
 <dt id="docplex.mp.model.Model.binary_var_list">
-<code class="descname">binary_var_list</code><span class="sig-paren">(</span><em>keys</em>, <em>name=&lt;type 'str'&gt;</em>, <em>key_format=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.binary_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.binary_var_list" title="Permalink to this definition">&para;</a></dt>
+<code class="descname">binary_var_list</code><span class="sig-paren">(</span><em>keys</em>, <em>lb=None</em>, <em>ub=None</em>, <em>name=&lt;type 'str'&gt;</em>, <em>key_format=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.binary_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.binary_var_list" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Creates a list of binary decision variables and stores them in the model.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -637,15 +647,19 @@ Keys are used in the naming of variables.</p>
 <li><strong>keys</strong> &#8211; Either a sequence of objects, an iterator, or a positive integer. If passed an integer,
 it is interpreted as the number of variables to create.</li>
 <li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either a floating-point number,
-a function, or None. Use a number if all variables share the same lower bound,
-or use a function if lower bounds vary depending on the <cite>key</cite>, in which case,
+a list of numbers or a function.
+Use a number if all variables share the same lower bound,
+else either use an explicit list of numbers, or
+use a function if lower bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
-None means that the default lower bound (0) is used.</li>
+None means the default lower bound (0) is used.</li>
 <li><strong>ub</strong> &#8211; Upper bounds of the variables. Accepts either a floating-point number,
-a function,  or None. Use a number if all variables share the same upper bound,
-or use a function if upper bounds vary depending on the key, in which case,
+a list of numbers, a function, or None.
+Use a number if all variables share the same upper bound,
+else use either an explicit list of numbers or,
+use a function if upper bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
-None means that the default upper bound (model infinity) is used.</li>
+None means the default upper bound (model infinity) is used.</li>
 <li><strong>name</strong> &#8211; Used to name variables. Accepts either a string or
 a function. If given a string, the variable name is formed by appending the string
 to the string representation of the key object (if <cite>keys</cite> is a sequence) or the
@@ -684,12 +698,17 @@ stores them in the model, and returns the list.</p>
 <li><strong>keys</strong> &#8211; Either a sequence of objects or a positive integer. If passed an integer,
 it is interpreted as the number of variables to create.</li>
 <li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either a floating-point number,
-a function,  or None. Use a number if all variables share the same lower bound,
+a list of numbers, a function,  or None.
+Use a number if all variables share the same lower bound,
+else use either an explicit list of numbers
 or use a function if lower bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
 None means using the default lower bound (0) is used.</li>
 <li><strong>ub</strong> &#8211; Upper bounds of the variables. Accepts either a floating-point number,
-a function, or None. Use a number if all variables share the same upper bound,
+a list of numbers, a function, or None.
+Use a number if all variables share the same upper bound,
+Use a number if all variables share the same lower bound,
+else use either an explicit list of numbers
 or use a function if upper bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
 None means the default upper bound (model infinity) is used.</li>
@@ -807,7 +826,7 @@ that was computed with the basename argument, is appended to the directory to pr
 the file.
 If given a full path, the path is directly used to write the file, and
 the basename argument is not used.
-If passed None, the output directory will be <code class="docutils literal"><span class="pre">tempdir.gettempdir()</span></code>.</li>
+If passed None, the output directory will be <code class="docutils literal"><span class="pre">tempfile.gettempdir()</span></code>.</li>
 <li><strong>hide_user_names</strong> &#8211; A Boolean indicating whether or not to keep user names for
 variables and constraints. If True, all names are replaced by <cite>x1</cite>, <cite>x2</cite>, ... for variables,
 and <cite>c1</cite>, <cite>c2</cite>, ... for constraints.</li>
@@ -882,7 +901,7 @@ that was computed with the basename argument, is appended to the directory to pr
 the file.
 If given a full path, the path is directly used to write the file, and
 the basename argument is not used.
-If passed None, the output directory will be <code class="docutils literal"><span class="pre">tempdir.gettempdir()</span></code>.</li>
+If passed None, the output directory will be <code class="docutils literal"><span class="pre">tempfile.gettempdir()</span></code>.</li>
 </ul>
 </td>
 </tr>
@@ -1168,14 +1187,18 @@ Keys are used in the naming of variables.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>keys</strong> &#8211; Either a sequence of objects, an iterator, or a positive integer. If passed an integer,
 it is interpreted as the number of variables to create.</li>
-<li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either an integer number,
-a function,  or None. Use a number if all variables share the same lower bound,
-or use a function if lower bounds vary depending on the key, in which case,
+<li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either a floating-point number,
+a list of numbers or a function.
+Use a number if all variables share the same lower bound,
+else either use an explicit list of numbers, or
+use a function if lower bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
 None means the default lower bound (0) is used.</li>
-<li><strong>ub</strong> &#8211; Upper bounds of the variables. Accepts either an integer number,
-a function,  or None. Use a number if all variables share the same upper bound,
-or use a function if upper bounds vary depending on the key, in which case,
+<li><strong>ub</strong> &#8211; Upper bounds of the variables. Accepts either a floating-point number,
+a list of numbers, a function, or None.
+Use a number if all variables share the same upper bound,
+else use either an explicit list of numbers or,
+use a function if upper bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
 None means the default upper bound (model infinity) is used.</li>
 <li><strong>name</strong> &#8211; Used to name variables. Accepts either a string or
@@ -1215,8 +1238,10 @@ and returns the list.</p>
 <li><strong>keys</strong> &#8211; Either a sequence of objects or a positive integer. If passed an integer,
 it is interpreted as the number of variables to create.</li>
 <li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either a floating-point number,
+a list of numbers with the same size as keys,
 a function (which will be called on each key argument), or None.</li>
 <li><strong>ub</strong> &#8211; Upper bounds of the variables.  Accepts either a floating-point number,
+a list of numbers with the same size as keys,
 a function (which will  be called on each key argument), or None.</li>
 <li><strong>name</strong> &#8211; Used to name variables. Accepts either a string or
 a function. If given a string, the variable name is formed by appending the string
@@ -1843,7 +1868,9 @@ mentioned in the objective, it returns 0.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dvar</strong> &#8211; The decision variable for which to compute the objective coefficient.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">floatL The objective coefficient of the variable.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The objective coefficient of the variable.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
 </tr>
 </tbody>
 </table>
@@ -2004,6 +2031,27 @@ If passed a string, looks for a constraint with that name.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="docplex.mp.model.Model.remove_kpi">
+<code class="descname">remove_kpi</code><span class="sig-paren">(</span><em>kpi_arg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.remove_kpi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.remove_kpi" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Removes a Key Performance Indicator from the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kpi_arg</strong> &#8211; A KPI instance that was previously added to the model. Accepts either a KPI object or a string.
+If passed a string, looks for a KPI with that name.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="#docplex.mp.model.Model.add_kpi" title="docplex.mp.model.Model.add_kpi"><code class="xref py py-func docutils literal"><span class="pre">add_kpi()</span></code></a>
+<a class="reference internal" href="docplex.mp.kpi.html#docplex.mp.kpi.KPI" title="docplex.mp.kpi.KPI"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.kpi.KPI</span></code></a>,
+<a class="reference internal" href="docplex.mp.kpi.html#docplex.mp.kpi.DecisionKPI" title="docplex.mp.kpi.DecisionKPI"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.kpi.DecisionKPI</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="docplex.mp.model.Model.remove_mip_start">
 <code class="descname">remove_mip_start</code><span class="sig-paren">(</span><em>mipstart</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.remove_mip_start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.remove_mip_start" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Removes one MIP start solution from the list of MIP starts associated with the model.</p>
@@ -2092,6 +2140,31 @@ In this last case the scalar product reduces to a sum times this coefficient.</p
 </dd></dl>
 
 <dl class="method">
+<dt id="docplex.mp.model.Model.semicontinuous_var">
+<code class="descname">semicontinuous_var</code><span class="sig-paren">(</span><em>lb</em>, <em>ub=None</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.semicontinuous_var"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.semicontinuous_var" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Creates a new semi-continuous decision variable and stores it in the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>lb</strong> &#8211; The lower bound of the variable.</li>
+<li><strong>ub</strong> &#8211; The upper bound of the variable, or None, to use the default. The default is model infinity.</li>
+<li><strong>name</strong> (<em>string</em>) &#8211; An optional name for the variable.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A decision variable with type <a class="reference internal" href="docplex.mp.vartype.html#docplex.mp.vartype.SemiContinuousVarType" title="docplex.mp.vartype.SemiContinuousVarType"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.vartype.SemiContinuousVarType</span></code></a>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="docplex.mp.linear.html#docplex.mp.linear.Var" title="docplex.mp.linear.Var"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.linear.Var</span></code></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="docplex.mp.model.Model.semicontinuous_var_list">
 <code class="descname">semicontinuous_var_list</code><span class="sig-paren">(</span><em>keys</em>, <em>lb</em>, <em>ub=None</em>, <em>name=&lt;type 'str'&gt;</em>, <em>key_format=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.semicontinuous_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.semicontinuous_var_list" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Creates a list of semi-continuous decision variables with type <a class="reference internal" href="docplex.mp.vartype.html#docplex.mp.vartype.SemiContinuousVarType" title="docplex.mp.vartype.SemiContinuousVarType"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.vartype.SemiContinuousVarType</span></code></a>,
@@ -2103,14 +2176,18 @@ stores them in the model, and returns the list.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>keys</strong> &#8211; Either a sequence of objects or a positive integer. If passed an integer,
 it is interpreted as the number of variables to create.</li>
-<li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either a floating-point number or
-a function. Use a number if all variables share the same lower bound,
-or use a function if lower bounds vary depending on the key, in which case,
+<li><strong>lb</strong> &#8211; Lower bounds of the variables. Accepts either a floating-point number,
+a list of numbers or a function.
+Use a number if all variables share the same lower bound,
+else either use an explicit list of numbers, or
+use a function if lower bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
 Note that the lower bound of a semi-continuous variable must be strictly positive</li>
 <li><strong>ub</strong> &#8211; Upper bounds of the variables. Accepts either a floating-point number,
-a function, or None. Use a number if all variables share the same upper bound,
-or use a function if upper bounds vary depending on the key, in which case,
+a list of numbers, a function, or None.
+Use a number if all variables share the same upper bound,
+else use either an explicit list of numbers or,
+use a function if upper bounds vary depending on the key, in which case,
 the function will be called on each <cite>key</cite> in <cite>keys</cite>.
 None means the default upper bound (model infinity) is used.</li>
 <li><strong>name</strong> &#8211; Used to name variables. Accepts either a string or
@@ -2403,6 +2480,30 @@ of the absolute slack and the relative slack times the objective of the pass.</l
 </dd></dl>
 
 <dl class="method">
+<dt id="docplex.mp.model.Model.sumsq">
+<code class="descname">sumsq</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.sumsq"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.sumsq" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Creates a quadratic expression summing squares over a sequence.</p>
+<p>Each element of the list is squared and added to the result. Quadratic expressions
+are not accepted, as they cannot be squared.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This method returns 0 if the argument is an empty list or iterator.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> &#8211; A list of objects that can be converted to linear expressions, that is,
+linear expressions, decision variables, or numbers. Each item is squared and
+added to the result.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A quadratic expression (possibly constant).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="docplex.mp.model.Model.var">
 <code class="descname">var</code><span class="sig-paren">(</span><em>vartype</em>, <em>lb=None</em>, <em>ub=None</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/model.html#Model.var"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#docplex.mp.model.Model.var" title="Permalink to this definition">&para;</a></dt>
 <dd><p>Creates a decision variable and stores it in the model.</p>
@@ -2509,6 +2610,16 @@ and also range constraints.</p>
 </dd></dl>
 
 <dl class="attribute">
+<dt id="docplex.mp.model.ModelStatistics.number_of_quadratic_constraints">
+<code class="descname">number_of_quadratic_constraints</code><a class="headerlink" href="#docplex.mp.model.ModelStatistics.number_of_quadratic_constraints" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This property returns the number of quadratic constraints.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.linear.QuadraticConstraint</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="attribute">
 <dt id="docplex.mp.model.ModelStatistics.number_of_range_constraints">
 <code class="descname">number_of_range_constraints</code><a class="headerlink" href="#docplex.mp.model.ModelStatistics.number_of_range_constraints" title="Permalink to this definition">&para;</a></dt>
 <dd><p>This property returns the number of range constraints.</p>
@@ -2517,6 +2628,12 @@ and also range constraints.</p>
 <p class="first admonition-title">See also</p>
 <p class="last"><code class="xref py py-class docutils literal"><span class="pre">docplex.mp.linear.RangeConstraint</span></code></p>
 </div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="docplex.mp.model.ModelStatistics.number_of_semicontinuous_variables">
+<code class="descname">number_of_semicontinuous_variables</code><a class="headerlink" href="#docplex.mp.model.ModelStatistics.number_of_semicontinuous_variables" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This property returns the number of semicontinuous decision variables in the model.</p>
 </dd></dl>
 
 <dl class="attribute">

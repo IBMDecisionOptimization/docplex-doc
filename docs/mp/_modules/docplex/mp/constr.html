@@ -56,7 +56,7 @@
 <span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="kn">import</span> <span class="n">ModelingObject</span><span class="p">,</span> <span class="n">Priority</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">_ComparisonUtils</span><span class="p">,</span> <span class="n">ComparisonType</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">ComparisonType</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_number</span>
 
 
@@ -131,7 +131,7 @@
     <span class="c1"># noinspection PyMethodMayBeStatic</span>
     <span class="k">def</span> <span class="nf">notify_deleted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
-        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_invalid_index</span>
 
     <span class="k">def</span> <span class="nf">short_typename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;constraint&quot;</span>
@@ -141,6 +141,21 @@
 
     <span class="k">def</span> <span class="nf">is_linear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">is_quadratic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">slack_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the slack value of the constraint.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method will raise an exception if the model has not been solved successfully.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The slack value of the constraint in the latest solve (a float value).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">slack_values</span><span class="p">(</span><span class="n">cts</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
 
 <span class="c1"># noinspection PyAbstractClass</span>
@@ -191,6 +206,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span>
 
+
+
     <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Returns a string representation of the constraint.</span>
 
@@ -206,17 +223,17 @@
         <span class="n">left_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
         <span class="n">right_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
         <span class="k">return</span> <span class="s2">u&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">left_string</span><span class="p">,</span>
-                              <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span><span class="o">.</span><span class="n">get_operator_symbol</span><span class="p">(),</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">_ctype</span><span class="o">.</span><span class="n">operator_symbol</span><span class="p">,</span>
                               <span class="n">right_string</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">rhs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">right_cst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">constant</span>
-        <span class="n">left_cst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">constant</span>
+        <span class="n">right_cst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">get_constant</span><span class="p">()</span>
+        <span class="n">left_cst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">get_constant</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">right_cst</span> <span class="o">-</span> <span class="n">left_cst</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">classname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span>
-        <span class="n">user_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">user_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_safe_name</span><span class="p">()</span>
         <span class="n">typename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">short_name</span>
         <span class="n">sleft</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">truncated_str</span><span class="p">()</span>
         <span class="n">sright</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">truncated_str</span><span class="p">()</span>
@@ -225,12 +242,12 @@
 
     <span class="k">def</span> <span class="nf">_is_trivially_feasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># INTERNAL : assume self is trivial()</span>
-        <span class="n">op_func</span> <span class="o">=</span> <span class="n">_ComparisonUtils</span><span class="o">.</span><span class="n">get_python_operator_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+        <span class="n">op_func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">python_operator</span>
         <span class="k">return</span> <span class="n">op_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">)</span> <span class="k">if</span> <span class="n">op_func</span> <span class="k">else</span> <span class="bp">False</span>
 
     <span class="k">def</span> <span class="nf">_is_trivially_infeasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># INTERNAL: assume self is trivial .</span>
-        <span class="n">op_func</span> <span class="o">=</span> <span class="n">_ComparisonUtils</span><span class="o">.</span><span class="n">get_python_operator_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+        <span class="n">op_func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">python_operator</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="n">op_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">constant</span><span class="p">)</span> <span class="k">if</span> <span class="n">op_func</span> <span class="k">else</span> <span class="bp">False</span>
 
     <span class="k">def</span> <span class="nf">is_trivial_feasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -238,16 +255,6 @@
 
     <span class="k">def</span> <span class="nf">is_trivial_infeasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_trivial</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_trivially_infeasible</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">_generate_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="k">for</span> <span class="n">lv</span><span class="p">,</span> <span class="n">lk</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
-            <span class="n">net_k</span> <span class="o">=</span> <span class="n">lk</span> <span class="o">-</span> <span class="n">right_expr</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
-            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">net_k</span><span class="p">:</span>
-                <span class="k">yield</span> <span class="n">lv</span><span class="p">,</span> <span class="n">net_k</span>
-        <span class="k">for</span> <span class="n">rv</span><span class="p">,</span> <span class="n">rk</span> <span class="ow">in</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">rv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">left_expr</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">rk</span><span class="p">:</span>
-                <span class="k">yield</span> <span class="n">rv</span><span class="p">,</span> <span class="o">-</span><span class="n">rk</span>
 
     <span class="k">def</span> <span class="nf">_generate_opposite_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
@@ -290,6 +297,21 @@
         <span class="k">for</span> <span class="n">rv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_expr</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">rv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="p">:</span>
                 <span class="k">yield</span> <span class="n">rv</span>
+
+    <span class="k">def</span> <span class="nf">_generate_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">for</span> <span class="n">lv</span><span class="p">,</span> <span class="n">lk</span> <span class="ow">in</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
+            <span class="n">net_k</span> <span class="o">=</span> <span class="n">lk</span> <span class="o">-</span> <span class="n">right_expr</span><span class="p">[</span><span class="n">lv</span><span class="p">]</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">net_k</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">lv</span><span class="p">,</span> <span class="n">net_k</span>
+        <span class="k">for</span> <span class="n">rv</span><span class="p">,</span> <span class="n">rk</span> <span class="ow">in</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">iter_terms</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">rv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">left_expr</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">rk</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">rv</span><span class="p">,</span> <span class="o">-</span><span class="n">rk</span>
+
+    <span class="k">def</span> <span class="nf">_generate_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">)</span>
+
+
 
 
 <div class="viewcode-block" id="LinearConstraint"><a class="viewcode-back" href="../../../docplex.mp.constr.html#docplex.mp.constr.LinearConstraint">[docs]</a><span class="k">class</span> <span class="nc">LinearConstraint</span><span class="p">(</span><span class="n">BinaryConstraint</span><span class="p">):</span>
@@ -461,6 +483,7 @@
     <span class="k">def</span> <span class="nf">fast_get_coef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span>
 
+
     <span class="k">def</span> <span class="nf">iter_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
         <span class="n">left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span>
@@ -470,10 +493,8 @@
         <span class="k">elif</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">is_constant</span><span class="p">():</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_opposite_linear_coefs</span><span class="p">(</span><span class="n">right_expr</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">_generate_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_net_linear_coefs2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">)</span></div>
 
 
 
@@ -621,7 +642,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">printable_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">printable_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_safe_name</span><span class="p">()</span>
         <span class="k">return</span> <span class="s2">&quot;docplex.mp.linear.RangeConstraint[{0}]({1},{2!s},{3})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">printable_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expr</span><span class="p">,</span>
                                                                               <span class="bp">self</span><span class="o">.</span><span class="n">ub</span><span class="p">)</span></div>
 
@@ -753,6 +774,9 @@
     <span class="k">def</span> <span class="nf">compute_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slack</span><span class="p">):</span>
         <span class="k">pass</span>
 
+    <span class="k">def</span> <span class="nf">is_quadratic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
     <span class="n">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
@@ -760,12 +784,6 @@
                                   <span class="n">ctype</span><span class="o">=</span><span class="n">ctype</span><span class="p">,</span>
                                   <span class="n">right_expr</span><span class="o">=</span><span class="n">right_expr</span><span class="p">,</span>
                                   <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_get_linear_part</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">expr</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">expr</span><span class="o">.</span><span class="n">linear_part</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">expr</span>
 
     <span class="k">def</span> <span class="nf">is_trivial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">nqk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_net_quads</span><span class="p">():</span>
@@ -779,8 +797,8 @@
         <span class="k">return</span> <span class="bp">True</span>
 
     <span class="k">def</span> <span class="nf">iter_net_linear_coefs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">linear_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_linear_part</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="p">)</span>
-        <span class="n">linear_right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_linear_part</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="p">)</span>
+        <span class="n">linear_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_left_expr</span><span class="o">.</span><span class="n">get_linear_part</span><span class="p">()</span>
+        <span class="n">linear_right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_right_expr</span><span class="o">.</span><span class="n">get_linear_part</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_net_linear_coefs2</span><span class="p">(</span><span class="n">linear_left</span><span class="p">,</span> <span class="n">linear_right</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">iter_net_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -790,13 +808,9 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
             <span class="k">return</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">()</span>
         <span class="k">elif</span> <span class="ow">not</span> <span class="n">left_expr</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_opposite_quads</span><span class="p">(</span><span class="n">right_expr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">right_expr</span><span class="o">.</span><span class="n">iter_opposite_quads</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_ordered_net_quads</span><span class="p">(</span><span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">generate_opposite_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">qv</span><span class="p">,</span> <span class="n">qk</span> <span class="ow">in</span> <span class="n">q</span><span class="o">.</span><span class="n">iter_quads</span><span class="p">():</span>
-            <span class="k">yield</span> <span class="n">qv</span><span class="p">,</span> <span class="o">-</span><span class="n">qk</span>
 
     <span class="k">def</span> <span class="nf">generate_ordered_net_quads</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">qleft</span><span class="p">,</span> <span class="n">qright</span><span class="p">):</span>
         <span class="c1"># left first, then right</span>

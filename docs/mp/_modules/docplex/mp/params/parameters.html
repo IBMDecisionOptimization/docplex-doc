@@ -61,7 +61,6 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_int</span><span class="p">,</span> <span class="n">is_number</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="kn">import</span> <span class="n">StringIO</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="kn">import</span> <span class="n">docplex_fatal</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">RedirectedOutputContext</span>
 
 
 <div class="viewcode-block" id="ParameterGroup"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.ParameterGroup">[docs]</a><span class="k">class</span> <span class="nc">ParameterGroup</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -723,7 +722,20 @@
         <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;# --- end of generated prm data ---</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">print_all</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">print_info_to_stream</span><span class="p">(</span><span class="n">output</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="n">indent_level</span><span class="p">,</span> <span class="n">print_defaults</span><span class="o">=</span><span class="n">print_all</span><span class="p">)</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="n">indent_level</span>
+        <span class="n">param_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_params</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">param_generator</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">is_nondefault</span><span class="p">()</span> <span class="ow">or</span> <span class="n">print_all</span><span class="p">:</span>
+                <span class="n">param_value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0}{1} = {2!s}&quot;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">indent</span><span class="p">,</span>
+                              <span class="n">param</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span>
+                              <span class="n">_param_prm_formats</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">param</span><span class="p">)]</span> <span class="o">%</span> <span class="n">param_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">export_prm_to_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">export_prm</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="n">overload_params</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="RootParameterGroup.print_info_to_stream"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup.print_info_to_stream">[docs]</a>    <span class="k">def</span> <span class="nf">print_info_to_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">print_defaults</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Writes parameters to an output stream.</span>
@@ -743,20 +755,20 @@
 <span class="sd">                certain parameters. This dictionary is of the form {param: value}.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">indent</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="n">indent_level</span>
-        <span class="k">with</span> <span class="n">RedirectedOutputContext</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
-            <span class="n">param_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_params</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">param_generator</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">overload_params</span> <span class="ow">and</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">overload_params</span><span class="p">:</span>
-                    <span class="n">param_value</span> <span class="o">=</span> <span class="n">overload_params</span><span class="p">[</span><span class="n">param</span><span class="p">]</span>
-                <span class="k">elif</span> <span class="n">print_defaults</span> <span class="ow">or</span> <span class="n">param</span><span class="o">.</span><span class="n">is_nondefault</span><span class="p">():</span>
-                    <span class="n">param_value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">param_value</span> <span class="o">=</span> <span class="bp">None</span>
-                <span class="k">if</span> <span class="n">param_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-                    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;{0}{1} = {2!s}&quot;</span>
-                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">indent</span><span class="p">,</span>
-                                  <span class="n">param</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span>
-                                  <span class="n">_param_prm_formats</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">param</span><span class="p">)]</span> <span class="o">%</span> <span class="n">param_value</span><span class="p">))</span></div>
+        <span class="c1">#with RedirectedOutputContext(output):</span>
+        <span class="n">param_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_params</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">param_generator</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">overload_params</span> <span class="ow">and</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">overload_params</span><span class="p">:</span>
+                <span class="n">param_value</span> <span class="o">=</span> <span class="n">overload_params</span><span class="p">[</span><span class="n">param</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">print_defaults</span> <span class="ow">or</span> <span class="n">param</span><span class="o">.</span><span class="n">is_nondefault</span><span class="p">():</span>
+                <span class="n">param_value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">param_value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="n">param_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;{0}{1} = {2!s}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">indent</span><span class="p">,</span>
+                              <span class="n">param</span><span class="o">.</span><span class="n">qualified_name</span><span class="p">,</span>
+                              <span class="n">_param_prm_formats</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">param</span><span class="p">)]</span> <span class="o">%</span> <span class="n">param_value</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="RootParameterGroup.export_prm_to_string"><a class="viewcode-back" href="../../../../docplex.mp.params.parameters.html#docplex.mp.params.parameters.RootParameterGroup.export_prm_to_string">[docs]</a>    <span class="k">def</span> <span class="nf">export_prm_to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">overload_params</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;  Exports non-default parameters in PRM format to a string.</span>

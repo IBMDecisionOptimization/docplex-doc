@@ -68,6 +68,7 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">str_holo</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">make_output_path2</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.linear</span> <span class="kn">import</span> <span class="n">Var</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="kn">import</span> <span class="n">docplex_fatal</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
 
@@ -113,7 +114,7 @@
     <span class="k">def</span> <span class="nf">_is_discrete_value</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">v</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">var_value_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">engine_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">var_value_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">solved_by</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
                  <span class="n">rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; SolveSolution(model, var_valeu_map, obj, name)</span>
 
@@ -125,7 +126,7 @@
 <span class="sd">            obj: The value of the objective in the solution. A value of None means the objective is not defined at the</span>
 <span class="sd">                time the solution is created, and will be set later.</span>
 
-<span class="sd">            var_value_map: a Python dictionary containing associtaions of variables to values.</span>
+<span class="sd">            var_value_map: a Python dictionary containing associations of variables to values.</span>
 
 <span class="sd">            name: a name for the solution. The default is None, in which case the solution is named after the</span>
 <span class="sd">                model name.</span>
@@ -133,7 +134,7 @@
 <span class="sd">        :return: A solution object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
-        <span class="k">assert</span> <span class="n">engine_name</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">is_string</span><span class="p">(</span><span class="n">engine_name</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">solved_by</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">is_string</span><span class="p">(</span><span class="n">solved_by</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">is_number</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">__model</span> <span class="o">=</span> <span class="n">model</span>
@@ -142,23 +143,29 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_problem_name</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_expr</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">objective_expr</span> <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">has_objective</span><span class="p">()</span> <span class="k">else</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NO_OBJECTIVE_VALUE</span> <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">obj</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__engine_name</span> <span class="o">=</span> <span class="n">engine_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solved_by</span> <span class="o">=</span> <span class="n">solved_by</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__round_discrete</span> <span class="o">=</span> <span class="n">rounding</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_keep_zeros</span> <span class="o">=</span> <span class="n">keep_zeros</span>
 
         <span class="k">if</span> <span class="n">var_value_map</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_store_var_value_map</span><span class="p">(</span><span class="n">var_value_map</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="n">keep_zeros</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="n">rounding</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">make_engine_solution</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">var_value_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">engine_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">solve_status</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">make_engine_solution</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">var_value_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">solve_status</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
         <span class="n">sol</span> <span class="o">=</span> <span class="n">SolveSolution</span><span class="p">(</span><span class="n">model</span><span class="p">,</span>
-                            <span class="n">var_value_map</span><span class="o">=</span><span class="n">var_value_map</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">,</span>
-                            <span class="n">engine_name</span><span class="o">=</span><span class="n">engine_name</span><span class="p">,</span>
+                            <span class="n">var_value_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                            <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">,</span>
+                            <span class="n">solved_by</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
                             <span class="n">rounding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
                             <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="c1"># trust engines</span>
+        <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">var_value_map</span><span class="p">):</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="n">value</span><span class="p">:</span>
+                <span class="n">sol</span><span class="o">.</span><span class="n">_set_var_value_internal</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">var</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">do_warn_on_non_discrete</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="p">)</span>
         <span class="k">if</span> <span class="n">solve_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
             <span class="n">sol</span><span class="o">.</span><span class="n">_set_solve_status</span><span class="p">(</span><span class="n">solve_status</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">sol</span>
@@ -189,6 +196,21 @@
     <span class="k">def</span> <span class="nf">problem_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_name</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">solved_by</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a string indicating how the solution was produced.</span>
+
+<span class="sd">        - If the solution was created by program, this field returns None.</span>
+<span class="sd">        - If the solution originated from a local CPLEX solve, this method returns the string &#39;cplex_local&#39;.</span>
+<span class="sd">        - If the solution originated from a DOcplexcloud solve, this method returns &#39;cplex_cloud&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A string, or None.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solved_by</span>
+
 <div class="viewcode-block" id="SolveSolution.get_name"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.get_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; This property allows to get/set a name on the solution.</span>
 
@@ -203,7 +225,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">solution_name</span>
 
     <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">,</span> <span class="n">set_name</span><span class="p">)</span>
-
 
     <span class="k">def</span> <span class="nf">_resolve_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_key</span><span class="p">,</span> <span class="n">do_raise</span><span class="p">):</span>
         <span class="c1"># INTERNAL: accepts either strings or variable objects</span>
@@ -327,6 +348,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span> <span class="o">=</span> <span class="n">new_status</span>
 
     <span class="k">def</span> <span class="nf">_store_var_value_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key_value_map</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
         <span class="k">for</span> <span class="n">e</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">key_value_map</span><span class="p">):</span>
             <span class="c1"># need to check var_keys and values</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">set_var_value</span><span class="p">(</span><span class="n">var_key</span><span class="o">=</span><span class="n">e</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">keep_zero</span><span class="o">=</span><span class="n">keep_zeros</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="n">rounding</span><span class="p">,</span> <span class="n">do_warn_on_rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
@@ -415,13 +437,18 @@
         <span class="n">dvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_var</span><span class="p">(</span><span class="n">dvar_arg</span><span class="p">,</span> <span class="n">do_raise</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">dvar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="mi">0</span></div>
 
+    <span class="k">def</span> <span class="nf">_get_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">):</span>
+        <span class="c1"># internal.</span>
+        <span class="c1"># assume dvars is a seuqnec of decision variables.</span>
+        <span class="n">self_value_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">self_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">]</span>
+
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">number_of_var_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; This property returns the number of variable values stored in this solution.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">)</span>
-
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
@@ -505,7 +532,7 @@
                 <span class="n">var_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">print_zeros</span> <span class="ow">or</span> <span class="n">var_value</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">print_counter</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">print</span><span class="p">(</span><span class="n">value_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">varname</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="k">print</span><span class="p">(</span><span class="n">value_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">varname</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">dvar</span><span class="p">),</span>
                                            <span class="n">value</span><span class="o">=</span><span class="n">var_value</span><span class="p">,</span>
                                            <span class="n">prec</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">float_precision</span><span class="p">,</span>
                                            <span class="n">counter</span><span class="o">=</span><span class="n">print_counter</span><span class="p">))</span>
@@ -534,12 +561,12 @@
             <span class="n">obj_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_objective_name</span><span class="p">()</span>
             <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%g</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">obj_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__objective__</span><span class="p">))</span>
 
-        <span class="n">value_fmt</span> <span class="o">=</span> <span class="s2">&quot;{varname:s}={value:.{prec}f}&quot;</span>
+        <span class="n">value_fmt</span> <span class="o">=</span> <span class="s2">&quot;{var:s}={value:.{prec}f}&quot;</span>
         <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">dvar</span><span class="o">.</span><span class="n">is_generated</span><span class="p">():</span>
                 <span class="n">var_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">print_zeros</span> <span class="ow">or</span> <span class="n">var_value</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">varname</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">var_value</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">float_precision</span><span class="p">))</span>
+                    <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">dvar</span><span class="p">),</span> <span class="n">value</span><span class="o">=</span><span class="n">var_value</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">dvar</span><span class="o">.</span><span class="n">float_precision</span><span class="p">))</span>
                     <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -550,7 +577,7 @@
             <span class="n">s_obj</span> <span class="o">=</span> <span class="s2">&quot;obj={0:g}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_value</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">s_obj</span> <span class="o">=</span> <span class="s2">&quot;obj=N/A&quot;</span>
-        <span class="n">s_values</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;{0}:{1:g}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">)])</span>
+        <span class="n">s_values</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;{0!s}:{1:g}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">)])</span>
         <span class="n">r</span> <span class="o">=</span> <span class="s2">&quot;docplex.mp.solution.SolveSolution({0},values={{{1}}})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">s_obj</span><span class="p">,</span> <span class="n">s_values</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">str_holo</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="mi">72</span><span class="p">)</span>
 
@@ -584,7 +611,7 @@
 <span class="sd">                the file.</span>
 <span class="sd">                If given a full path, the path is directly used to write the file, and</span>
 <span class="sd">                the basename argument is not used.</span>
-<span class="sd">                If passed None, the output directory will be ``tempdir.gettempdir()``.</span>
+<span class="sd">                If passed None, the output directory will be ``tempfile.gettempdir()``.</span>
 
 <span class="sd">        Example:</span>
 <span class="sd">            Assuming the solution has the name &quot;prob&quot;:</span>
@@ -603,7 +630,6 @@
         <span class="k">if</span> <span class="n">mst_path</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">print_mst_to_stream</span><span class="p">(</span><span class="n">mst_path</span><span class="p">)</span></div>
 
-
     <span class="k">def</span> <span class="nf">get_printer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
         <span class="n">printers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;json&#39;</span><span class="p">:</span> <span class="n">SolutionJSONPrinter</span><span class="p">,</span>
                     <span class="s1">&#39;xml&#39;</span><span class="p">:</span> <span class="n">SolutionMSTPrinter</span>
@@ -613,7 +639,6 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">printer</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;format key must be one of {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">printers</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
         <span class="k">return</span> <span class="n">printer</span>
-
 
 <div class="viewcode-block" id="SolveSolution.export"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.export">[docs]</a>    <span class="k">def</span> <span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_or_filename</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Export this solution.</span>
@@ -645,8 +670,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">oss</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="n">format</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
 
-
-<div class="viewcode-block" id="SolveSolution.check_as_mip_start"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.check_as_mip_start">[docs]</a>    <span class="k">def</span> <span class="nf">check_as_mip_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">error_handler</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="SolveSolution.check_as_mip_start"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.check_as_mip_start">[docs]</a>    <span class="k">def</span> <span class="nf">check_as_mip_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Checks that this solution is a valid MIP start.</span>
 
 <span class="sd">        To be valid, it must have:</span>
@@ -654,16 +678,12 @@
 <span class="sd">            * at least one discrete variable (integer or binary), and</span>
 <span class="sd">            * the values for decision variables should be consistent with the type.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            error_handler: An instance of an error handler or None.</span>
-
 <span class="sd">        Returns:</span>
 <span class="sd">            Boolean: True if this solution is a valid MIP start.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">error_handler</span><span class="p">:</span>
-                <span class="n">error_handler</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;MIP start solution is empty, provide at least one discrete variable value&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">is_explicit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_zeros</span>
+        <span class="k">if</span> <span class="n">is_explicit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">):</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;MIP start solution is empty, provide at least one discrete variable value&quot;</span><span class="p">)</span>
 
         <span class="n">discrete_vars</span> <span class="o">=</span> <span class="p">(</span><span class="n">dv</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span> <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">())</span>
         <span class="n">count_values</span> <span class="o">=</span> <span class="mi">0</span>
@@ -672,17 +692,20 @@
             <span class="n">sol_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">dv</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">dv</span><span class="o">.</span><span class="n">accept_initial_value</span><span class="p">(</span><span class="n">sol_value</span><span class="p">):</span>
                 <span class="n">count_errors</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">if</span> <span class="n">error_handler</span><span class="p">:</span>
-                    <span class="n">error_handler</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Wrong initial value for variable {0}: {1}, type: {2!s}&quot;</span><span class="p">,</span>  <span class="c1"># pragma: no cover</span>
-                                        <span class="n">dv</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">sol_value</span><span class="p">,</span> <span class="n">dv</span><span class="o">.</span><span class="n">vartype</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+                <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;Wrong initial value for variable {0!r}: {1}, type: {2!s}&quot;</span><span class="p">,</span>  <span class="c1"># pragma: no cover</span>
+                              <span class="n">dv</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">sol_value</span><span class="p">,</span> <span class="n">dv</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">short_name</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">count_values</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">count_values</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">error_handler</span><span class="p">:</span>
-                <span class="n">error_handler</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;MIP start contains no discrete variable&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
-            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">is_explicit</span> <span class="ow">and</span> <span class="n">count_values</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;MIP start contains no discrete variable&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+        <span class="k">return</span> <span class="bp">True</span></div>
+
+    <span class="k">def</span> <span class="nf">_to_tuple_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_zeros</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="p">[(</span><span class="n">dv</span><span class="o">.</span><span class="n">get_index</span><span class="p">(),</span> <span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">dv</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">()]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">count_errors</span> <span class="o">==</span> <span class="mi">0</span></div>
+            <span class="n">l</span> <span class="o">=</span> <span class="p">[(</span><span class="n">dv</span><span class="o">.</span><span class="n">get_index</span><span class="p">(),</span> <span class="bp">self</span><span class="p">[</span><span class="n">dv</span><span class="p">])</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">l</span>
 
     <span class="k">def</span> <span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="n">var_value_dict</span> <span class="o">=</span> <span class="p">{}</span>
@@ -826,6 +849,7 @@
         <span class="n">n</span><span class="p">[</span><span class="s2">&quot;problemName&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">solution</span><span class="o">.</span><span class="n">problem_name</span>
         <span class="k">if</span> <span class="n">solution</span><span class="o">.</span><span class="n">has_objective</span><span class="p">():</span>
             <span class="n">n</span><span class="p">[</span><span class="s2">&quot;objectiveValue&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">solution</span><span class="o">.</span><span class="n">objective_value</span><span class="p">)</span>
+        <span class="n">n</span><span class="p">[</span><span class="s2">&quot;solved_by&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">solution</span><span class="o">.</span><span class="n">solved_by</span>
         <span class="k">return</span> <span class="n">n</span>
 
     <span class="k">def</span> <span class="nf">encode_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sol</span><span class="p">):</span>
@@ -869,14 +893,11 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">cls</span><span class="o">.</span><span class="k">print</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">solutions</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">)</span>
 
-
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">print_to_string</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">solutions</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
         <span class="n">cls</span><span class="o">.</span><span class="n">print_to_stream</span><span class="p">(</span><span class="n">solutions</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">oss</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
-
-
 </pre></div>
 
           </div>
