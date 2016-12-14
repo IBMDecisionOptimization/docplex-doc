@@ -65,6 +65,7 @@
 <span class="kn">from</span> <span class="nn">docloud.status</span> <span class="kn">import</span> <span class="n">JobSolveStatus</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">SolveAttribute</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">str_holo</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">make_output_path2</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.linear</span> <span class="kn">import</span> <span class="n">Var</span>
@@ -104,10 +105,7 @@
 
     <span class="c1"># a symbolic value for no objective ?</span>
     <span class="n">NO_OBJECTIVE_VALUE</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e+75</span>
-    <span class="c1"># attribute keys</span>
-    <span class="n">SLACK_KEY</span> <span class="o">=</span> <span class="s1">&#39;slacks&#39;</span>
-    <span class="n">DUAL_KEY</span> <span class="o">=</span> <span class="s1">&#39;duals&#39;</span>
-    <span class="n">REDCOST_KEY</span> <span class="o">=</span> <span class="s1">&#39;reduced_costs&#39;</span>
+
     <span class="n">INFEAS_KEY</span> <span class="o">=</span> <span class="s1">&#39;infeasibities&#39;</span>
 
     <span class="nd">@staticmethod</span>
@@ -201,7 +199,7 @@
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Returns a string indicating how the solution was produced.</span>
 
-<span class="sd">        - If the solution was created by program, this field returns None.</span>
+<span class="sd">        - If the solution was created by a program, this field returns None.</span>
 <span class="sd">        - If the solution originated from a local CPLEX solve, this method returns the string &#39;cplex_local&#39;.</span>
 <span class="sd">        - If the solution originated from a DOcplexcloud solve, this method returns &#39;cplex_cloud&#39;.</span>
 
@@ -221,7 +219,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span></div>
 
     <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution_name</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_string</span><span class="p">(</span><span class="n">solution_name</span><span class="p">,</span> <span class="n">accept_empty</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">accept_none</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_string</span><span class="p">(</span><span class="n">solution_name</span><span class="p">,</span> <span class="n">accept_empty</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">accept_none</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;SolveSolution.set_name(): &#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">solution_name</span>
 
     <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_name</span><span class="p">,</span> <span class="n">set_name</span><span class="p">)</span>
@@ -354,14 +352,14 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">set_var_value</span><span class="p">(</span><span class="n">var_key</span><span class="o">=</span><span class="n">e</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">keep_zero</span><span class="o">=</span><span class="n">keep_zeros</span><span class="p">,</span> <span class="n">rounding</span><span class="o">=</span><span class="n">rounding</span><span class="p">,</span> <span class="n">do_warn_on_rounding</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_store_attribute_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_rc_results</span><span class="p">,</span> <span class="n">ct_dual_results</span><span class="p">,</span> <span class="n">ct_slacks_results</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">REDCOST_KEY</span><span class="p">,</span> <span class="n">var_rc_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DUAL_KEY</span><span class="p">,</span> <span class="n">ct_dual_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SLACK_KEY</span><span class="p">,</span> <span class="n">ct_slacks_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="n">SolveAttribute</span><span class="o">.</span><span class="n">reduced_costs</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">var_rc_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="n">SolveAttribute</span><span class="o">.</span><span class="n">duals</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ct_dual_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="n">SolveAttribute</span><span class="o">.</span><span class="n">slacks</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ct_slacks_results</span><span class="p">,</span> <span class="n">is_variable</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">store_slacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slacks</span><span class="p">,</span> <span class="n">slack_key</span><span class="o">=</span><span class="n">SLACK_KEY</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">store_slacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slacks</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slacks</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span><span class="p">[</span><span class="n">slack_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">slacks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span><span class="p">[</span><span class="n">SolveAttribute</span><span class="o">.</span><span class="n">slacks</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">slacks</span>
 
     <span class="k">def</span> <span class="nf">store_infeasibilities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">infeasibilities</span><span class="p">,</span> <span class="n">infeas_key</span><span class="o">=</span><span class="n">INFEAS_KEY</span><span class="p">):</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">infeasibilities</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
@@ -437,9 +435,24 @@
         <span class="n">dvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_var</span><span class="p">(</span><span class="n">dvar_arg</span><span class="p">,</span> <span class="n">do_raise</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">dvar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="mi">0</span></div>
 
+<div class="viewcode-block" id="SolveSolution.get_values"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.get_values">[docs]</a>    <span class="k">def</span> <span class="nf">get_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Gets the value of a sequence of variables in a solution.</span>
+<span class="sd">        If a variable is not mentioned in the solution,</span>
+<span class="sd">        the method assumes 0 and does not raise an exception.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A sequence of float values.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">checker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span>
+        <span class="n">checker</span><span class="o">.</span><span class="n">check_ordered_sequence</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">dvars</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;SolveSolution.get_values() expects ordered sequence of variables&#39;</span><span class="p">)</span>
+        <span class="n">dvar_seq</span> <span class="o">=</span> <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_var_seq</span><span class="p">(</span><span class="n">dvars</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_values</span><span class="p">(</span><span class="n">dvar_seq</span><span class="p">)</span></div>
+
     <span class="k">def</span> <span class="nf">_get_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">):</span>
-        <span class="c1"># internal.</span>
-        <span class="c1"># assume dvars is a seuqnec of decision variables.</span>
+        <span class="c1"># ginternal: no checks are done.</span>
         <span class="n">self_value_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">self_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">]</span>
 
@@ -494,8 +507,8 @@
             <span class="n">attr_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
             <span class="k">return</span> <span class="p">[</span><span class="n">attr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">mobj</span><span class="p">,</span> <span class="n">default_attr_value</span><span class="p">)</span> <span class="k">for</span> <span class="n">mobj</span> <span class="ow">in</span> <span class="n">mobjs</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">get_slack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">slack_key</span><span class="o">=</span><span class="n">SLACK_KEY</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span><span class="p">[</span><span class="n">slack_key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">get_slack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span><span class="p">[</span><span class="n">SolveAttribute</span><span class="o">.</span><span class="n">slacks</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_infeasibility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">infeas_key</span><span class="o">=</span><span class="n">INFEAS_KEY</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attribute_map</span><span class="p">[</span><span class="n">infeas_key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
@@ -682,7 +695,7 @@
 <span class="sd">            Boolean: True if this solution is a valid MIP start.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">is_explicit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_zeros</span>
-        <span class="k">if</span> <span class="n">is_explicit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_explicit</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__var_value_map</span><span class="p">:</span>
             <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;MIP start solution is empty, provide at least one discrete variable value&quot;</span><span class="p">)</span>
 
         <span class="n">discrete_vars</span> <span class="o">=</span> <span class="p">(</span><span class="n">dv</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()</span> <span class="k">if</span> <span class="n">dv</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">())</span>

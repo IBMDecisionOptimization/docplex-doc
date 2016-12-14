@@ -68,6 +68,10 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.xcounter</span> <span class="kn">import</span> <span class="n">ExprCounter</span>
 
+<span class="k">class</span> <span class="nc">DOCplexQuadraticArithException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="c1"># INTERNAL</span>
+    <span class="k">pass</span>
+
 
 <div class="viewcode-block" id="Var"><a class="viewcode-back" href="../../../docplex.mp.linear.html#docplex.mp.linear.Var">[docs]</a><span class="k">class</span> <span class="nc">Var</span><span class="p">(</span><span class="n">ModelingObject</span><span class="p">,</span> <span class="n">Operand</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Var()</span>
@@ -368,7 +372,7 @@
                 <span class="k">return</span> <span class="bp">self</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
@@ -383,7 +387,7 @@
                 <span class="k">return</span> <span class="bp">self</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">rminus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
@@ -505,27 +509,9 @@
         <span class="c1"># INTERNAL</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span> <span class="o">=</span> <span class="n">new_vartype</span>
 
-    <span class="k">def</span> <span class="nf">_name_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_generated</span><span class="p">():</span>
-            <span class="k">return</span> <span class="s2">&quot;?&quot;</span>  <span class="c1"># ? for generated variables e.g. _x1?</span>
-        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_automatic_name</span><span class="p">():</span>
-            <span class="k">return</span> <span class="s2">&quot;*&quot;</span>  <span class="c1"># anonymous but not generated _x1*</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="s2">&quot;&quot;</span>   <span class="c1"># no suffix for usernames</span>
-
     <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">str_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="s1">&#39;_x</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unchecked_index</span> <span class="o">+</span><span class="mi">1</span> <span class="p">))</span>
         <span class="k">return</span> <span class="n">str_name</span>
-
-    <span class="k">def</span> <span class="nf">to_full_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">str_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_var_</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">short_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">unchecked_index</span><span class="p">)</span>
-        <span class="n">name_mark</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_marker</span><span class="p">()</span>
-        <span class="n">self_vartype</span><span class="p">,</span> <span class="n">self_lb</span><span class="p">,</span> <span class="n">self_ub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span>
-        <span class="k">if</span> <span class="n">self_vartype</span><span class="o">.</span><span class="n">is_default_domain</span><span class="p">(</span><span class="n">self_lb</span><span class="p">,</span> <span class="n">self_ub</span><span class="p">):</span>
-            <span class="n">str_bounds</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">str_bounds</span> <span class="o">=</span> <span class="s2">&quot;[</span><span class="si">%g</span><span class="s2">..</span><span class="si">%g</span><span class="s2">]&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">self_lb</span><span class="p">,</span> <span class="n">self_ub</span><span class="p">)</span>
-        <span class="k">return</span> <span class="s2">&quot;{1}{2}{3}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">self_vartype</span><span class="o">.</span><span class="n">one_letter_symbol</span><span class="p">(),</span> <span class="n">str_name</span><span class="p">,</span> <span class="n">name_mark</span><span class="p">,</span> <span class="n">str_bounds</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">to_stringio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oss</span><span class="p">):</span>
         <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
@@ -714,7 +700,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-            <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+            <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">minus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
@@ -722,7 +708,7 @@
             <span class="n">expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span>
             <span class="n">expr</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">expr</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">rminus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
@@ -845,21 +831,16 @@
 <span class="sd">    either using operators or using `Model.linear_expr()`.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="c1"># what type to use for merging dicts</span>
-    <span class="n">counter_type</span> <span class="o">=</span> <span class="n">ExprCounter</span>
-
     <span class="c1"># what type to use for storing terms</span>
     <span class="n">term_dict_type</span> <span class="o">=</span> <span class="n">OrderedDict</span>
-
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_sort_terms_if_needed</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">counter</span><span class="p">,</span> <span class="n">term_dict_type</span><span class="o">=</span><span class="n">term_dict_type</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_keep_ordering</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">counter</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="n">term_dict_type</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">counter</span>
+        <span class="c1"># elif isinstance(counter, term_dict_type):</span>
+        <span class="c1">#     return counter</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># normalize by sorting variables by increasing indices</span>
             <span class="n">sorted_items</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">counter</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">vk</span><span class="p">:</span> <span class="n">vk</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_index</span><span class="p">())</span>
@@ -952,7 +933,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">constant</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">term_dict_type</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">_get_terms_dict</span><span class="p">())</span>  <span class="c1"># copy</span>
 
-        <span class="k">elif</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_string</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">accept_string</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">model</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">__terms</span><span class="p">[</span><span class="n">o</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
@@ -1294,7 +1275,7 @@
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_constant</span> <span class="o">+=</span> <span class="n">e</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Expr</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="n">DOCPlexQuadraticArithException</span>
+            <span class="k">raise</span> <span class="n">DOCplexQuadraticArithException</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">())</span>
@@ -1345,7 +1326,7 @@
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">ZeroExpr</span><span class="p">):</span>
             <span class="k">pass</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Expr</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">is_quad_expr</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="n">DOCPlexQuadraticArithException</span>
+            <span class="k">raise</span> <span class="n">DOCplexQuadraticArithException</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">())</span>
@@ -1445,14 +1426,14 @@
         <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone_if_necessary</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cloned</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">minus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
         <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone_if_necessary</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cloned</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">rminus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
 <div class="viewcode-block" id="LinearExpr.times"><a class="viewcode-back" href="../../../docplex.mp.linear.html#docplex.mp.linear.LinearExpr.times">[docs]</a>    <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
@@ -1496,7 +1477,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="c1"># modify self</span>
             <span class="n">r</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="bp">self</span>
             <span class="bp">self</span> <span class="o">=</span> <span class="n">r</span>
@@ -1514,7 +1495,7 @@
     <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">DOCPlexQuadraticArithException</span><span class="p">:</span>
+        <span class="k">except</span> <span class="n">DOCplexQuadraticArithException</span><span class="p">:</span>
             <span class="c1"># modify self</span>
             <span class="n">r</span> <span class="o">=</span> <span class="o">-</span><span class="n">e</span> <span class="o">+</span> <span class="bp">self</span>
             <span class="bp">self</span> <span class="o">=</span> <span class="n">r</span>

@@ -65,13 +65,11 @@
 
 <span class="kn">import</span> <span class="nn">six</span>
 
-<span class="kn">from</span> <span class="nn">docloud.status</span> <span class="kn">import</span> <span class="n">JobSolveStatus</span>
-
 <span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="kn">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">is_key_ignored</span><span class="p">,</span> <span class="n">is_url_ignored</span><span class="p">,</span> <span class="n">is_auto_publishing_solve_details</span><span class="p">,</span> \
     <span class="n">is_auto_publishing_json_solution</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="kn">import</span> <span class="n">DefaultErrorHandler</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">ComparisonType</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">ComparisonType</span><span class="p">,</span> <span class="n">SolveAttribute</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.docloud_engine</span> <span class="kn">import</span> <span class="n">DOcloudEngine</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.vartype</span> <span class="kn">import</span> <span class="n">BinaryVarType</span><span class="p">,</span> <span class="n">IntegerVarType</span><span class="p">,</span> <span class="n">ContinuousVarType</span><span class="p">,</span> <span class="n">SemiContinuousVarType</span>
@@ -147,27 +145,6 @@
 
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>  <span class="c1"># pragma: no cover</span>
-
-
-<span class="k">class</span> <span class="nc">_SolveAttribute</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="c1"># A generic descriptor class for engine solve attributes (e.g. dual values, reduced costs).</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">is_for_vars</span><span class="p">,</span> <span class="n">requires_solve</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_is_for_vars</span> <span class="o">=</span> <span class="n">is_for_vars</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_requires_solved</span> <span class="o">=</span> <span class="n">requires_solve</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">is_for_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_for_vars</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">requires_solved</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requires_solved</span>
 
 
 <span class="k">class</span> <span class="nc">_VariableContainer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -501,7 +478,7 @@
 <span class="sd">         # start modeling...</span>
 
 <span class="sd">    When the `with` block is finished, the :func:`end` method is called automatically, and all resources</span>
-<span class="sd">    allocated by the model are reclaimed.</span>
+<span class="sd">    allocated by the model are destroyed.</span>
 
 <span class="sd">    When a model is created without a specified ``context``, a default</span>
 <span class="sd">    ``Context`` is created and initialized as described in :func:`docplex.mp.context.Context.read_settings`.</span>
@@ -535,9 +512,11 @@
 <span class="sd">            passed, a default context is created.</span>
 <span class="sd">        agent (optional): The ``context.solver.agent`` is initialized with</span>
 <span class="sd">            this string.</span>
-<span class="sd">        log_output (optional): if ``True``, solver logs are output to</span>
+<span class="sd">        log_output (optional): If ``True``, solver logs are output to</span>
 <span class="sd">            stdout. If this is a stream, solver logs are output to that</span>
 <span class="sd">            stream object.</span>
+<span class="sd">        checker (optional): If ``None``, then checking is disabled everywhere. Turning off checking</span>
+<span class="sd">            may improve performance but should be done only with extreme caution.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_name_generator</span> <span class="o">=</span> <span class="n">_SymbolGenerator</span><span class="p">(</span><span class="n">pattern</span><span class="o">=</span><span class="s2">&quot;docplex_model&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -586,6 +565,8 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_environment</span>
 
     <span class="n">_saved_numpy_options</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="n">_unknown_status</span> <span class="o">=</span> <span class="bp">None</span>
 
     <span class="nd">@staticmethod</span>
 <div class="viewcode-block" id="Model.init_numpy"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.init_numpy">[docs]</a>    <span class="k">def</span> <span class="nf">init_numpy</span><span class="p">():</span>
@@ -641,35 +622,6 @@
         <span class="c1"># from docplex.environment import ClosedEnvironment</span>
         <span class="c1"># return ClosedEnvironment</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lazy_get_environment</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">_make_key_seq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="c1"># INTERNAL Takes as input a candidate keys input and returns a valid key sequence</span>
-        <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">has_len</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">name</span><span class="p">,</span> <span class="n">keys</span>
-            <span class="k">elif</span> <span class="n">is_iterator</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
-                <span class="k">return</span> <span class="n">name</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># TODO: make a test for this case.</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Cannot handle iterable var keys: {0!s} : no len() and not an iterator&quot;</span><span class="p">,</span>
-                           <span class="n">keys</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
-
-        <span class="k">elif</span> <span class="n">is_int</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="ow">and</span> <span class="n">keys</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="c1"># if name is str and we have a size, trigger automatic names</span>
-            <span class="n">used_name</span> <span class="o">=</span> <span class="bp">None</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="nb">str</span> <span class="k">else</span> <span class="n">name</span>
-            <span class="k">return</span> <span class="n">used_name</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">keys</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Unexpected var keys: {0!s}, expecting iterable or integer&quot;</span><span class="p">,</span> <span class="n">keys</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
-
-    <span class="c1"># ---- semantic checking</span>
-
-    <span class="k">def</span> <span class="nf">_check_ordered</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">header</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="c1"># in some cases, we need an ordered sequence, if not the code won&#39;t crash</span>
-        <span class="c1"># but may do unexpected things</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_ordered_sequence</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_iterator</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;{0}, got: {1!s}&quot;</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
 
     <span class="c1"># ---- type checking</span>
 
@@ -750,7 +702,7 @@
             <span class="k">elif</span> <span class="n">arg_name</span> <span class="o">==</span> <span class="s1">&#39;name_all_cts&#39;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_name_all_cts</span> <span class="o">=</span> <span class="n">arg_val</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;argument: {0:s}:{1!s} - is not recognized (ignored)&quot;</span><span class="p">,</span> <span class="n">arg_name</span><span class="p">,</span> <span class="n">arg_val</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;argument: {0:s}:{1!s} - is not recognized (ignored)&quot;</span><span class="p">,</span> <span class="n">arg_name</span><span class="p">,</span> <span class="n">arg_val</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">kwargs_map</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;float_precision&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">float_precision</span><span class="p">,</span>
@@ -804,7 +756,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">__allvars</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__vars_by_name</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__allcts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="bp">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_allsos</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -815,8 +767,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_hooks</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># debugSolveHook()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_mipstarts</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="c1"># -- float formats</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_keep_ordering</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="c1"># -- float formats</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_float_precision</span> <span class="o">=</span> <span class="mi">3</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_continuous_var_format</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%.3f</span><span class="s2">&quot;</span>
 
@@ -1179,11 +1132,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">__allvarctns</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__vars_by_name</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__allcts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_allkpis</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">clear_kpis</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_solve_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_solve_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>  <span class="c1"># initial status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_solve_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_status</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__solution</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_mipstarts</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_clear_scopes</span><span class="p">()</span>
@@ -1230,16 +1183,15 @@
 <span class="sd">        Prints the number of constraints and their breakdown by type.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_handler</span><span class="o">.</span><span class="n">prints_info</span><span class="p">():</span>
-            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Model: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">get_statistics</span><span class="p">()</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Model: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_statistics</span><span class="p">()</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
 
-            <span class="n">self_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span>
-            <span class="k">if</span> <span class="n">self_params</span><span class="o">.</span><span class="n">has_nondefaults</span><span class="p">():</span>
-                <span class="k">print</span><span class="p">(</span><span class="s2">&quot; - parameters:&quot;</span><span class="p">)</span>
-                <span class="n">self_params</span><span class="o">.</span><span class="n">print_information</span><span class="p">(</span><span class="n">indent_level</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># 3 for &quot; - &quot; + 2 = 5</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">print</span><span class="p">(</span><span class="s2">&quot; - parameters: defaults&quot;</span><span class="p">)</span></div>
+        <span class="n">self_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span>
+        <span class="k">if</span> <span class="n">self_params</span><span class="o">.</span><span class="n">has_nondefaults</span><span class="p">():</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot; - parameters:&quot;</span><span class="p">)</span>
+            <span class="n">self_params</span><span class="o">.</span><span class="n">print_information</span><span class="p">(</span><span class="n">indent_level</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># 3 for &quot; - &quot; + 2 = 5</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot; - parameters: defaults&quot;</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_is_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
@@ -1327,6 +1279,11 @@
             <span class="n">is_name_safe</span><span class="o">=</span><span class="n">is_ctname_safe</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">__allcts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_ensure_cts_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="p">{</span> <span class="n">ct</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="p">:</span> <span class="n">ct</span> <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_constraints</span><span class="p">()</span> <span class="k">if</span> <span class="n">ct</span><span class="o">.</span><span class="n">has_user_name</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span>
 
     <span class="k">def</span> <span class="nf">_register_block_cts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cts</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">safe_names</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="c1"># INTERNAL: assert len(cts) == len(indices)</span>
@@ -1610,7 +1567,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            A constraint or None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_cts_by_name</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">get_constraint_by_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
@@ -1789,6 +1746,7 @@
 <span class="sd">            name: An optional name for the variable.</span>
 
 <span class="sd">        :returns: An instance of the :class:`docplex.mp.linear.Var` class with type `IntegerVarType`.</span>
+<span class="sd">        :rtype: :class:`docplex.mp.linear.Var`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">integer_vartype</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
 
@@ -1819,7 +1777,7 @@
 
     <span class="k">def</span> <span class="nf">var_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_vartype</span><span class="p">(</span><span class="n">vartype</span><span class="p">)</span>
-        <span class="n">actual_name</span><span class="p">,</span> <span class="n">fixed_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_key_seq</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">actual_name</span><span class="p">,</span> <span class="n">fixed_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">_make_key_seq</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="n">ctn</span> <span class="o">=</span> <span class="n">_VariableContainer</span><span class="p">(</span><span class="n">vartype</span><span class="p">,</span> <span class="p">[</span><span class="n">fixed_keys</span><span class="p">],</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_var_container</span><span class="p">(</span><span class="n">ctn</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_var_list</span><span class="p">(</span><span class="n">ctn</span><span class="p">,</span> <span class="n">fixed_keys</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">actual_name</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">key_format</span><span class="p">)</span>
@@ -1830,7 +1788,7 @@
 
     <span class="k">def</span> <span class="nf">_var_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
-        <span class="n">actual_name</span><span class="p">,</span> <span class="n">key_seq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_key_seq</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">actual_name</span><span class="p">,</span> <span class="n">key_seq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">_make_key_seq</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="n">ctn</span> <span class="o">=</span> <span class="n">_VariableContainer</span><span class="p">(</span><span class="n">vartype</span><span class="p">,</span> <span class="p">[</span><span class="n">key_seq</span><span class="p">],</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_var_container</span><span class="p">(</span><span class="n">ctn</span><span class="p">)</span>
         <span class="n">var_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_var_list</span><span class="p">(</span><span class="n">ctn</span><span class="p">,</span> <span class="n">key_seq</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">actual_name</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">key_format</span><span class="p">)</span>
@@ -1904,18 +1862,17 @@
 <span class="sd">                it is interpreted as the number of variables to create.</span>
 
 <span class="sd">            lb: Lower bounds of the variables. Accepts either a floating-point number,</span>
-<span class="sd">                a list of numbers, a function,  or None.</span>
-<span class="sd">                Use a number if all variables share the same lower bound,</span>
-<span class="sd">                else use either an explicit list of numbers</span>
+<span class="sd">                a list of numbers, a function, or None.</span>
+<span class="sd">                Use a number if all variables share the same lower bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers</span>
 <span class="sd">                or use a function if lower bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means using the default lower bound (0) is used.</span>
 
 <span class="sd">            ub: Upper bounds of the variables. Accepts either a floating-point number,</span>
 <span class="sd">                a list of numbers, a function, or None.</span>
-<span class="sd">                Use a number if all variables share the same upper bound,</span>
-<span class="sd">                Use a number if all variables share the same lower bound,</span>
-<span class="sd">                else use either an explicit list of numbers</span>
+<span class="sd">                Use a number if all variables share the same upper bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers</span>
 <span class="sd">                or use a function if upper bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means the default upper bound (model infinity) is used.</span>
@@ -1952,17 +1909,17 @@
 <span class="sd">                it is interpreted as the number of variables to create.</span>
 
 <span class="sd">            lb: Lower bounds of the variables. Accepts either a floating-point number,</span>
-<span class="sd">                a list of numbers or a function.</span>
-<span class="sd">                Use a number if all variables share the same lower bound,</span>
-<span class="sd">                else either use an explicit list of numbers, or</span>
+<span class="sd">                a list of numbers, or a function.</span>
+<span class="sd">                Use a number if all variables share the same lower bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers or</span>
 <span class="sd">                use a function if lower bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
-<span class="sd">                Note that the lower bound of a semi-continuous variable must be strictly positive</span>
+<span class="sd">                Note that the lower bound of a semi-continuous variable must be strictly positive.</span>
 
 <span class="sd">            ub: Upper bounds of the variables. Accepts either a floating-point number,</span>
 <span class="sd">                a list of numbers, a function, or None.</span>
-<span class="sd">                Use a number if all variables share the same upper bound,</span>
-<span class="sd">                else use either an explicit list of numbers or,</span>
+<span class="sd">                Use a number if all variables share the same upper bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers or</span>
 <span class="sd">                use a function if upper bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means the default upper bound (model infinity) is used.</span>
@@ -2006,17 +1963,17 @@
 <span class="sd">                it is interpreted as the number of variables to create.</span>
 
 <span class="sd">            lb: Lower bounds of the variables. Accepts either a floating-point number,</span>
-<span class="sd">                a list of numbers or a function.</span>
-<span class="sd">                Use a number if all variables share the same lower bound,</span>
-<span class="sd">                else either use an explicit list of numbers, or</span>
+<span class="sd">                a list of numbers, or a function.</span>
+<span class="sd">                Use a number if all variables share the same lower bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers or</span>
 <span class="sd">                use a function if lower bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means the default lower bound (0) is used.</span>
 
 <span class="sd">            ub: Upper bounds of the variables. Accepts either a floating-point number,</span>
 <span class="sd">                a list of numbers, a function, or None.</span>
-<span class="sd">                Use a number if all variables share the same upper bound,</span>
-<span class="sd">                else use either an explicit list of numbers or,</span>
+<span class="sd">                Use a number if all variables share the same upper bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers or</span>
 <span class="sd">                use a function if upper bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means the default upper bound (model infinity) is used.</span>
@@ -2058,17 +2015,17 @@
 <span class="sd">                it is interpreted as the number of variables to create.</span>
 
 <span class="sd">            lb: Lower bounds of the variables. Accepts either a floating-point number,</span>
-<span class="sd">                a list of numbers or a function.</span>
-<span class="sd">                Use a number if all variables share the same lower bound,</span>
-<span class="sd">                else either use an explicit list of numbers, or</span>
+<span class="sd">                a list of numbers, or a function.</span>
+<span class="sd">                Use a number if all variables share the same lower bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers or</span>
 <span class="sd">                use a function if lower bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means the default lower bound (0) is used.</span>
 
 <span class="sd">            ub: Upper bounds of the variables. Accepts either a floating-point number,</span>
 <span class="sd">                a list of numbers, a function, or None.</span>
-<span class="sd">                Use a number if all variables share the same upper bound,</span>
-<span class="sd">                else use either an explicit list of numbers or,</span>
+<span class="sd">                Use a number if all variables share the same upper bound.</span>
+<span class="sd">                Otherwise either use an explicit list of numbers or</span>
 <span class="sd">                use a function if upper bounds vary depending on the key, in which case,</span>
 <span class="sd">                the function will be called on each `key` in `keys`.</span>
 <span class="sd">                None means the default upper bound (model infinity) is used.</span>
@@ -2093,7 +2050,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var_dict</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">integer_vartype</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="n">key_format</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Model.binary_var_dict"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.binary_var_dict">[docs]</a>    <span class="k">def</span> <span class="nf">binary_var_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="Model.binary_var_dict"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.binary_var_dict">[docs]</a>    <span class="k">def</span> <span class="nf">binary_var_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Creates a dictionary of binary decision variables, indexed by key objects.</span>
 
 <span class="sd">        Creates a dictionary that allows retrieval of variables from business</span>
@@ -2121,13 +2078,13 @@
 <span class="sd">        :returns: A dictionary of :class:`docplex.mp.linear.Var` objects with type</span>
 <span class="sd">                  :class:`docplex.mp.vartype.BinaryVarType` indexed by the objects in `keys`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var_dict</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">binary_vartype</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="n">key_format</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_var_dict</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">binary_vartype</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="n">key_format</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">var_multidict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">seq_of_key_seqs</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">stringify_tuple</span><span class="p">,</span> <span class="n">key_format</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="c1"># INTERNAL</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_vartype</span><span class="p">(</span><span class="n">vartype</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_iterable</span><span class="p">(</span><span class="n">seq_of_key_seqs</span><span class="p">)</span>
-        <span class="n">fixed_keys</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_make_key_seq</span><span class="p">(</span><span class="n">ks</span><span class="p">,</span> <span class="n">name</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">ks</span> <span class="ow">in</span> <span class="n">seq_of_key_seqs</span><span class="p">]</span>
+        <span class="n">fixed_keys</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">_make_key_seq</span><span class="p">(</span><span class="n">ks</span><span class="p">,</span> <span class="n">name</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">ks</span> <span class="ow">in</span> <span class="n">seq_of_key_seqs</span><span class="p">]</span>
 
         <span class="n">ctn</span> <span class="o">=</span> <span class="n">_VariableContainer</span><span class="p">(</span><span class="n">vartype</span><span class="p">,</span> <span class="n">fixed_keys</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_add_var_container</span><span class="p">(</span><span class="n">ctn</span><span class="p">)</span>
@@ -2138,8 +2095,10 @@
 
         <span class="c1"># create cartesian product of keys...</span>
         <span class="n">all_key_tuples</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">fixed_keys</span><span class="p">))</span>
-        <span class="n">cube_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_var_list</span><span class="p">(</span><span class="n">ctn</span><span class="p">,</span> <span class="n">all_key_tuples</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dimension</span><span class="p">,</span> <span class="n">key_format</span><span class="p">,</span>
-                                                <span class="bp">False</span><span class="p">)</span>
+        <span class="c1"># check empty list</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">all_key_tuples</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;multidict has no keys to index the variables&#39;</span><span class="p">)</span>
+        <span class="n">cube_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="o">.</span><span class="n">new_var_list</span><span class="p">(</span><span class="n">ctn</span><span class="p">,</span> <span class="n">all_key_tuples</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dimension</span><span class="p">,</span> <span class="n">key_format</span><span class="p">)</span>
 
         <span class="n">var_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">all_key_tuples</span><span class="p">,</span> <span class="n">cube_vars</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">var_dict</span>
@@ -2427,7 +2386,7 @@
 
 <span class="sd">        :return: A linear expression or 0.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_ordered</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;Model.scal_prod() requires a list of expressions/variables&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">check_ordered_sequence</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s1">&#39;Model.scal_prod() requires a list of expressions/variables&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Model.dot"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.dot">[docs]</a>    <span class="k">def</span> <span class="nf">dot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
@@ -2610,20 +2569,22 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">_notify_trivial_constraint</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="n">ctname</span><span class="p">,</span> <span class="n">is_feasible</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
         <span class="c1"># --- name management ---</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">ctname</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ctname</span><span class="p">:</span>
+            <span class="n">ct_name_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span>
+            <span class="k">if</span> <span class="n">ct_name_map</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">ctname</span> <span class="ow">in</span> <span class="n">ct_name_map</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Duplicate constraint name: {0!s}, used for: {1}&quot;</span><span class="p">,</span> <span class="n">ctname</span><span class="p">,</span> <span class="n">ct_name_map</span><span class="p">[</span><span class="n">ctname</span><span class="p">])</span>
+                <span class="n">ct_name_map</span><span class="p">[</span><span class="n">ctname</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct</span>
+            <span class="n">ct</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ctname</span>
+        <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_all_cts</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ct</span><span class="o">.</span><span class="n">has_name</span><span class="p">():</span>
                 <span class="n">ct_auto_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_automatic_ctname</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
                 <span class="n">ct</span><span class="o">.</span><span class="n">_set_automatic_name</span><span class="p">(</span><span class="n">ct_auto_name</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">ctname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Duplicate constraint name: {0!s}, used for: {1}&quot;</span><span class="p">,</span> <span class="n">ctname</span><span class="p">,</span>
-                       <span class="bp">self</span><span class="o">.</span><span class="n">get_constraint_by_name</span><span class="p">(</span><span class="n">ctname</span><span class="p">)</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># might be an issue if both ctname and ct.name exist</span>
-            <span class="n">ct</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ctname</span>
+
         <span class="c1"># ---</span>
 
         <span class="c1"># check for already posted cts.</span>
-        <span class="k">if</span> <span class="n">do_check</span> <span class="ow">and</span> <span class="n">ct</span><span class="o">.</span><span class="n">has_valid_index</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">do_check</span> <span class="ow">and</span> <span class="n">ct</span><span class="o">.</span><span class="n">_index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;constraint has already been posted: {0!s}, index is: {1}&quot;</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">ct</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
             <span class="k">return</span> <span class="bp">False</span><span class="p">,</span> <span class="n">ct</span>  <span class="c1"># pragma: no cover</span>
         <span class="k">return</span> <span class="bp">True</span><span class="p">,</span> <span class="n">ct</span>
@@ -2644,7 +2605,7 @@
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ct_name</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">name</span>
-        <span class="k">if</span> <span class="n">ct_name</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ct_name</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span><span class="p">[</span><span class="n">ct_name</span><span class="p">]</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
@@ -2715,7 +2676,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">remove_constraints</span><span class="p">(</span><span class="n">cts</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>  <span class="c1"># special case to denote all</span>
         <span class="c1"># clear containers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__allcts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cts_by_name</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="c1"># clear constraint index scopes.</span>
         <span class="k">for</span> <span class="n">ctscope</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ctscopes</span><span class="p">:</span>
             <span class="n">ctscope</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
@@ -3235,6 +3196,7 @@
 <span class="sd">                stdout. If this is a stream, solver logs are output to that</span>
 <span class="sd">                stream object. Overwrites the ``context.solver.log_output``</span>
 <span class="sd">                parameter.</span>
+<span class="sd">            proxies (optional): a dict with the proxies mapping.</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            A :class:`docplex.mp.solution.SolveSolution` object if the solve operation succeeded.</span>
 <span class="sd">            None if the solve operation failed.</span>
@@ -3359,7 +3321,7 @@
         <span class="c1"># --- solve is protected in try/except block</span>
         <span class="n">has_solution</span> <span class="o">=</span> <span class="bp">False</span>
         <span class="n">reported_obj</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">engine_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
+        <span class="n">engine_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_status</span>
         <span class="n">self_engine</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span>
 
         <span class="k">if</span> <span class="n">parameters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
@@ -3420,9 +3382,9 @@
         <span class="sd">&quot;&quot;&quot; Returns the solve status of the last successful solve.</span>
 
 <span class="sd">        If the model has been solved successfully, returns the status stored in the</span>
-<span class="sd">        model solution. Otherwise returns `JobSolveStatus.UNKNOWN`.</span>
+<span class="sd">        model solution. Otherwise returns None`.</span>
 
-<span class="sd">        :returns: The solve status of the last successful solve, an instance of :class:`docloud.status.JobSolveStatus`, or None.</span>
+<span class="sd">        :returns: The solve status of the last successful solve, a string, or None.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_solve_status</span></div>
 
@@ -3957,12 +3919,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">export_prm_to_path</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">prm_path</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">prm_path</span>
 
-
-    <span class="c1"># -- supported attributes</span>
-    <span class="n">_supported_attributes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;duals&quot;</span><span class="p">:</span> <span class="n">_SolveAttribute</span><span class="p">(</span><span class="s2">&quot;duals&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">),</span>
-                             <span class="s2">&quot;slacks&quot;</span><span class="p">:</span> <span class="n">_SolveAttribute</span><span class="p">(</span><span class="s2">&quot;slacks&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">),</span>
-                             <span class="s2">&quot;reduced_costs&quot;</span><span class="p">:</span> <span class="n">_SolveAttribute</span><span class="p">(</span><span class="s2">&quot;reduced_costs&quot;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)}</span>
-
     <span class="c1"># advanced values</span>
     <span class="k">def</span> <span class="nf">_get_engine_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -3971,35 +3927,29 @@
 <span class="sd">        :param attr_name: The name of the attribute.</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">attr_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_supported_attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">attr_data</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Unsupported solve attribute: {0:s}&quot;</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
-
-        <span class="c1"># if attr_data.requires_solved and not self._can_solve():</span>
-        <span class="c1">#     self.fatal(&#39;Cannot query attribute {0}, engine has no solve capability&#39;, attr_name, self.__engine.name())</span>
-
+        <span class="n">attribute</span> <span class="o">=</span> <span class="n">SolveAttribute</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">do_raise</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">arg</span><span class="p">:</span>
                 <span class="k">return</span> <span class="p">[]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_engine_attributes_internal</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">attr_data</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_engine_attributes_internal</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># defer checking to the checker</span>
-            <span class="k">if</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;reduced_costs&#39;</span><span class="p">,):</span>
+            <span class="k">if</span> <span class="n">attribute</span><span class="o">.</span><span class="n">requires_vars</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_constraint</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
-            <span class="n">attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_engine_attributes_internal</span><span class="p">([</span><span class="n">arg</span><span class="p">],</span> <span class="n">attr_data</span><span class="p">)</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_engine_attributes_internal</span><span class="p">([</span><span class="n">arg</span><span class="p">],</span> <span class="n">attribute</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">attrs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">_get_engine_attributes_internal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mobjs</span><span class="p">,</span> <span class="n">attr_data</span><span class="p">):</span>
-        <span class="n">attr_name</span> <span class="o">=</span> <span class="n">attr_data</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">is_for_vars</span> <span class="o">=</span> <span class="n">attr_data</span><span class="o">.</span><span class="n">is_for_vars</span>
+    <span class="k">def</span> <span class="nf">_get_engine_attributes_internal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mobjs</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+        <span class="n">attr_name</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">is_for_vars</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">requires_vars</span>
         <span class="k">if</span> <span class="n">is_for_vars</span><span class="p">:</span>
             <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">()]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">ct</span><span class="o">.</span><span class="n">index</span> <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_constraints</span><span class="p">()]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">is_attributes_fetched</span><span class="p">(</span><span class="n">attr_data</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">is_attributes_fetched</span><span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
             <span class="c1"># get index to value from engine</span>
             <span class="n">attr_idx_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__engine</span><span class="o">.</span><span class="n">get_solve_attribute</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">_store_attribute_result</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_idx_map</span><span class="p">,</span> <span class="n">is_for_vars</span><span class="p">)</span>
@@ -4188,8 +4138,9 @@
 
 <span class="sd">        Example:</span>
 <span class="sd">            `model.add_kpi(x+y+z, &quot;Total Profit&quot;)` adds the expression `(x+y+z)` as a KPI with the name &quot;Total Profit&quot;.</span>
-<span class="sd">            `model.add_kpi(x+y+z)` adds the expression `(x+y+z)` as a KPI with the name &quot;x+y+z&quot;, assumng variables x,y,z have</span>
-<span class="sd">                        names &#39;x&#39;, &#39;y&#39;, &#39;z&#39; (resp.)</span>
+
+<span class="sd">            `model.add_kpi(x+y+z)` adds the expression `(x+y+z)` as a KPI with</span>
+<span class="sd">            the name &quot;x+y+z&quot;, assumng variables x,y,z have names &#39;x&#39;, &#39;y&#39;, &#39;z&#39; (resp.)</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            The newly added KPI instance.</span>
@@ -4379,8 +4330,8 @@
 <div class="viewcode-block" id="Model.end"><a class="viewcode-back" href="../../../docplex.mp.model.html#docplex.mp.model.Model.end">[docs]</a>    <span class="k">def</span> <span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Terminates a model instance.</span>
 
-<span class="sd">        Reclaims all memory consumed by the model.</span>
-<span class="sd">        Reclaims memory allocated by CPLEX, if any.</span>
+<span class="sd">        Since this method destroys the objects associated with the model, you must not use the model</span>
+<span class="sd">        after you call this member function.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -4567,7 +4518,7 @@
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="n">sos_type</span> <span class="o">=</span> <span class="n">SOSType</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">sos_arg</span><span class="p">)</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Model.add_</span><span class="si">%s</span><span class="s1">() expects an ordered sequence (or iterator) of variables&#39;</span> <span class="o">%</span> <span class="n">sos_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_ordered</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">dvars</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">check_ordered_sequence</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">dvars</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">msg</span><span class="p">)</span>
         <span class="n">var_list</span> <span class="o">=</span> <span class="n">_to_list</span><span class="p">(</span><span class="n">dvars</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_var_seq</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">sos_type</span><span class="o">.</span><span class="n">min_size</span><span class="p">():</span>
