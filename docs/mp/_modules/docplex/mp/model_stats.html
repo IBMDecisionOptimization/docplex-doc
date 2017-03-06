@@ -1,0 +1,347 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    
+    <title>docplex.mp.model_stats &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     'V2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  false
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.model_stats</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">ComparisonType</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.vartype</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<div class="viewcode-block" id="ModelStatistics"><a class="viewcode-back" href="../../../docplex.mp.model_stats.html#docplex.mp.model_stats.ModelStatistics">[docs]</a><span class="k">class</span> <span class="nc">ModelStatistics</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;ModelStatistics()</span>
+
+<span class="sd">    This class gathers statistics from the model.</span>
+
+<span class="sd">    Instances of this class are returned by the method :func:`docplex.mp.model.Model.get_statistics`.</span>
+
+<span class="sd">    The class contains counters on the various types of variables and constraints</span>
+<span class="sd">    in the model.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_binary_variables</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_integer_variables</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semiinteger_variables</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_le_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_ge_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_eq_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_range_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_indicator_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_quadratic_constraints</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">as_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_number_of_binary_variables</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_integer_variables</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semiinteger_variables</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_le_constraints</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_ge_constraints</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_eq_constraints</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_range_constraints</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_indicator_constraints</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_quadratic_constraints</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">equal_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ModelStatistics</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">as_tuple</span><span class="p">()</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">as_tuple</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equal_stats</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ModelStatistics</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="n">diffstats</span> <span class="o">=</span> <span class="n">ModelStatistics</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;_number_of_le_constraints&quot;</span><span class="p">,</span> <span class="s2">&quot;_number_of_ge_constraints&quot;</span><span class="p">,</span> <span class="s2">&quot;_number_of_eq_constraints&quot;</span><span class="p">]:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">diffstats</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="o">-</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">attr</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">diffstats</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_make_new_stats</span><span class="p">(</span><span class="n">mdl</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">ModelStatistics</span><span class="p">()</span>
+        <span class="n">vartype_count</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">dv</span><span class="o">.</span><span class="n">vartype</span><span class="p">)</span> <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">())</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_binary_variables</span> <span class="o">=</span> <span class="n">vartype_count</span><span class="p">[</span><span class="n">BinaryVarType</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_integer_variables</span> <span class="o">=</span> <span class="n">vartype_count</span><span class="p">[</span><span class="n">IntegerVarType</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span> <span class="o">=</span> <span class="n">vartype_count</span><span class="p">[</span><span class="n">ContinuousVarType</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span> <span class="o">=</span> <span class="n">vartype_count</span><span class="p">[</span><span class="n">SemiContinuousVarType</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_semiinteger_variables</span> <span class="o">=</span> <span class="n">vartype_count</span><span class="p">[</span><span class="n">SemiIntegerVarType</span><span class="p">]</span>
+
+        <span class="n">linct_count</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">type</span> <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">iter_binary_constraints</span><span class="p">())</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_le_constraints</span> <span class="o">=</span> <span class="n">linct_count</span><span class="p">[</span><span class="n">ComparisonType</span><span class="o">.</span><span class="n">LE</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_eq_constraints</span> <span class="o">=</span> <span class="n">linct_count</span><span class="p">[</span><span class="n">ComparisonType</span><span class="o">.</span><span class="n">EQ</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_ge_constraints</span> <span class="o">=</span> <span class="n">linct_count</span><span class="p">[</span><span class="n">ComparisonType</span><span class="o">.</span><span class="n">GE</span><span class="p">]</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_range_constraints</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">number_of_range_constraints</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_indicator_constraints</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">number_of_indicator_constraints</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">_number_of_quadratic_constraints</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">number_of_quadratic_constraints</span>
+        <span class="k">return</span> <span class="n">stats</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the total number of variables in the model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_binary_variables</span> \
+               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_integer_variables</span> \
+               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span> \
+               <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_binary_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of binary decision variables in the model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_binary_variables</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_integer_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of integer decision variables in the model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_integer_variables</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_continuous_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of continuous decision variables in the model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_continuous_variables</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_semicontinuous_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of semicontinuous decision variables in the model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_semiinteger_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of semi-integer decision variables in the model.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semiinteger_variables</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_linear_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the total number of linear constraints in the model.</span>
+
+<span class="sd">        This number comprises all relational constraints: &lt;=, ==, and &gt;=</span>
+<span class="sd">        and also range constraints.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_eq_constraints</span> <span class="o">+</span> \
+               <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_le_constraints</span> <span class="o">+</span> \
+               <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_ge_constraints</span> <span class="o">+</span> \
+               <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_range_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_le_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of &lt;= constraints</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_le_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_eq_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of == constraints</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_eq_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_ge_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of &gt;= constraints</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_ge_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_range_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of range constraints.</span>
+
+<span class="sd">        Range constraints are of the form L &lt;= expression &lt;= U.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :class:`docplex.mp.constr.RangeConstraint`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_range_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_indicator_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of indicator constraints.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :class:`docplex.mp.constr.IndicatorConstraint`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_indicator_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_quadratic_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of quadratic constraints.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :class:`docplex.mp.constr.QuadraticConstraint`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_quadratic_constraints</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_linear_constraints</span> <span class="o">+</span>\
+               <span class="bp">self</span><span class="o">.</span><span class="n">number_of_quadratic_constraints</span> <span class="o">+</span>\
+               <span class="bp">self</span><span class="o">.</span><span class="n">number_of_indicator_constraints</span>
+
+<div class="viewcode-block" id="ModelStatistics.print_information"><a class="viewcode-back" href="../../../docplex.mp.model_stats.html#docplex.mp.model_stats.ModelStatistics.print_information">[docs]</a>    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Prints model statistics in readable format.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39; - number of variables: {0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_variables</span><span class="p">))</span>
+        <span class="n">var_fmt</span> <span class="o">=</span> <span class="s1">&#39;   - binary={0}, integer={1}, continuous={2}&#39;</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span><span class="p">:</span>
+            <span class="n">var_fmt</span> <span class="o">+=</span> <span class="s1">&#39;, semi-continuous={3}&#39;</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">var_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_binary_variables</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">number_of_integer_variables</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">number_of_continuous_variables</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span>
+                             <span class="p">))</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39; - number of constraints: {0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_constraints</span><span class="p">))</span>
+        <span class="n">ct_fmt</span> <span class="o">=</span> <span class="s1">&#39;   - linear={0}&#39;</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_indicator_constraints</span><span class="p">:</span>
+            <span class="n">ct_fmt</span> <span class="o">+=</span> <span class="s1">&#39;, indicator={1}&#39;</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_quadratic_constraints</span><span class="p">:</span>
+            <span class="n">ct_fmt</span> <span class="o">+=</span> <span class="s1">&#39;, quadratic={2}&#39;</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">ct_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_linear_constraints</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">number_of_indicator_constraints</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">number_of_quadratic_constraints</span><span class="p">))</span></div>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - number of variables: </span><span class="si">%d</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_variables</span><span class="p">)</span>
+        <span class="n">var_fmt</span> <span class="o">=</span> <span class="s1">&#39;   - binary={0}, integer={1}, continuous={2}&#39;</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span><span class="p">:</span>
+            <span class="n">var_fmt</span> <span class="o">+=</span> <span class="s1">&#39;, semi-continuous={3}&#39;</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">var_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_binary_variables</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">number_of_integer_variables</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">number_of_continuous_variables</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_semicontinuous_variables</span>
+                                 <span class="p">))</span>
+        <span class="n">nb_constraints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_constraints</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; - number of constraints: {0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nb_constraints</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">nb_constraints</span><span class="p">:</span>
+            <span class="n">ct_fmt</span> <span class="o">=</span> <span class="s1">&#39;   - linear={0}&#39;</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_indicator_constraints</span><span class="p">:</span>
+                <span class="n">ct_fmt</span> <span class="o">+=</span> <span class="s1">&#39;, indicator={1}&#39;</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_quadratic_constraints</span><span class="p">:</span>
+                <span class="n">ct_fmt</span> <span class="o">+=</span> <span class="s1">&#39;, quadratic={2}&#39;</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ct_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_linear_constraints</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">number_of_indicator_constraints</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">number_of_quadratic_constraints</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.Model.ModelStatistics()&quot;</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016-2017, IBM&reg;.
+    </div>
+  </body>
+</html>

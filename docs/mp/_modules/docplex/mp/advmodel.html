@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.mp.advmodel &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</title>
+    <title>docplex.mp.advmodel &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V1.0',
+        VERSION:     'V2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation" href="../../../index.html" />
+    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation" href="../../../index.html" />
     <link rel="up" title="Module code" href="../../index.html" /> 
   </head>
   <body role="document">
@@ -37,7 +37,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -54,23 +54,27 @@
 <span class="c1"># (c) Copyright IBM Corp. 2016</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
 
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">iteritems</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.aggregator</span> <span class="kn">import</span> <span class="n">ModelAggregator</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.quad</span> <span class="kn">import</span> <span class="n">VarPair</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">generate_constant</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">generate_constant</span><span class="p">,</span>\
+    <span class="n">is_pandas_dataframe</span><span class="p">,</span> <span class="n">is_pandas_series</span><span class="p">,</span> <span class="n">is_numpy_matrix</span><span class="p">,</span> <span class="n">is_scipy_sparse</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">ComparisonType</span>
 
 <span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="kn">import</span> <span class="n">izip</span><span class="p">,</span> <span class="n">fast_range</span>
 
 
 <span class="k">class</span> <span class="nc">AdvAggregator</span><span class="p">(</span><span class="n">ModelAggregator</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">linear_factory</span><span class="p">,</span> <span class="n">quad_factory</span><span class="p">):</span>
-        <span class="n">ModelAggregator</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">linear_factory</span><span class="p">,</span> <span class="n">quad_factory</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">linear_factory</span><span class="p">,</span> <span class="n">quad_factory</span><span class="p">,</span> <span class="n">ordered</span><span class="p">):</span>
+        <span class="n">ModelAggregator</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">linear_factory</span><span class="p">,</span> <span class="n">quad_factory</span><span class="p">,</span> <span class="n">ordered</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_scal_prod_vars_all_different</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
         <span class="n">checker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">coefs</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_expr</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_zero_expr</span><span class="p">()</span>
         <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">accept_string</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
             <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">coefs</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">coefs</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sum_vars_all_different</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
@@ -78,17 +82,21 @@
             <span class="c1"># coefs is iterable</span>
             <span class="n">lcc_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter_type</span>
             <span class="n">lcc</span> <span class="o">=</span> <span class="n">lcc_type</span><span class="p">()</span>
-            <span class="n">lcc_setitem</span> <span class="o">=</span> <span class="n">lcc_type</span><span class="o">.</span><span class="n">__setitem__</span>
+            <span class="n">lcc_setitem</span> <span class="o">=</span> <span class="n">lcc_type</span><span class="o">.</span><span class="fm">__setitem__</span>
             <span class="n">number_validation_fn</span> <span class="o">=</span> <span class="n">checker</span><span class="o">.</span><span class="n">get_number_validation_fn</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">coef</span><span class="p">:</span>
-                    <span class="n">safe_coef</span> <span class="o">=</span> <span class="n">number_validation_fn</span><span class="p">(</span><span class="n">coef</span><span class="p">)</span> <span class="k">if</span> <span class="n">number_validation_fn</span> <span class="k">else</span> <span class="n">coef</span>
+            <span class="k">if</span> <span class="n">number_validation_fn</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+                    <span class="n">safe_coef</span> <span class="o">=</span> <span class="n">number_validation_fn</span><span class="p">(</span><span class="n">coef</span><span class="p">)</span>
                     <span class="n">lcc_setitem</span><span class="p">(</span><span class="n">lcc</span><span class="p">,</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">safe_coef</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+                    <span class="n">lcc_setitem</span><span class="p">(</span><span class="n">lcc</span><span class="p">,</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">coef</span><span class="p">)</span>
 
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_expr</span><span class="p">(</span><span class="n">qcc</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">lcc</span><span class="o">=</span><span class="n">lcc</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">scal_prod_triple</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
         <span class="n">used_coefs</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">checker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_checker</span>
 
         <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">accept_string</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
             <span class="n">used_coefs</span> <span class="o">=</span> <span class="n">coefs</span>
@@ -96,18 +104,20 @@
             <span class="k">if</span> <span class="n">coefs</span><span class="p">:</span>
                 <span class="n">used_coefs</span> <span class="o">=</span> <span class="n">generate_constant</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">count_max</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_expr</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_zero_expr</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;scal_prod_triple expects iterable or number as coefficients, got: {0!r}&quot;</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">left_terms</span><span class="p">):</span>
-            <span class="n">used_left</span> <span class="o">=</span> <span class="n">left_terms</span>
+            <span class="n">used_left</span> <span class="o">=</span> <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_var_seq</span><span class="p">(</span><span class="n">left_terms</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">left_terms</span><span class="p">)</span>
             <span class="n">used_left</span> <span class="o">=</span> <span class="n">generate_constant</span><span class="p">(</span><span class="n">left_terms</span><span class="p">,</span> <span class="n">count_max</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">right_terms</span><span class="p">):</span>
-            <span class="n">used_right</span> <span class="o">=</span> <span class="n">right_terms</span>
+            <span class="n">used_right</span> <span class="o">=</span> <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_var_seq</span><span class="p">(</span><span class="n">right_terms</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_var</span><span class="p">(</span><span class="n">right_terms</span><span class="p">)</span>
             <span class="n">used_right</span> <span class="o">=</span> <span class="n">generate_constant</span><span class="p">(</span><span class="n">right_terms</span><span class="p">,</span> <span class="n">count_max</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">used_coefs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">coefs</span> <span class="ow">and</span> <span class="n">used_left</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">left_terms</span> <span class="ow">and</span> <span class="n">used_right</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">right_terms</span><span class="p">:</span>
@@ -146,16 +156,19 @@
         <span class="n">dcc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter_type</span>
         <span class="n">qcc</span> <span class="o">=</span> <span class="n">dcc</span><span class="p">()</span>
         <span class="n">number_validation_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">get_number_validation_fn</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">coef</span><span class="p">,</span> <span class="n">lterm</span><span class="p">,</span> <span class="n">rterm</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">coef</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">number_validation_fn</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">coef</span><span class="p">,</span> <span class="n">lterm</span><span class="p">,</span> <span class="n">rterm</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">):</span>
                 <span class="n">safe_coef</span> <span class="o">=</span> <span class="n">number_validation_fn</span><span class="p">(</span><span class="n">coef</span><span class="p">)</span> <span class="k">if</span> <span class="n">number_validation_fn</span> <span class="k">else</span> <span class="n">coef</span>
                 <span class="n">qcc</span><span class="o">.</span><span class="n">update_from_item_value</span><span class="p">(</span><span class="n">item</span><span class="o">=</span><span class="n">VarPair</span><span class="p">(</span><span class="n">lterm</span><span class="p">,</span> <span class="n">rterm</span><span class="p">),</span> <span class="n">value</span><span class="o">=</span><span class="n">safe_coef</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">coef</span><span class="p">,</span> <span class="n">lterm</span><span class="p">,</span> <span class="n">rterm</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">left_terms</span><span class="p">,</span> <span class="n">right_terms</span><span class="p">):</span>
+                <span class="n">qcc</span><span class="o">.</span><span class="n">update_from_item_value</span><span class="p">(</span><span class="n">item</span><span class="o">=</span><span class="n">VarPair</span><span class="p">(</span><span class="n">lterm</span><span class="p">,</span> <span class="n">rterm</span><span class="p">),</span> <span class="n">value</span><span class="o">=</span><span class="n">coef</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_expr</span><span class="p">(</span><span class="n">qcc</span><span class="o">=</span><span class="n">qcc</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_sumsq_vars_all_different</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">):</span>
-        <span class="n">dcc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter_type</span>
+        <span class="n">dcc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quad_factory</span><span class="o">.</span><span class="n">term_dict_type</span>
         <span class="n">qcc</span> <span class="o">=</span> <span class="n">dcc</span><span class="p">()</span>
-        <span class="n">qcc_setitem</span> <span class="o">=</span> <span class="n">dcc</span><span class="o">.</span><span class="n">__setitem__</span>
+        <span class="n">qcc_setitem</span> <span class="o">=</span> <span class="n">dcc</span><span class="o">.</span><span class="fm">__setitem__</span>
         <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">:</span>
             <span class="n">qcc_setitem</span><span class="p">(</span><span class="n">qcc</span><span class="p">,</span> <span class="n">VarPair</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_expr</span><span class="p">(</span><span class="n">qcc</span><span class="o">=</span><span class="n">qcc</span><span class="p">)</span>
@@ -167,9 +180,8 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_expr</span><span class="p">(</span><span class="n">qcc</span><span class="o">=</span><span class="n">qcc</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_sum_vars_all_different</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvars</span><span class="p">):</span>
-        <span class="n">lcc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter_type</span><span class="p">()</span>
-
-        <span class="n">setitem_fn</span> <span class="o">=</span> <span class="n">lcc</span><span class="o">.</span><span class="n">__setitem__</span>
+        <span class="n">lcc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_factory</span><span class="o">.</span><span class="n">term_dict_type</span><span class="p">()</span>
+        <span class="n">setitem_fn</span> <span class="o">=</span> <span class="n">lcc</span><span class="o">.</span><span class="fm">__setitem__</span>
 
         <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dvars</span><span class="p">:</span>
             <span class="n">setitem_fn</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
@@ -199,10 +211,16 @@
 <span class="sd">    This class is a specialized version of the :class:`docplex.mp.model.Model` class with useful non-standard modeling</span>
 <span class="sd">    functions.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_fast_settings</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;keep_ordering&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span> <span class="s1">&#39;checker&#39;</span><span class="p">:</span> <span class="s1">&#39;off&#39;</span><span class="p">,</span> <span class="s1">&#39;keep_all_exprs&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">Model</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span> <span class="o">=</span> <span class="n">AdvAggregator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qfactory</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fast_settings</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="c1"># force fast settings if not present</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="n">Model</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span> <span class="o">=</span> <span class="n">AdvAggregator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lfactory</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_qfactory</span><span class="p">,</span> <span class="n">ordered</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">keep_ordering</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">sum_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">_sum_vars</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
@@ -214,7 +232,6 @@
 
 <span class="sd">        This method is faster than the standard generic summation method due to the fact that it takes only</span>
 <span class="sd">        variables and does not take expressions as arguments.</span>
-<span class="sd">        By default, check for no duplicates will be done. So, best performances may be obtained only when using deployment modes (no checker).</span>
 
 <span class="sd">        :param terms: A list or an iterator on variables only, with no duplicates.</span>
 
@@ -225,7 +242,7 @@
 
 <span class="sd">        Note:</span>
 <span class="sd">            To improve performance, the check for duplicates can be turned off by setting</span>
-<span class="sd">            `checker=&#39;off&#39;` in the `kwargs` of the :class:`docplex.mp.model.Model` object. As this argument</span>
+<span class="sd">            `checker=&#39;none&#39;` in the `kwargs` of the :class:`docplex.mp.model.Model` object. As this argument</span>
 <span class="sd">            turns off checking everywhere, it should be used with extreme caution.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">var_seq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_var_seq_all_different</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
@@ -241,7 +258,6 @@
 <span class="sd">        The variable sequence is a list or an iterator of variables.</span>
 
 <span class="sd">        This method is faster than the standard summation of squares method due to the fact that it takes only variables and does not take expressions as arguments.</span>
-<span class="sd">        By default, check for no duplicates will be done. So, best performances may be obtained only when using deployment modes (no checker).</span>
 
 <span class="sd">        :param terms: A list or an iterator on variables only, with no duplicates.</span>
 
@@ -252,7 +268,7 @@
 
 <span class="sd">        Note:</span>
 <span class="sd">            To improve performance, the check for duplicates can be turned off by setting</span>
-<span class="sd">            `checker=&#39;off&#39;` in the `kwargs` of the :class:`docplex.mp.model.Model` object. As this argument</span>
+<span class="sd">            `checker=&#39;none&#39;` in the `kwargs` of the :class:`docplex.mp.model.Model` object. As this argument</span>
 <span class="sd">            turns off checking everywhere, it should be used with extreme caution.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">var_seq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_var_seq_all_different</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
@@ -266,7 +282,6 @@
 <span class="sd">        The coefficients can be either a list of numbers, an iterator over numbers, or a number.</span>
 
 <span class="sd">        This method is faster than the standard generic scalar product method due to the fact that it takes only variables and does not take expressions as arguments.</span>
-<span class="sd">        By default, check for no duplicates will be done. So, best performances may be obtained only when using deployment modes (no checker).</span>
 
 <span class="sd">        :param terms: A list or an iterator on variables only, with no duplicates.</span>
 <span class="sd">        :param coefs: A list or an iterator on numbers, or a number.</span>
@@ -278,7 +293,7 @@
 
 <span class="sd">        Note:</span>
 <span class="sd">            To improve performance, the check for duplicates can be turned off by setting</span>
-<span class="sd">            `checker=&#39;off&#39;` in the `kwargs` of the :class:`docplex.mp.model.Model` object. As this argument</span>
+<span class="sd">            `checker=&#39;none&#39;` in the `kwargs` of the :class:`docplex.mp.model.Model` object. As this argument</span>
 <span class="sd">            turns off checking everywhere, it should be used with extreme caution.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">check_ordered_sequence</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms</span><span class="p">,</span>
@@ -343,7 +358,6 @@
 <span class="sd">        expression in `left_terms` and the i_th expression in `right_terms`</span>
 
 <span class="sd">        This method is faster than the standard generic scalar quadratic product method due to the fact that it takes only variables and does not take expressions as arguments.</span>
-<span class="sd">        By default, check for no duplicates will be done. So, best performances may be obtained only when using deployment modes (no checker).</span>
 
 <span class="sd">        Example:</span>
 <span class="sd">            `Model.scal_prod_vars_triple([x, y], [z, t], [2, 3])` returns the expression `2xz + 3yt`.</span>
@@ -368,7 +382,7 @@
                 <span class="n">used_coefs</span> <span class="o">=</span> <span class="n">generate_constant</span><span class="p">(</span><span class="n">coefs</span><span class="p">,</span> <span class="n">count_max</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
                 <span class="n">nb_non_iterables</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">zero_expr</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">new_zero_expr</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;scal_prod_triple expects iterable or number as coefficients, got: {0!r}&quot;</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
 
@@ -390,7 +404,103 @@
             <span class="k">return</span> <span class="n">left_terms</span> <span class="o">*</span> <span class="n">right_terms</span> <span class="o">*</span> <span class="n">coefs</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">_scal_prod_triple_vars</span><span class="p">(</span><span class="n">left_terms</span><span class="o">=</span><span class="n">used_left</span><span class="p">,</span>
-                                                           <span class="n">right_terms</span><span class="o">=</span><span class="n">used_right</span><span class="p">,</span> <span class="n">coefs</span><span class="o">=</span><span class="n">used_coefs</span><span class="p">)</span></div></div>
+                                                           <span class="n">right_terms</span><span class="o">=</span><span class="n">used_right</span><span class="p">,</span> <span class="n">coefs</span><span class="o">=</span><span class="n">used_coefs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_to_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_pandas_series</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AdvModel.matrix_constraints"><a class="viewcode-back" href="../../../docplex.mp.advmodel.html#docplex.mp.advmodel.AdvModel.matrix_constraints">[docs]</a>    <span class="k">def</span> <span class="nf">matrix_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coef_mat</span><span class="p">,</span> <span class="n">dvars</span><span class="p">,</span> <span class="n">rhs</span><span class="p">,</span> <span class="n">ctsense</span><span class="o">=</span><span class="s1">&#39;le&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a list of linear constraints</span>
+<span class="sd">        from a matrix of coefficients, a sequence of variables, and a sequence of numbers.</span>
+
+<span class="sd">        This method returns the list of constraints built from</span>
+
+<span class="sd">            A.X &lt;op&gt; B</span>
+
+<span class="sd">        where A is the coefficient matrix (of size (M,N)), X is the variable sequence (size N),</span>
+<span class="sd">        and B is the sequence of right-hand side values (of size M).</span>
+<span class="sd">        &lt;op&gt; is the comparison operator that defines the sense of the constraint. By default, this generates</span>
+<span class="sd">        a &#39;less-than-or-equal&#39; constraint.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            `Model.scal_prod_vars_triple([x, y], [z, t], [2, 3])` returns the expression `2xz + 3yt`.</span>
+
+<span class="sd">        :param coef_mat: A matrix of coefficients with M rows and N columns. This argument accepts</span>
+<span class="sd">            either a list of lists of numbers, a `numpy` array with size (M,N), or a `scipy` sparse matrix.</span>
+<span class="sd">        :param dvars: An ordered sequence of decision variables: accepts a Python list, `numpy` array,</span>
+<span class="sd">            or a `pandas` series. The size of the sequence must match the number of columns in the matrix.</span>
+<span class="sd">        :param rhs: A sequence of numbers: accepts a Python list, a `numpy` array,</span>
+<span class="sd">            or a `pandas` series. The size of the sequence must match the number of rows in the matrix.</span>
+<span class="sd">        :param ctsense: A constraint sense \; accepts either a</span>
+<span class="sd">            value of type `ComparisonType` or a string (e.g &#39;le&#39;, &#39;eq&#39;, &#39;ge&#39;).</span>
+
+<span class="sd">        :returns: A list of linear constraints.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">            If A is a matrix of coefficients with 2 rows and 3 columns:</span>
+
+<span class="sd">                    A = [[1, 2, 3],</span>
+<span class="sd">                         [4, 5, 6]],</span>
+<span class="sd">                    X = [x, y, z] where x, y, and z are decision variables (size 3), and</span>
+
+<span class="sd">                    B = [100, 200], a sequence of numbers (size 2),</span>
+<span class="sd">            then</span>
+
+<span class="sd">                `mdl.matrix_constraint(A, X, B, &#39;GE&#39;)` returns a list of two constraints</span>
+<span class="sd">                [(x + 2y+3z &lt;= 100), (4x + 5y +6z &lt;= 200)].</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            If the dimensions of the matrix and variables or of the matrix and number sequence do not match,</span>
+<span class="sd">            an error is raised.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">checker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checker</span>
+        <span class="k">if</span> <span class="n">is_pandas_dataframe</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_numpy_matrix</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_scipy_sparse</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">):</span>
+            <span class="n">nb_rows</span><span class="p">,</span> <span class="n">nb_cols</span> <span class="o">=</span> <span class="n">coef_mat</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># a sequence of sequences</span>
+            <span class="n">a_mat</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">)</span>
+            <span class="n">nb_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a_mat</span><span class="p">)</span>
+            <span class="n">nb_cols</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">shared_len</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">a_mat</span><span class="p">:</span>
+                    <span class="n">checker</span><span class="o">.</span><span class="n">check_ordered_sequence</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="s1">&#39;matrix_constraints&#39;</span><span class="p">)</span>
+                    <span class="n">r_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">shared_len</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="n">shared_len</span> <span class="o">=</span> <span class="n">r_len</span>
+                    <span class="k">elif</span> <span class="n">r_len</span> <span class="o">!=</span> <span class="n">shared_len</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;All columns should have same length found  {0} != {1}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shared_len</span><span class="p">,</span> <span class="n">r_len</span><span class="p">))</span>
+                <span class="n">nb_cols</span> <span class="o">=</span> <span class="n">shared_len</span> <span class="k">if</span> <span class="n">shared_len</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;All columns should have a len()&#39;</span><span class="p">)</span>
+
+        <span class="n">s_dvars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_list</span><span class="p">(</span><span class="n">dvars</span><span class="p">)</span>
+        <span class="n">s_rhs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_list</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
+        <span class="c1"># check</span>
+
+        <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_var_seq</span><span class="p">(</span><span class="n">s_dvars</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">s_rhs</span><span class="p">:</span>
+            <span class="n">checker</span><span class="o">.</span><span class="n">typecheck_num</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+
+        <span class="n">op</span> <span class="o">=</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">ctsense</span><span class="p">)</span>
+        <span class="c1"># ---</span>
+        <span class="c1"># check dimensions and whether to transpose or not.</span>
+        <span class="c1"># ---</span>
+        <span class="n">nb_rhs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_rhs</span><span class="p">)</span>
+        <span class="n">nb_vars</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s_dvars</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">nb_rows</span><span class="p">,</span> <span class="n">nb_cols</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">nb_rhs</span><span class="p">,</span> <span class="n">nb_vars</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;Dimension error, matrix is ({0},{1}), expecting ({3}, {2})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nb_rows</span><span class="p">,</span> <span class="n">nb_cols</span><span class="p">,</span> <span class="n">nb_vars</span><span class="p">,</span> <span class="n">nb_rhs</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">is_scipy_sparse</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">_sparse_matrix_constraints</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">,</span> <span class="n">s_dvars</span><span class="p">,</span> <span class="n">s_rhs</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">_matrix_constraints</span><span class="p">(</span><span class="n">coef_mat</span><span class="p">,</span> <span class="n">s_dvars</span><span class="p">,</span> <span class="n">s_rhs</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span></div></div>
 </pre></div>
 
           </div>
@@ -424,12 +534,12 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V1.0 documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016, IBM&reg;.
+        &copy; Copyright 2016-2017, IBM&reg;.
     </div>
   </body>
 </html>
