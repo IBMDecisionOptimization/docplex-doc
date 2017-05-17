@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>cutstock.py &mdash; DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</title>
+    <title>cutstock.py &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.1 documentation</title>
     
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,17 +14,19 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     'V2.0',
+        VERSION:     'V2.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  false
+        HAS_SOURCE:  false,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation" href="index.html" /> 
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -36,7 +38,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.1 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -336,15 +338,7 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 283
 284
 285
-286
-287
-288
-289
-290
-291
-292
-293
-294</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
+286</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
@@ -354,7 +348,7 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 <span class="kn">import</span> <span class="nn">json</span>
 
 <span class="kn">from</span> <span class="nn">docplex.util.environment</span> <span class="kn">import</span> <span class="n">get_environment</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.absmodel</span> <span class="kn">import</span> <span class="n">AbstractModel</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
 
 <span class="c1"># ------------------------------</span>
 
@@ -385,229 +379,222 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 
 
 <span class="k">class</span> <span class="nc">TPattern</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;TPattern&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;cost&quot;</span><span class="p">])):</span>
-
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;pattern</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span>
 
-
-<span class="k">class</span> <span class="nc">CuttingStockPatternGeneratorModel</span><span class="p">(</span><span class="n">AbstractModel</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; The cutting stock pattern-generation model.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">master_items</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;CuttingStock_PatternGeneratorModel&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">master_items</span>
-        <span class="c1"># default values</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">duals</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">master_items</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_vars</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span> <span class="o">=</span> <span class="n">roll_width</span>
-
-    <span class="k">def</span> <span class="nf">setup_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">integer_var_list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="mi">999999</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Use&#39;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">TItem</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="n">it_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">it_row</span> <span class="ow">in</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">duals</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">][:]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-
-    <span class="k">def</span> <span class="nf">update_duals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_duals</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Update the duals array&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">duals</span> <span class="o">=</span> <span class="n">new_duals</span>
-        <span class="c1"># duals not used in constraint , only objective has to be updated</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">setup_objective</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">use_vars</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">setup_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">use_vars</span><span class="p">,</span> <span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">size</span> <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">setup_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; NOTE: this method is called at each loop&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">scal_prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">use_vars</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">duals</span><span class="p">))</span>
-
-    <span class="k">def</span> <span class="nf">get_use_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span>
-
-        <span class="k">return</span> <span class="p">[</span><span class="n">use_var</span><span class="o">.</span><span class="n">solution_value</span> <span class="k">for</span> <span class="n">use_var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_vars</span><span class="p">]</span>
+<span class="c1"># ---</span>
 
 
-<span class="k">class</span> <span class="nc">FirstPatternGeneratorModel</span><span class="p">(</span><span class="n">CuttingStockPatternGeneratorModel</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; a specialized generator model to check the first iteration of pattern generation.&quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="nf">make_cutstock_pattern_generation_model</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">gen_model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;cutstock_generate_patterns&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c1"># store data</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="n">items</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">roll_width</span> <span class="o">=</span> <span class="n">roll_width</span>
+    <span class="c1"># default values</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">duals</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+    <span class="c1"># 1. create variables: one per item</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">use_vars</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">integer_var_list</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="n">items</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="mi">999999</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;use&#39;</span><span class="p">)</span>
+    <span class="c1"># 2 setup constraint:</span>
+    <span class="c1"># --- sum of item usage times item sizes must be less than roll width</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gen_model</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gen_model</span><span class="o">.</span><span class="n">use_vars</span><span class="p">,</span> <span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">size</span> <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="n">items</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">roll_width</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">CuttingStockPatternGeneratorModel</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">DEFAULT_ITEMS</span><span class="p">,</span> <span class="n">DEFAULT_ROLL_WIDTH</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">update_duals</span><span class="p">(</span><span class="n">FIRST_GENERATION_DUALS</span><span class="p">)</span>
+    <span class="c1"># store dual expression for dynamic edition</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">use_dual_expr</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gen_model</span><span class="o">.</span><span class="n">use_vars</span><span class="p">,</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">duals</span><span class="p">)</span>
+    <span class="c1"># minimize</span>
+    <span class="n">gen_model</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">gen_model</span><span class="o">.</span><span class="n">use_dual_expr</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">gen_model</span>
 
 
-<span class="k">class</span> <span class="nc">CutStockMasterModel</span><span class="p">(</span><span class="n">AbstractModel</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; The cutting stock master model. &quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="nf">cutstock_update_duals</span><span class="p">(</span><span class="n">gmodel</span><span class="p">,</span> <span class="n">new_duals</span><span class="p">):</span>
+    <span class="c1"># update the duals array and the the duals exppression...</span>
+    <span class="c1"># edition is propagated to the objective of the model.</span>
+    <span class="n">gmodel</span><span class="o">.</span><span class="n">duals</span> <span class="o">=</span> <span class="n">new_duals</span>
+    <span class="n">use_vars</span> <span class="o">=</span> <span class="n">gmodel</span><span class="o">.</span><span class="n">use_vars</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_duals</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">use_vars</span><span class="p">)</span>
+    <span class="c1"># TODO: use zip here</span>
+    <span class="n">updated_used</span> <span class="o">=</span> <span class="p">[(</span><span class="n">use</span><span class="p">,</span> <span class="o">-</span><span class="n">new_duals</span><span class="p">[</span><span class="n">u</span><span class="p">])</span> <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">use</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">use_vars</span><span class="p">)]</span>
+    <span class="c1"># this modification is notified to the objective.</span>
+    <span class="n">gmodel</span><span class="o">.</span><span class="n">use_dual_expr</span><span class="o">.</span><span class="n">set_coefficients</span><span class="p">(</span><span class="n">updated_used</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gmodel</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Cutting Stock Master&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="o">=</span> <span class="p">{}</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_pattern_id</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">items_by_id</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">patterns_by_id</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="c1"># results</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">best_cost</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nb_iters</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">item_fill_cts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">def</span> <span class="nf">make_custstock_master_model</span><span class="p">(</span><span class="n">item_table</span><span class="p">,</span> <span class="n">pattern_table</span><span class="p">,</span> <span class="n">fill_table</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;custock_master&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span> <span class="o">=</span> <span class="mi">99999</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">MAX_CUT</span> <span class="o">=</span> <span class="mi">9999</span>
+    <span class="c1"># store data as properties</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">TItem</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="n">it_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">it_row</span> <span class="ow">in</span> <span class="n">item_table</span><span class="p">]</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">items_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">it</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">it</span> <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">items</span><span class="p">}</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">patterns</span> <span class="o">=</span> <span class="p">[</span><span class="n">TPattern</span><span class="p">(</span><span class="o">*</span><span class="n">pattern_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">pattern_row</span> <span class="ow">in</span> <span class="n">pattern_table</span><span class="p">]</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">patterns_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">pat</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">pat</span> <span class="k">for</span> <span class="n">pat</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">patterns</span><span class="p">}</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">max_pattern_id</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">pt</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">pt</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">patterns</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">item_fill_cts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># build a dictionary storing how much each pattern fills each item.</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="o">=</span> <span class="p">{(</span><span class="n">m</span><span class="o">.</span><span class="n">patterns_by_id</span><span class="p">[</span><span class="n">p</span><span class="p">],</span> <span class="n">m</span><span class="o">.</span><span class="n">items_by_id</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span> <span class="n">f</span> <span class="k">for</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="ow">in</span> <span class="n">fill_table</span><span class="p">}</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">roll_width</span> <span class="o">=</span> <span class="n">roll_width</span>
 
-    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_table</span><span class="p">,</span> <span class="n">pattern_table</span><span class="p">,</span> <span class="n">fill_table</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="n">TItem</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="n">it_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">it_row</span> <span class="ow">in</span> <span class="n">item_table</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">items_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">it</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">it</span> <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span> <span class="o">=</span> <span class="p">[</span><span class="n">TPattern</span><span class="p">(</span><span class="o">*</span><span class="n">pattern_row</span><span class="p">)</span> <span class="k">for</span> <span class="n">pattern_row</span> <span class="ow">in</span> <span class="n">pattern_table</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">patterns_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">pat</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">pat</span> <span class="k">for</span> <span class="n">pat</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_pattern_id</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">pt</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">pt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">)</span>
+    <span class="c1"># --- variables</span>
+    <span class="c1"># one cut var per pattern...</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">MAX_CUT</span> <span class="o">=</span> <span class="mi">9999</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">cut_vars</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">continuous_var_dict</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">patterns</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">MAX_CUT</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;cut&#39;</span><span class="p">)</span>
 
-        <span class="c1"># build a dictionary storing how much each pattern fills each item.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="o">=</span> <span class="p">{(</span><span class="bp">self</span><span class="o">.</span><span class="n">patterns_by_id</span><span class="p">[</span><span class="n">p</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">items_by_id</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span> <span class="n">f</span> <span class="k">for</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="ow">in</span> <span class="n">fill_table</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span> <span class="o">=</span> <span class="n">roll_width</span>
+    <span class="c1"># --- add fill constraints</span>
+    <span class="c1">#</span>
+    <span class="n">all_patterns</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">patterns</span>
+    <span class="n">all_items</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">items</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">item_fill_cts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">all_items</span><span class="p">:</span>
+        <span class="n">item_fill_ct</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">m</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">p</span><span class="p">,</span> <span class="n">item</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">all_patterns</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">item</span><span class="o">.</span><span class="n">demand</span>
+        <span class="n">item_fill_ct</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;ct_fill_{0!s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">item_fill_cts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item_fill_ct</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">item_fill_cts</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">add_new_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item_usages</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; makes a new pattern from a sequence of usages (one per item)&quot;&quot;&quot;</span>
-        <span class="n">new_pattern_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_pattern_id</span> <span class="o">+</span> <span class="mi">1</span>
-        <span class="n">new_pattern</span> <span class="o">=</span> <span class="n">TPattern</span><span class="p">(</span><span class="n">new_pattern_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_pattern</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">max_pattern_id</span> <span class="o">=</span> <span class="n">new_pattern_id</span>
-        <span class="k">for</span> <span class="n">used</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">item_usages</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[</span><span class="n">new_pattern</span><span class="p">,</span> <span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">used</span>
+    <span class="c1"># --- minimize total cut stock</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">total_cutting_cost</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">cost</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">all_patterns</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">total_cutting_cost</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">setup_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># how much to cut?</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous_var_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">MAX_CUT</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Cut&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">m</span>
 
-    <span class="k">def</span> <span class="nf">setup_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">all_items</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span>
-        <span class="n">all_patterns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span>
 
-        <span class="k">def</span> <span class="nf">pattern_item_filled</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[</span><span class="n">pattern</span><span class="p">,</span> <span class="n">item</span><span class="p">]</span> <span class="k">if</span> <span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="k">else</span> <span class="mi">0</span>
+<span class="k">def</span> <span class="nf">add_pattern_to_master_model</span><span class="p">(</span><span class="n">master_model</span><span class="p">,</span> <span class="n">item_usages</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Adds a new pattern to the master model.</span>
+<span class="sd">    </span>
+<span class="sd">    This function performs the following:</span>
+<span class="sd">    </span>
+<span class="sd">    1. build a new pattern instance from item usages (taken from sub-model)</span>
+<span class="sd">    2. add it to the master model</span>
+<span class="sd">    3. update decision objects with this new pattern.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_pattern_id</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">pt</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">pt</span> <span class="ow">in</span> <span class="n">master_model</span><span class="o">.</span><span class="n">patterns</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">new_pattern</span> <span class="o">=</span> <span class="n">TPattern</span><span class="p">(</span><span class="n">new_pattern_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">master_model</span><span class="o">.</span><span class="n">patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_pattern</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">used</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">item_usages</span><span class="p">,</span> <span class="n">master_model</span><span class="o">.</span><span class="n">items</span><span class="p">):</span>
+        <span class="n">master_model</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[</span><span class="n">new_pattern</span><span class="p">,</span> <span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="n">used</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">item_fill_cts</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">all_items</span><span class="p">:</span>
-            <span class="n">item_fill_ct</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">pattern_item_filled</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">all_patterns</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">item</span><span class="o">.</span><span class="n">demand</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">item_fill_cts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item_fill_ct</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">item_fill_ct</span><span class="p">,</span> <span class="s1">&#39;ct_fill_{0!s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+    <span class="c1"># --- add one decision variable, linked to the new pattern.</span>
+    <span class="n">new_pattern_cut_var</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">continuous_var</span><span class="p">(</span><span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">master_model</span><span class="o">.</span><span class="n">MAX_CUT</span><span class="p">,</span>
+                                                      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;cut_{0!s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_pattern</span><span class="p">))</span>
+    <span class="n">master_model</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">new_pattern</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_pattern_cut_var</span>
 
-    <span class="k">def</span> <span class="nf">setup_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">total_cutting_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">cost</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">total_cutting_cost</span><span class="p">,</span> <span class="s1">&#39;Total cutting cost&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">total_cutting_cost</span><span class="p">)</span>
+    <span class="c1"># update constraints</span>
+    <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">ct</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">master_model</span><span class="o">.</span><span class="n">items</span><span class="p">,</span> <span class="n">master_model</span><span class="o">.</span><span class="n">item_fill_cts</span><span class="p">):</span>
+        <span class="c1"># update fill constraint by changing lhs</span>
+        <span class="n">ctlhs</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">lhs</span>
+        <span class="n">filled</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[</span><span class="n">new_pattern</span><span class="p">,</span> <span class="n">item</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">filled</span><span class="p">:</span>
+            <span class="n">ctlhs</span> <span class="o">+=</span> <span class="n">new_pattern_cut_var</span> <span class="o">*</span> <span class="n">filled</span>
 
-    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;#items={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">)))</span>
-        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;#patterns={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">)))</span>
-        <span class="n">AbstractModel</span><span class="o">.</span><span class="n">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    <span class="c1"># update objective:</span>
+    <span class="c1">#   side-effect on  the total cutting cost expr propagates to the objective.</span>
+    <span class="n">cost_expr</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">total_cutting_cost</span>
+    <span class="n">cost_expr</span> <span class="o">+=</span> <span class="n">new_pattern_cut_var</span> <span class="o">*</span> <span class="n">new_pattern</span><span class="o">.</span><span class="n">cost</span>  <span class="c1"># this performw a side effect!</span>
 
-    <span class="k">def</span> <span class="nf">print_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| Nb of cuts | Pattern   | Pattern&#39;s detail (# of item1,..., # of item5) |&quot;</span><span class="p">)</span>
-        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| {} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">))</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">&gt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
-                <span class="n">pattern_detail</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="k">if</span>
-                                  <span class="n">a</span> <span class="o">==</span> <span class="n">p</span><span class="p">}</span>
-                <span class="k">print</span><span class="p">(</span>
-                    <span class="s2">&quot;| {:&lt;10g} | {!s:9} | {!s:45} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span><span class="p">,</span>
-                                                            <span class="n">p</span><span class="p">,</span>
-                                                            <span class="n">pattern_detail</span><span class="p">))</span>
-        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| {} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">master_model</span>
 
-    <span class="k">def</span> <span class="nf">save_solution_as_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">file</span><span class="p">):</span>
-        <span class="n">solution</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">&gt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
-                <span class="n">pattern_detail</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="k">if</span>
-                                  <span class="n">a</span> <span class="o">==</span> <span class="n">p</span><span class="p">}</span>
-                <span class="n">n</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;pattern&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
-                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;cuts&#39;</span><span class="p">]</span><span class="o">=</span> <span class="s2">&quot;</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span>
-                <span class="n">n</span><span class="p">[</span><span class="s1">&#39;details&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pattern_detail</span>
-                <span class="n">solution</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-        <span class="nb">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">master_model</span> <span class="o">=</span> <span class="bp">self</span>
-        <span class="n">master_model</span><span class="o">.</span><span class="n">ensure_setup</span><span class="p">()</span>
-        <span class="n">gen_model</span> <span class="o">=</span> <span class="n">CuttingStockPatternGeneratorModel</span><span class="p">(</span><span class="n">master_items</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">,</span>
-                                                      <span class="n">roll_width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">roll_width</span><span class="p">,</span>
-                                                      <span class="n">output_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_level</span><span class="p">,</span>
-                                                      <span class="o">**</span><span class="n">kwargs</span>
-                                                      <span class="p">)</span>
-        <span class="n">gen_model</span><span class="o">.</span><span class="n">setup</span><span class="p">()</span>
-        <span class="n">rc_eps</span> <span class="o">=</span> <span class="mf">1e-6</span>
-        <span class="n">obj_eps</span> <span class="o">=</span> <span class="mf">1e-4</span>
-        <span class="n">loop_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">best</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">curr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infinity</span>
-        <span class="n">status</span> <span class="o">=</span> <span class="bp">False</span>
-        <span class="k">while</span> <span class="n">loop_count</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">best</span> <span class="o">-</span> <span class="n">curr</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">obj_eps</span><span class="p">:</span>
-            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">#items={},#patterns={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">patterns</span><span class="p">)))</span>
-            <span class="k">if</span> <span class="n">loop_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">refresh_model</span><span class="p">()</span>
-            <span class="n">status</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-            <span class="n">loop_count</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">best</span> <span class="o">=</span> <span class="n">curr</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">status</span><span class="p">:</span>
-                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; master model fails, stop&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">))</span>
-                <span class="k">break</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">assert</span> <span class="n">master_model</span><span class="o">.</span><span class="n">solution</span>
-                <span class="n">curr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_value</span>
-                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; new column generation iteration, best={:g}, curr={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">curr</span><span class="p">))</span>
-                <span class="n">duals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_fill_dual_values</span><span class="p">()</span>
-                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{0}&gt; moving duals from master to sub model: {1}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="nb">map</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%0.2f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">x</span><span class="p">),</span> <span class="n">duals</span><span class="p">)))</span>
-                <span class="n">gen_model</span><span class="o">.</span><span class="n">update_duals</span><span class="p">(</span><span class="n">duals</span><span class="p">)</span>
-                <span class="n">status</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">status</span><span class="p">:</span>
-                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; slave model fails, stop&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">))</span>
-                    <span class="k">break</span>
+<span class="k">def</span> <span class="nf">cutstock_print_solution</span><span class="p">(</span><span class="n">cutstock_model</span><span class="p">):</span>
+    <span class="n">patterns</span> <span class="o">=</span> <span class="n">cutstock_model</span><span class="o">.</span><span class="n">patterns</span>
+    <span class="n">cut_var_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="n">cutstock_model</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">}</span>
+    <span class="n">pattern_item_filled</span> <span class="o">=</span> <span class="n">cutstock_model</span><span class="o">.</span><span class="n">pattern_item_filled</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| Nb of cuts | Pattern   | Pattern&#39;s detail (# of item1,item2,...) |&quot;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| {} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cut_var_values</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
+            <span class="n">pattern_detail</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">pattern_item_filled</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">pattern_item_filled</span> <span class="k">if</span>
+                              <span class="n">a</span> <span class="o">==</span> <span class="n">p</span><span class="p">}</span>
+            <span class="k">print</span><span class="p">(</span>
+                <span class="s2">&quot;| {:&lt;10g} | {!s:9} | {!s:45} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cut_var_values</span><span class="p">[</span><span class="n">p</span><span class="p">],</span>
+                                                        <span class="n">p</span><span class="p">,</span>
+                                                        <span class="n">pattern_detail</span><span class="p">))</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;| {} |&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">))</span>
 
-                <span class="n">rc_cost</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">objective_value</span>
-                <span class="k">if</span> <span class="n">rc_cost</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="n">rc_eps</span><span class="p">:</span>
-                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; slave model runs with obj={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="n">rc_cost</span><span class="p">))</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; pattern-generator model stops, obj={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="n">rc_cost</span><span class="p">))</span>
-                    <span class="k">break</span>
 
-                <span class="n">use_values</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">get_use_values</span><span class="p">()</span>
-                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; add new pattern to master data: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">use_values</span><span class="p">)))</span>
-                <span class="c1"># make a new pattern with use values</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">loop_count</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">best</span> <span class="o">-</span> <span class="n">curr</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">obj_eps</span><span class="p">):</span>
-                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;* terminating: best-curr={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">best</span> <span class="o">-</span> <span class="n">curr</span><span class="p">)))</span>
-                    <span class="k">break</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">add_new_pattern</span><span class="p">(</span><span class="n">use_values</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">cutstock_save_as_json</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">json_file</span><span class="p">):</span>
+    <span class="n">patterns</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">patterns</span>
+    <span class="n">cut_var_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">cut_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">}</span>
+    <span class="n">solution</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cut_var_values</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
+            <span class="n">pattern_detail</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">pattern_item_filled</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)]</span> <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">pattern_item_filled</span> <span class="k">if</span>
+                              <span class="n">a</span> <span class="o">==</span> <span class="n">p</span><span class="p">}</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;pattern&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">),</span>
+                 <span class="s1">&#39;cuts&#39;</span><span class="p">:</span> <span class="s2">&quot;</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">cut_var_values</span><span class="p">[</span><span class="n">p</span><span class="p">],</span>
+                 <span class="s1">&#39;details&#39;</span><span class="p">:</span> <span class="n">pattern_detail</span><span class="p">}</span>
+            <span class="n">solution</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">json_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">status</span><span class="p">:</span>
-            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Cutting-stock column generation terminates, best={:g}, #loops={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">curr</span><span class="p">,</span> <span class="n">loop_count</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">best_cost</span> <span class="o">=</span> <span class="n">curr</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nb_iters</span> <span class="o">=</span> <span class="n">loop_count</span>
+
+<span class="k">def</span> <span class="nf">cutstock_solve</span><span class="p">(</span><span class="n">item_table</span><span class="p">,</span> <span class="n">pattern_table</span><span class="p">,</span> <span class="n">fill_table</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;verbose&#39;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+    <span class="n">master_model</span> <span class="o">=</span> <span class="n">make_custstock_master_model</span><span class="p">(</span><span class="n">item_table</span><span class="p">,</span> <span class="n">pattern_table</span><span class="p">,</span> <span class="n">fill_table</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="c1"># these two fields contain named tuples</span>
+    <span class="n">items</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">items</span>
+    <span class="n">patterns</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">patterns</span>
+    <span class="n">gen_model</span> <span class="o">=</span> <span class="n">make_cutstock_pattern_generation_model</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">roll_width</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="n">rc_eps</span> <span class="o">=</span> <span class="mf">1e-6</span>
+    <span class="n">obj_eps</span> <span class="o">=</span> <span class="mf">1e-4</span>
+    <span class="n">loop_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">best</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">curr</span> <span class="o">=</span> <span class="mf">1e+20</span>
+    <span class="n">ms</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">while</span> <span class="n">loop_count</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">best</span> <span class="o">-</span> <span class="n">curr</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">obj_eps</span><span class="p">:</span>
+        <span class="n">ms</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">loop_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="n">curr</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ms</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; master model fails, stop&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">))</span>
+            <span class="k">break</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Cutting-stock column generation fails&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">status</span>
+            <span class="k">assert</span> <span class="n">ms</span>
+            <span class="n">curr</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">objective_value</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; new column generation iteration, #patterns={}, best={:g}, curr={:g}&#39;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">),</span> <span class="n">best</span><span class="p">,</span> <span class="n">curr</span><span class="p">))</span>
+            <span class="n">duals</span> <span class="o">=</span> <span class="n">master_model</span><span class="o">.</span><span class="n">dual_values</span><span class="p">(</span><span class="n">master_model</span><span class="o">.</span><span class="n">item_fill_cts</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{0}&gt; moving duals from master to sub model: {1}&#39;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%0.2f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">x</span><span class="p">),</span> <span class="n">duals</span><span class="p">)))</span>
+            <span class="n">cutstock_update_duals</span><span class="p">(</span><span class="n">gen_model</span><span class="p">,</span> <span class="n">duals</span><span class="p">)</span>
+            <span class="n">gs</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">gs</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; slave model fails, stop&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">))</span>
+                <span class="k">break</span>
 
-    <span class="k">def</span> <span class="nf">get_fill_dual_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dual_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">item_fill_cts</span><span class="p">)</span>
+            <span class="n">rc_cost</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">objective_value</span>
+            <span class="k">if</span> <span class="n">rc_cost</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="n">rc_eps</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; slave model runs with obj={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="n">rc_cost</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; pattern-generator model stops, obj={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="n">rc_cost</span><span class="p">))</span>
+                <span class="k">break</span>
+
+            <span class="n">use_values</span> <span class="o">=</span> <span class="n">gen_model</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="n">gen_model</span><span class="o">.</span><span class="n">use_vars</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;{}&gt; add new pattern to master data: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop_count</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">use_values</span><span class="p">)))</span>
+            <span class="c1"># make a new pattern with use values</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">loop_count</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">best</span> <span class="o">-</span> <span class="n">curr</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">obj_eps</span><span class="p">):</span>
+                <span class="k">print</span><span class="p">(</span><span class="s1">&#39;* terminating: best-curr={:g}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">best</span> <span class="o">-</span> <span class="n">curr</span><span class="p">)))</span>
+                <span class="k">break</span>
+            <span class="n">add_pattern_to_master_model</span><span class="p">(</span><span class="n">master_model</span><span class="p">,</span> <span class="n">use_values</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ms</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">* Cutting-stock column generation terminates, best={:g}, #loops={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">curr</span><span class="p">,</span> <span class="n">loop_count</span><span class="p">))</span>
+            <span class="n">cutstock_print_solution</span><span class="p">(</span><span class="n">master_model</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ms</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;!!!!  Cutting-stock column generation fails  !!!!&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span>
 
 
-<span class="k">class</span> <span class="nc">DefaultCutStockMasterModel</span><span class="p">(</span><span class="n">CutStockMasterModel</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">CutStockMasterModel</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">load_data</span><span class="p">(</span><span class="n">DEFAULT_ITEMS</span><span class="p">,</span> <span class="n">DEFAULT_PATTERNS</span><span class="p">,</span> <span class="n">DEFAULT_PATTERN_ITEM_FILLED</span><span class="p">,</span> <span class="n">DEFAULT_ROLL_WIDTH</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">cutstock_solve_default</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">cutstock_solve</span><span class="p">(</span><span class="n">DEFAULT_ITEMS</span><span class="p">,</span> <span class="n">DEFAULT_PATTERNS</span><span class="p">,</span> <span class="n">DEFAULT_PATTERN_ITEM_FILLED</span><span class="p">,</span> <span class="n">DEFAULT_ROLL_WIDTH</span><span class="p">,</span>
+                          <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
@@ -629,15 +616,14 @@ solves the new, enlarged model. Column generation repeats the process until a sa
     <span class="n">url</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="n">key</span> <span class="o">=</span> <span class="bp">None</span>
 
-    <span class="n">cutstock_model</span> <span class="o">=</span> <span class="n">DefaultCutStockMasterModel</span><span class="p">()</span>
-    
-    <span class="c1"># Solve the model. If a key has been specified above, the solve</span>
-    <span class="c1"># will use IBM Decision Optimization on cloud.</span>
-    <span class="k">if</span> <span class="n">cutstock_model</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">):</span>
-        <span class="n">cutstock_model</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+    <span class="kn">from</span> <span class="nn">private.timing</span> <span class="kn">import</span> <span class="n">MyTimer</span>
+
+    <span class="k">with</span> <span class="n">MyTimer</span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="n">print_details</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">cutstock_solve_default</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">objective_value</span> <span class="o">-</span> <span class="mf">46.25</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">0.1</span>
         <span class="c1"># Save the solution as &quot;solution.json&quot; program output.</span>
         <span class="k">with</span> <span class="n">get_environment</span><span class="p">()</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="s2">&quot;solution.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
-            <span class="n">cutstock_model</span><span class="o">.</span><span class="n">save_solution_as_json</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+            <span class="n">cutstock_save_as_json</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span>
 </pre></div>
 </td></tr></table></div>
 </div>
@@ -651,14 +637,11 @@ solves the new, enlarged model. Column generation repeats the process until a sa
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -674,11 +657,11 @@ solves the new, enlarged model. Column generation repeats the process until a sa
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.0 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.1 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright 2016-2017, IBM&reg;.
+        &#169; Copyright 2016-2017, IBM&reg;.
     </div>
   </body>
 </html>

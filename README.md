@@ -29,7 +29,7 @@ This library is numpy friendly.
 
 ## Get the documentation and examples
 
-* [Documentation](https://github.com/IBMDecisionOptimization/docplex-doc)
+* [Documentation](http://ibmdecisionoptimization.github.io/docplex-doc/)
 * [Examples](https://github.com/IBMDecisionOptimization/docplex-examples)
 
 ## Get your IBM® Decision Optimization on Cloud API key
