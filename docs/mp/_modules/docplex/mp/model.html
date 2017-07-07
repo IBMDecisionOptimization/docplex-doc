@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.mp.model &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.1 documentation</title>
+    <title>docplex.mp.model &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.2 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.1',
+        VERSION:     'V2.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.2 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>  
@@ -72,8 +72,9 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="k">import</span> <span class="n">SolveAttribute</span><span class="p">,</span> <span class="n">ObjectiveSense</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.constr</span> <span class="k">import</span> <span class="n">AbstractConstraint</span><span class="p">,</span> <span class="n">LinearConstraint</span><span class="p">,</span> <span class="n">RangeConstraint</span><span class="p">,</span> \
     <span class="n">IndicatorConstraint</span><span class="p">,</span> <span class="n">QuadraticConstraint</span><span class="p">,</span> <span class="n">PwlConstraint</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="k">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">is_key_ignored</span><span class="p">,</span> <span class="n">is_url_ignored</span><span class="p">,</span> <span class="n">is_auto_publishing_solve_details</span><span class="p">,</span> \
-    <span class="n">is_auto_publishing_json_solution</span><span class="p">,</span> <span class="n">has_credentials</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.context</span> <span class="k">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">is_key_ignored</span><span class="p">,</span> <span class="n">is_url_ignored</span><span class="p">,</span> \
+    <span class="n">is_auto_publishing_solve_details</span><span class="p">,</span> <span class="n">is_auto_publishing_json_solution</span><span class="p">,</span> \
+    <span class="n">is_auto_publishing</span><span class="p">,</span> <span class="n">has_credentials</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.docloud_engine</span> <span class="k">import</span> <span class="n">DOcloudEngine</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.engine_factory</span> <span class="k">import</span> <span class="n">EngineFactory</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="k">import</span> <span class="n">Environment</span>
@@ -93,7 +94,10 @@
 <span class="kn">from</span> <span class="nn">docplex.util.environment</span> <span class="k">import</span> <span class="n">get_environment</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.xcounter</span> <span class="k">import</span> <span class="n">FastOrderedDict</span><span class="p">,</span> <span class="n">ExprCounter</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.cloudutils</span> <span class="k">import</span> <span class="n">context_must_use_docloud</span><span class="p">,</span> <span class="n">context_has_docloud_credentials</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.cloudutils</span> <span class="k">import</span> <span class="n">context_must_use_docloud</span><span class="p">,</span> <span class="n">context_has_docloud_credentials</span><span class="p">,</span>\
+    <span class="n">is_in_docplex_worker</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.progress</span> <span class="k">import</span> <span class="n">KpiRecorder</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">docplex.worker.solvehook</span> <span class="k">import</span> <span class="n">get_solve_hook</span>
@@ -2996,6 +3000,11 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">wk_hook</span> <span class="o">=</span> <span class="kc">None</span>
 
+        <span class="k">if</span> <span class="n">is_in_docplex_worker</span> <span class="ow">and</span> <span class="n">is_auto_publishing</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+            <span class="c1"># publish kpi automatically</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kpi_recorder</span> <span class="o">=</span> <span class="n">KpiRecorder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">publish_kpi</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_progress_listener</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kpi_recorder</span><span class="p">)</span>
+
         <span class="c1"># connect progress listeners (if any) if problem is mip</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_connect_progress_listeners</span><span class="p">()</span>
 
@@ -4518,7 +4527,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.2 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
