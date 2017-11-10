@@ -36,6 +36,6 @@ $(window).resize(function(){
         $("li.nav-item-0 a").text("Top");
     }
     else {
-        $("li.nav-item-0 a").text("DOcplex.CP: Constraint Programming Modeling for Python V2.3 documentation");
+        $("li.nav-item-0 a").text("DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation");
     }
 });

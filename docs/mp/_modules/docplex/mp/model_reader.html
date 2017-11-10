@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.mp.model_reader &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.3 documentation</title>
+    <title>docplex.mp.model_reader &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.4 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.3',
+        VERSION:     'V2.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.4 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -88,7 +88,7 @@
     <span class="kn">from</span> <span class="nn">cplex</span> <span class="k">import</span> <span class="n">Cplex</span>
     <span class="kn">from</span> <span class="nn">cplex._internal._subinterfaces</span> <span class="k">import</span> <span class="n">ObjSense</span>
     <span class="kn">from</span> <span class="nn">cplex.exceptions</span> <span class="k">import</span> <span class="n">CplexError</span><span class="p">,</span> <span class="n">CplexSolverError</span>
-    <span class="kn">from</span> <span class="nn">docplex.mp.cplex_engine</span> <span class="k">import</span> <span class="n">_SafeCplexWrapper</span>
+    <span class="kn">from</span> <span class="nn">docplex.mp.cplex_engine</span> <span class="k">import</span> <span class="n">_safe_cplex</span>
 
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
     <span class="n">Cplex</span> <span class="o">=</span> <span class="kc">None</span>
@@ -109,7 +109,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_read_method</span> <span class="o">=</span> <span class="n">read_method</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">cpx</span> <span class="o">=</span> <span class="n">_SafeCplexWrapper</span><span class="p">()</span>
+        <span class="n">cpx</span> <span class="o">=</span> <span class="n">_safe_cplex</span><span class="p">()</span>
         <span class="c1"># no output from CPLEX</span>
         <span class="n">cpx</span><span class="o">.</span><span class="n">set_results_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
         <span class="n">cpx</span><span class="o">.</span><span class="n">set_log_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
@@ -216,14 +216,16 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="kc">None</span></div>
 
-    <span class="k">def</span> <span class="nf">_cplex_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_cplex_read</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="c1"># print(&quot;-&gt; start reading file: {0}&quot;.format(filename))</span>
-        <span class="n">cpx</span> <span class="o">=</span> <span class="n">_SafeCplexWrapper</span><span class="p">()</span>
+        <span class="n">cpx</span> <span class="o">=</span> <span class="n">_safe_cplex</span><span class="p">()</span>
         <span class="c1"># no warnings</span>
-        <span class="n">cpx</span><span class="o">.</span><span class="n">set_results_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-        <span class="n">cpx</span><span class="o">.</span><span class="n">set_log_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-        <span class="n">cpx</span><span class="o">.</span><span class="n">set_warning_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-        <span class="n">cpx</span><span class="o">.</span><span class="n">set_error_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>  <span class="c1"># remove messages about names</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="n">cpx</span><span class="o">.</span><span class="n">set_results_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">cpx</span><span class="o">.</span><span class="n">set_log_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">cpx</span><span class="o">.</span><span class="n">set_warning_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">cpx</span><span class="o">.</span><span class="n">set_error_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>  <span class="c1"># remove messages about names</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">cpx</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">cpx</span>
@@ -372,8 +374,7 @@
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">has_range</span><span class="p">:</span>
                     <span class="n">expr</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_aggregator</span><span class="o">.</span><span class="n">_scal_prod</span><span class="p">((</span><span class="n">cpx_var_index_to_docplex</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">),</span> <span class="n">coefs</span><span class="p">)</span>
                     <span class="n">op</span> <span class="o">=</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">sense</span><span class="p">)</span>
-                    <span class="c1">#ct = op(expr, rhs)</span>
-                    <span class="n">ct</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_binary_constraint</span><span class="p">(</span><span class="n">lhs</span><span class="o">=</span><span class="n">expr</span><span class="p">,</span> <span class="n">rhs</span><span class="o">=</span><span class="n">rhs</span><span class="p">,</span> <span class="n">ctsense</span><span class="o">=</span><span class="n">op</span><span class="p">)</span>
+                    <span class="n">ct</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_binary_constraint</span><span class="p">(</span><span class="n">lhs</span><span class="o">=</span><span class="n">expr</span><span class="p">,</span> <span class="n">rhs</span><span class="o">=</span><span class="n">rhs</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="n">op</span><span class="p">)</span>
                     <span class="n">ct</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ctname</span>
                     <span class="n">deferred_cts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
 
@@ -488,6 +489,7 @@
             <span class="n">all_ind_linearcts</span> <span class="o">=</span> <span class="n">cpx_indicators</span><span class="o">.</span><span class="n">get_linear_components</span><span class="p">()</span>
             <span class="n">all_ind_senses</span> <span class="o">=</span> <span class="n">cpx_indicators</span><span class="o">.</span><span class="n">get_senses</span><span class="p">()</span>
             <span class="n">all_ind_complemented</span> <span class="o">=</span> <span class="n">cpx_indicators</span><span class="o">.</span><span class="n">get_complemented</span><span class="p">()</span>
+            <span class="n">lfactory</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_lfactory</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_indicators</span><span class="p">):</span>
                 <span class="n">ind_bvar</span> <span class="o">=</span> <span class="n">all_ind_bvars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
                 <span class="n">ind_name</span> <span class="o">=</span> <span class="n">all_ind_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">all_ind_names</span> <span class="k">else</span> <span class="kc">None</span>
@@ -501,7 +503,9 @@
                 <span class="n">ind_linexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_linear_expr_from_sparse_pair</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">ind_linear</span><span class="p">)</span>
                 <span class="n">op</span> <span class="o">=</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">cplex_ctsense_to_python_op</span><span class="p">(</span><span class="n">ind_sense</span><span class="p">)</span>
                 <span class="n">ind_ct</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="n">ind_linexpr</span><span class="p">,</span> <span class="n">ind_rhs</span><span class="p">)</span>
-                <span class="n">mdl</span><span class="o">.</span><span class="n">_add_indicator</span><span class="p">(</span><span class="n">ind_bvar</span><span class="p">,</span> <span class="n">ind_ct</span><span class="p">,</span> <span class="n">active_value</span><span class="o">=</span><span class="mi">1</span><span class="o">-</span><span class="n">ind_complemented</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">ind_name</span><span class="p">)</span>
+                <span class="n">indct</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">new_indicator_constraint</span><span class="p">(</span><span class="n">ind_bvar</span><span class="p">,</span> <span class="n">ind_ct</span><span class="p">,</span>
+                                                          <span class="n">active_value</span><span class="o">=</span><span class="mi">1</span> <span class="o">-</span> <span class="n">ind_complemented</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">ind_name</span><span class="p">)</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">indct</span><span class="p">)</span>
 
             <span class="c1"># 5. upload Piecewise linear constraints</span>
             <span class="k">try</span><span class="p">:</span>
@@ -626,7 +630,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.4 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

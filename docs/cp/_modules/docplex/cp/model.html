@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.cp.model &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.3 documentation</title>
+    <title>docplex.cp.model &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.3',
+        VERSION:     'V2.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -135,18 +135,19 @@
 <span class="kn">from</span> <span class="nn">docplex.cp.solution</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.function</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.solver.solver_listener</span> <span class="k">import</span> <span class="n">CpoSolverListener</span>
 
 <span class="c1"># Imports required locally</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.expression</span> <span class="k">as</span> <span class="nn">expression</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.modeler</span> <span class="k">as</span> <span class="nn">modeler</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.solver.solver</span> <span class="k">import</span> <span class="n">CpoSolver</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.cpo_compiler</span> <span class="k">import</span> <span class="n">CpoCompiler</span>
-<span class="kn">import</span> <span class="nn">docplex.cp.cpo_parser</span> <span class="k">as</span> <span class="nn">cpo_parser</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.config</span> <span class="k">as</span> <span class="nn">config</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.utils</span> <span class="k">as</span> <span class="nn">utils</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 
 
 <span class="c1">###############################################################################</span>
@@ -175,16 +176,14 @@
         <span class="n">ctx</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_default</span><span class="p">()</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoModel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">format_version</span>   <span class="o">=</span> <span class="kc">None</span>     <span class="c1"># Version of the CPO format</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span>         <span class="o">=</span> <span class="p">[]</span>       <span class="c1"># List of model variables, in declaration order</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">var_set</span>          <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>    <span class="c1"># Set of model variables</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span>        <span class="o">=</span> <span class="p">[]</span>       <span class="c1"># List of model root expressions as tuples (expression, location)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span>       <span class="o">=</span> <span class="kc">None</span>     <span class="c1"># Solving parameters</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span>    <span class="o">=</span> <span class="p">[]</span>       <span class="c1"># List of search phases</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">starting_point</span>   <span class="o">=</span> <span class="kc">None</span>     <span class="c1"># Starting point</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objective</span>        <span class="o">=</span> <span class="kc">None</span>     <span class="c1"># Objective function</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nb_expr_nodes</span>    <span class="o">=</span> <span class="mi">0</span>        <span class="c1"># Number of expression nodes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">all_expr_set</span>     <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>    <span class="c1"># Set of all expression ids already in the model</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span>         <span class="o">=</span> <span class="p">{}</span>       <span class="c1"># Map of expressions by name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span>         <span class="o">=</span> <span class="p">{}</span>       <span class="c1"># Dictionary of expressions. Key is expression name.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpis</span>             <span class="o">=</span> <span class="p">{}</span>       <span class="c1"># Dictionary of KPIs. Key is publish name.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span>        <span class="o">=</span> <span class="p">[]</span>       <span class="c1"># Solver listeners</span>
 
         <span class="c1"># Indicate to set in the model information of source location</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">source_loc</span>       <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get_by_path</span><span class="p">(</span><span class="s2">&quot;model.add_source_location&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
@@ -275,30 +274,28 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">loc</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># Scan expression to check new variables</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_scan_expression</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+        <span class="c1"># Check type of expression</span>
         <span class="n">etyp</span> <span class="o">=</span> <span class="n">expr</span><span class="o">.</span><span class="n">type</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">etyp</span><span class="o">.</span><span class="n">is_variable</span><span class="p">:</span>
-            <span class="c1"># Check constraints</span>
-            <span class="k">if</span> <span class="n">etyp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Constraint</span><span class="p">,</span> <span class="n">Type_BoolExpr</span><span class="p">):</span>
-                <span class="c1"># Check if expression is named</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_constraints</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">expr</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
-                    <span class="n">expr</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">expression</span><span class="o">.</span><span class="n">_CONSTRAINT_ID_ALLOCATOR</span><span class="o">.</span><span class="n">allocate</span><span class="p">())</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
-            <span class="k">elif</span> <span class="n">etyp</span> <span class="ow">is</span> <span class="n">Type_SearchPhase</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
-            <span class="k">elif</span> <span class="n">etyp</span> <span class="ow">is</span> <span class="n">Type_Objective</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective</span> <span class="ow">is</span> <span class="n">expr</span><span class="p">:</span>
-                        <span class="k">return</span>
-                    <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Only one objective function can be added to the model.&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">objective</span> <span class="o">=</span> <span class="n">expr</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+        <span class="n">etyp</span> <span class="o">=</span> <span class="n">expr</span><span class="o">.</span><span class="n">type</span>
+        <span class="k">if</span> <span class="n">etyp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Constraint</span><span class="p">,</span> <span class="n">Type_BoolExpr</span><span class="p">):</span>
+            <span class="c1"># Check if expression is named</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_constraints</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">expr</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                <span class="n">expr</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">expression</span><span class="o">.</span><span class="n">_CONSTRAINT_ID_ALLOCATOR</span><span class="o">.</span><span class="n">allocate</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">etyp</span> <span class="ow">is</span> <span class="n">Type_SearchPhase</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">etyp</span> <span class="ow">is</span> <span class="n">Type_Objective</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective</span> <span class="ow">is</span> <span class="n">expr</span><span class="p">:</span>
+                    <span class="k">return</span>
+                <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Only one objective function can be added to the model.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective</span> <span class="o">=</span> <span class="n">expr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">expr</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span>
 
-            <span class="c1"># Add to the map of named expressions</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_add_named_expr</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+        <span class="c1"># Add to the map of named expressions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_named_expr</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
 
         <span class="c1"># Update last add time</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_add_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span></div>
@@ -416,16 +413,20 @@
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">phases</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">is_type</span><span class="p">(</span><span class="n">Type_SearchPhase</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;Argument &#39;phases&#39; should be an array of SearchPhases&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_scan_expression</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">p</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="CpoModel.add_search_phase"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.add_search_phase">[docs]</a>    <span class="k">def</span> <span class="nf">add_search_phase</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phase</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Add a search phase to the list of search phases</span>
 
+<span class="sd">        This method is deprecated since release 2.3. Use :meth:`~CpoModel.set_search_phases` or</span>
+<span class="sd">        :meth:`~CpoModel.add` instead.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            phase: Phase to add to the list</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Method &#39;add_search_phase&#39; is deprecated since release 2.4.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+
         <span class="c1"># Check arguments</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">)</span> <span class="ow">and</span> <span class="n">phase</span><span class="o">.</span><span class="n">is_type</span><span class="p">(</span><span class="n">Type_SearchPhase</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;phase&#39; should be a SearchPhases&quot;</span>
 
@@ -437,8 +438,8 @@
             <span class="n">loc</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Append to list of phases</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_scan_expression</span><span class="p">(</span><span class="n">phase</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">phase</span><span class="p">,</span> <span class="n">loc</span><span class="p">))</span></div>
+
 
 <div class="viewcode-block" id="CpoModel.get_search_phases"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_search_phases">[docs]</a>    <span class="k">def</span> <span class="nf">get_search_phases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Get the list of search phases.</span>
@@ -473,13 +474,30 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">starting_point</span></div>
 
 
-<div class="viewcode-block" id="CpoModel.get_all_variables"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_all_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets the list of all model variables.</span>
+    <span class="k">def</span> <span class="nf">add_kpi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># &quot;&quot;&quot; Add a a Key Performance Indicator to the model.</span>
+        <span class="c1">#</span>
+        <span class="c1"># A KPI is a model variable whose value is considered as representative of the global solution.</span>
+        <span class="c1"># If the model is solved in a cloud context, these KPIs can be associated to the objective value in the</span>
+        <span class="c1"># solve details that are sent periodically to the client.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Args:</span>
+        <span class="c1">#     var:              Model variable to be used as KPI(s).</span>
+        <span class="c1">#     name (optional):  Name used to publish this KPI. If absent, variable name is used.</span>
+        <span class="c1"># &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="n">CpoVariable</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;var&#39; should be a model variable&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpis</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">var</span>
 
-<span class="sd">        Returns:</span>
-<span class="sd">            List of model variables.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span></div>
+
+    <span class="k">def</span> <span class="nf">get_kpis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># &quot;&quot;&quot; Returns the dictionary of this model KPIs.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Returns:</span>
+        <span class="c1">#     Dictionary of KPIs. Key is publish name, value is model variable.</span>
+        <span class="c1"># &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kpis</span>
 
 
 <div class="viewcode-block" id="CpoModel.get_all_expressions"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_all_expressions">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_expressions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -487,7 +505,7 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            List of model expressions</span>
-<span class="sd">            Each expression is a tuple (expr, loc, root) where loc is a tuple (source_file, line).</span>
+<span class="sd">            Each expression is a tuple (expr, loc) where loc is a tuple (source_file, line).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span></div>
 
@@ -501,6 +519,35 @@
 <span class="sd">            Expression, None if not found.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CpoModel.get_all_variables"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_all_variables">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the list of all model variables (for debugging purpose only).</span>
+
+<span class="sd">        This method goes across all model expressions to identify all variables that are pointed by them.</span>
+<span class="sd">        Calling this method on a big model may be slow.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of model variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Initialize stack of expresssions to parse</span>
+        <span class="n">estack</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="p">]</span>
+        <span class="n">estack</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="p">:</span>
+            <span class="n">estack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="p">)</span>
+        <span class="c1"># Loop while expression stack is not empty</span>
+        <span class="n">varlist</span> <span class="o">=</span> <span class="p">[]</span>     <span class="c1"># Result list</span>
+        <span class="n">doneset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># Set of expressions already processed</span>
+        <span class="k">while</span> <span class="n">estack</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">estack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">eid</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">eid</span> <span class="ow">in</span> <span class="n">doneset</span><span class="p">:</span>
+                <span class="n">doneset</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">eid</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_variable</span><span class="p">:</span>
+                    <span class="n">varlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="c1"># Stack children expressions</span>
+                <span class="n">estack</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">children</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">varlist</span></div>
 
 
 <div class="viewcode-block" id="CpoModel.get_optimization_expression"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.get_optimization_expression">[docs]</a>    <span class="k">def</span> <span class="nf">get_optimization_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -585,21 +632,8 @@
         <span class="n">sfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_source_file</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">sfile</span><span class="p">:</span>
             <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - source file: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sfile</span><span class="p">))</span>
-        <span class="n">nbintvar</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">nbintervvar</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">nbsequencevar</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">avars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_variables</span><span class="p">()</span>
         <span class="n">lexpr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_expressions</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">avars</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoIntVar</span><span class="p">):</span>
-                <span class="n">nbintvar</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoIntervalVar</span><span class="p">):</span>
-                <span class="n">nbintervvar</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">CpoSequenceVar</span><span class="p">):</span>
-                <span class="n">nbsequencevar</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - variables: </span><span class="si">{}</span><span class="s2"> (integer: </span><span class="si">{}</span><span class="s2">, interval: </span><span class="si">{}</span><span class="s2">, sequence: </span><span class="si">{}</span><span class="s2">)</span><span class="se">\n</span><span class="s2">&quot;</span>
-                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">avars</span><span class="p">),</span> <span class="n">nbintvar</span><span class="p">,</span> <span class="n">nbintervvar</span><span class="p">,</span> <span class="n">nbsequencevar</span><span class="p">))</span>
-        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - constraints: </span><span class="si">{}</span><span class="s2">, expression nodes: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lexpr</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">nb_expr_nodes</span><span class="p">))</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - expressions: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)))</span>
         <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; - modeling time: </span><span class="si">{0:.2f}</span><span class="s2"> sec</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_modeling_duration</span><span class="p">()))</span>
 
 
@@ -623,22 +657,24 @@
 <span class="sd">           - the optional arguments of this method.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            context:   (Optional) Complete solving context.</span>
-<span class="sd">                       If not given, solving context is the default one that is defined in the module :mod:`~docplex.cp.config`.</span>
-<span class="sd">            params:    (Optional) Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
-<span class="sd">                       that overwrite those in the solving context.</span>
-<span class="sd">            url:       (Optional) URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            key:       (Optional) Authentication key of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            (param):   (Optional) Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
-<span class="sd">                       (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
-<span class="sd">            (others):  (Optional) Any leaf attribute with the same name in the solving context</span>
-<span class="sd">                       (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
+<span class="sd">            context (Optional): Complete solving context.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">                                :mod:`~docplex.cp.config`.</span>
+<span class="sd">            params (Optional):  Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
+<span class="sd">                                that overwrite those in the solving context.</span>
+<span class="sd">            url (Optional):     URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            key (Optional):     Authentication key of the DOcplexcloud service that overwrites the one defined in</span>
+<span class="sd">                                the solving context.</span>
+<span class="sd">            (param) (Optional): Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
+<span class="sd">                               (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
+<span class="sd">            (others) (Optional): Any leaf attribute with the same name in the solving context</span>
+<span class="sd">                                (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            Model solve result (object of class :class:`~docplex.cp.solution.CpoSolveResult`).</span>
 <span class="sd">        Raises:</span>
 <span class="sd">            :class:`~docplex.cp.utils.CpoException`: (or derived) if error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">solver</span> <span class="o">=</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">solver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_solver</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span></div>
 
 
@@ -661,22 +697,25 @@
 <span class="sd">        recommended parameters are *start_search(SearchType=&#39;DepthFirst&#39;, Workers=1)*</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            context:   (Optional) Complete solving context.</span>
-<span class="sd">                       If not given, solving context is the default one that is defined in the module :mod:`~docplex.cp.config`.</span>
-<span class="sd">            params:    (Optional) Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
-<span class="sd">                       that overwrite those in the solving context.</span>
-<span class="sd">            url:       (Optional) URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            key:       (Optional) Authentication key of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            (param):   (Optional) Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
-<span class="sd">                       (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
-<span class="sd">            (others):  (Optional) Any leaf attribute with the same name in the solving context</span>
-<span class="sd">                       (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
+<span class="sd">            context (Optional): Complete solving context.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">                                :mod:`~docplex.cp.config`.</span>
+<span class="sd">            params (Optional):  Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
+<span class="sd">                                that overwrite those in the solving context.</span>
+<span class="sd">            url (Optional):     URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            key (Optional):     Authentication key of the DOcplexcloud service that overwrites the one defined in</span>
+<span class="sd">                                the solving context.</span>
+<span class="sd">            (param) (Optional): Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
+<span class="sd">                               (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
+<span class="sd">            (others) (Optional): Any leaf attribute with the same name in the solving context</span>
+<span class="sd">                                (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            Object of class :class:`~docplex.cp.solver.solver.CpoSolver` allowing to iterate over the different solutions.</span>
 <span class="sd">        Raises:</span>
 <span class="sd">            :class:`~docplex.cp.utils.CpoException`: (or derived) if error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="n">solver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_solver</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">solver</span></div>
 
 
 <div class="viewcode-block" id="CpoModel.refine_conflict"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.refine_conflict">[docs]</a>    <span class="k">def</span> <span class="nf">refine_conflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -711,30 +750,32 @@
 <span class="sd">        require to explicitly create a CpoSolver instead of calling function at model level.</span>
 <span class="sd">        Please refer to this class for more details.</span>
 
-<span class="sd">        This function is available only with local CPO solver with release number greater or equal to 12.7.0.</span>
+<span class="sd">        This function is available on DOcplexcloud and with local CPO solver with release number greater or equal to 12.7.0.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            context:   (Optional) Complete solving context.</span>
-<span class="sd">                       If not given, solving context is the default one that is defined in the module :mod:`~docplex.cp.config`.</span>
-<span class="sd">            params:    (Optional) Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
-<span class="sd">                       that overwrite those in the solving context.</span>
-<span class="sd">            url:       (Optional) URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            key:       (Optional) Authentication key of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            (param):   (Optional) Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
-<span class="sd">                       (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
-<span class="sd">            (others):  (Optional) Any leaf attribute with the same name in the solving context</span>
-<span class="sd">                       (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
+<span class="sd">            context (Optional): Complete solving context.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">                                :mod:`~docplex.cp.config`.</span>
+<span class="sd">            params (Optional):  Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
+<span class="sd">                                that overwrite those in the solving context.</span>
+<span class="sd">            url (Optional):     URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            key (Optional):     Authentication key of the DOcplexcloud service that overwrites the one defined in</span>
+<span class="sd">                                the solving context.</span>
+<span class="sd">            (param) (Optional): Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
+<span class="sd">                               (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
+<span class="sd">            (others) (Optional): Any leaf attribute with the same name in the solving context</span>
+<span class="sd">                                (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            List of constraints that cause the conflict (object of class :class:`~docplex.cp.solution.CpoRefineConflictResult`)</span>
 <span class="sd">        Raises:</span>
 <span class="sd">            :class:`~docplex.cp.utils.CpoNotSupportedException`: if method not available in the solver agent.</span>
 <span class="sd">            :class:`~docplex.cp.utils.CpoException`: (or derived) if error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">solver</span> <span class="o">=</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">solver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_solver</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">refine_conflict</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="CpoModel.propagate"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.propagate">[docs]</a>    <span class="k">def</span> <span class="nf">propagate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="CpoModel.propagate"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.propagate">[docs]</a>    <span class="k">def</span> <span class="nf">propagate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cnstr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; This method invokes the propagation on the current model.</span>
 
 <span class="sd">        Constraint propagation is the process of communicating the domain reduction of a decision variable to</span>
@@ -756,40 +797,115 @@
 <span class="sd">        require to explicitly create a CpoSolver instead of calling function at model level.</span>
 <span class="sd">        Please refer to this class for more details.</span>
 
-<span class="sd">        This function is available only with local CPO solver with release number greater or equal to 12.7.0.</span>
+<span class="sd">        This function is available on DOcplexcloud and with local CPO solver with release number greater or equal to 12.7.0.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            context:   (Optional) Complete solving context.</span>
-<span class="sd">                       If not given, solving context is the default one that is defined in the module :mod:`~docplex.cp.config`.</span>
-<span class="sd">            params:    (Optional) Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
-<span class="sd">                       that overwrite those in the solving context.</span>
-<span class="sd">            url:       (Optional) URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            key:       (Optional) Authentication key of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
-<span class="sd">            (param):   (Optional) Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
-<span class="sd">                       (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
-<span class="sd">            (others):  (Optional) Any leaf attribute with the same name in the solving context</span>
-<span class="sd">                       (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
+<span class="sd">            cnstr (Optional):   Optional constraint to be added to the model before invoking propagation.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">            context (Optional): Complete solving context.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">                                :mod:`~docplex.cp.config`.</span>
+<span class="sd">            params (Optional):  Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
+<span class="sd">                                that overwrite those in the solving context.</span>
+<span class="sd">            url (Optional):     URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            key (Optional):     Authentication key of the DOcplexcloud service that overwrites the one defined in</span>
+<span class="sd">                                the solving context.</span>
+<span class="sd">            (param) (Optional): Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
+<span class="sd">                               (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
+<span class="sd">            (others) (Optional): Any leaf attribute with the same name in the solving context</span>
+<span class="sd">                                (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            Propagation result (object of class :class:`~docplex.cp.solution.CpoSolveResult`)</span>
 <span class="sd">        Raises:</span>
 <span class="sd">            :class:`~docplex.cp.utils.CpoNotSupportedException`: if method not available in the solver agent.</span>
 <span class="sd">            :class:`~docplex.cp.utils.CpoException`: (or derived) if error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">solver</span> <span class="o">=</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># Check if an optional constraint has been given</span>
+        <span class="k">if</span> <span class="n">cnstr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mdl</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Clone the model and add constraint</span>
+            <span class="n">mdl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cnstr</span><span class="p">)</span>
+        <span class="c1"># Call propagation</span>
+        <span class="n">solver</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_create_solver</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">propagate</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CpoModel.run_seeds"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.run_seeds">[docs]</a>    <span class="k">def</span> <span class="nf">run_seeds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbrun</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This method runs *nbrun* times the CP optimizer search with different random seeds</span>
+<span class="sd">        and computes statistics from the result of these runs.</span>
+
+<span class="sd">        Result statistics are displayed on the log output that should be activated.</span>
+<span class="sd">        If the appropriate configuration variable *context.solver.add_log_to_solution* is set to True (default),</span>
+<span class="sd">        log is also available in the *CpoRunResult* result object, accessible as a string using the method</span>
+<span class="sd">        :meth:`~docplex.cp.solution.CpoRunResult.get_solver_log`</span>
+
+<span class="sd">        Each run of the solver is stopped according to single solve conditions (TimeLimit for example).</span>
+<span class="sd">        Total run time is then expected to take *nbruns* times the duration of a single run.</span>
+
+<span class="sd">        This function is available only with local CPO solver with release number greater or equal to 12.8.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            nbrun:              Number of runs with different seeds.</span>
+<span class="sd">            context (Optional): Complete solving context.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">                                :mod:`~docplex.cp.config`.</span>
+<span class="sd">            params (Optional):  Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
+<span class="sd">                                that overwrite those in the solving context.</span>
+<span class="sd">            url (Optional):     URL of the DOcplexcloud service that overwrites the one defined in the solving context.</span>
+<span class="sd">            key (Optional):     Authentication key of the DOcplexcloud service that overwrites the one defined in</span>
+<span class="sd">                                the solving context.</span>
+<span class="sd">            (param) (Optional): Any individual solving parameter as defined in class :class:`~docplex.cp.parameters.CpoParameters`</span>
+<span class="sd">                               (for example *TimeLimit*, *Workers*, *SearchType*, etc).</span>
+<span class="sd">            (others) (Optional): Any leaf attribute with the same name in the solving context</span>
+<span class="sd">                                (for example *agent*, *trace_log*, *trace_cpo*, etc).</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Run result, object of class :class:`~docplex.cp.solution.CpoRunResult`.</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            :class:`~docplex.cp.utils.CpoNotSupportedException`: if method not available in the solver agent.</span>
+<span class="sd">            :class:`~docplex.cp.utils.CpoException`: (or derived) if error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">solver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_solver</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">run_seeds</span><span class="p">(</span><span class="n">nbrun</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CpoModel.add_solver_listener"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.add_solver_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_solver_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lstnr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add a solver listener.</span>
+
+<span class="sd">        A solver listener is an object extending the class :class:`~docplex.cp.solver.solver_listener.CpoSolverListener`</span>
+<span class="sd">        which provides multiple functions that are called to notify about the different solving steps.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            lstnr:  Solver listener</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lstnr</span><span class="p">,</span> <span class="n">CpoSolverListener</span><span class="p">),</span> \
+            <span class="s2">&quot;Listener should be an object of class docplex.cp.solver.solver_listener.CpoSolverListener&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lstnr</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CpoModel.remove_solver_listener"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.remove_solver_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_solver_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lstnr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Remove a solver listener previously added with :meth:`~docplex.cp.model.CpoModel.add_listener`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            lstnr:  Listener to remove.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">lstnr</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CpoModel.export_model"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.export_model">[docs]</a>    <span class="k">def</span> <span class="nf">export_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Exports/prints the model in the standard CPO file format.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            out:                 (Optional) Target output, stream or file name. Default is sys.stdout.</span>
-<span class="sd">            context:             (Optional) Global solving context.</span>
-<span class="sd">                                 If not given, context is the default context that is set in config.py.</span>
-<span class="sd">            params:              (Optional) Solving parameters (CpoParameters) that overwrites those in solving context</span>
-<span class="sd">            add_source_location: (Optional) Add source location into generated text</span>
-<span class="sd">            length_for_alias:    (Optional) Minimum name length to use shorter alias instead</span>
-<span class="sd">            (others):            (Optional) All other context parameters that can be changed</span>
+<span class="sd">            out (Optional):     Target output, stream or file name. Default is sys.stdout.</span>
+<span class="sd">            context (Optional): Complete solving context.</span>
+<span class="sd">                                If not given, solving context is the default one that is defined in the module</span>
+<span class="sd">                                :mod:`~docplex.cp.config`.</span>
+<span class="sd">            params (Optional):  Solving parameters (object of class :class:`~docplex.cp.parameters.CpoParameters`)</span>
+<span class="sd">                                that overwrite those in the solving context.</span>
+<span class="sd">            add_source_location (Optional): Add source location into generated text</span>
+<span class="sd">            length_for_alias (Optional): Minimum name length to use shorter alias instead</span>
+<span class="sd">            (others) (Optional): Any leaf attribute with the same name in the solving context</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">CpoCompiler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">print_model</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
 
@@ -800,6 +916,7 @@
 <span class="sd">        Args:</span>
 <span class="sd">            file:   Input file</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">docplex.cp.cpo_parser</span> <span class="k">as</span> <span class="nn">cpo_parser</span>
         <span class="n">prs</span> <span class="o">=</span> <span class="n">cpo_parser</span><span class="o">.</span><span class="n">CpoParser</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="n">prs</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">file</span><span class="p">)</span></div>
 
@@ -840,23 +957,18 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoModel</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Other model is not an object of class CpoModel&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Compare variables</span>
-        <span class="n">lx1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span>
-        <span class="n">lx2</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">var_list</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lx1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lx2</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Different number of variables, </span><span class="si">{}</span><span class="s2"> vs </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lx1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lx2</span><span class="p">)))</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lx1</span><span class="p">)):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">lx1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">lx2</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
-                <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;The variable </span><span class="si">{}</span><span class="s2"> differs: </span><span class="si">{}</span><span class="s2"> vs </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">lx1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">lx2</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
-
-        <span class="c1"># Compare expressions</span>
-        <span class="n">lx1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span>
-        <span class="n">lx2</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">expr_list</span>
+        <span class="c1"># Compare expressions that are not variables</span>
+        <span class="n">lx1</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CpoVariable</span><span class="p">)]</span>
+        <span class="c1">#print(&quot;Expressions of 1:&quot;)</span>
+        <span class="c1">#for x in lx1: print(&quot;   {}&quot;.format(x))</span>
+        <span class="n">lx2</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">expr_list</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CpoVariable</span><span class="p">)]</span>
+        <span class="c1">#print(&quot;Expressions of 2:&quot;)</span>
+        <span class="c1">#for x in lx2: print(&quot;   {}&quot;.format(x))</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lx1</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lx2</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Different number of expressions, </span><span class="si">{}</span><span class="s2"> vs </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lx1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lx2</span><span class="p">)))</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lx1</span><span class="p">)):</span>
             <span class="c1">#print(&quot;Check expression {}\n   and\n{}&quot;.format(lx1[i][0], lx2[i][0]))</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">lx1</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">lx2</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">lx1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">lx2</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
                 <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;The expression </span><span class="si">{}</span><span class="s2"> differs: </span><span class="si">{}</span><span class="s2"> vs </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">lx1</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">lx2</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
 
         <span class="c1"># Compare search phases</span>
@@ -891,6 +1003,17 @@
         <span class="k">return</span> <span class="kc">True</span></div>
 
 
+<div class="viewcode-block" id="CpoModel.clone"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a copy of this model &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">expr_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expr_list</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">search_phases</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_phases</span><span class="p">)</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">map_expr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span></div>
+
+
     <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Check if this model is equal to another</span>
 
@@ -907,6 +1030,25 @@
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
 
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Convert the model into string (returns model name) &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_create_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a new solver instance attached to this model</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            kwargs: Parameters to pass to solver creation</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            New solver properly initialized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">solver</span> <span class="o">=</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
+            <span class="n">solver</span><span class="o">.</span><span class="n">add_listener</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">solver</span>
+
+
     <span class="k">def</span> <span class="nf">_add_named_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; If named, add an expression to the map of named expressions.</span>
 
@@ -919,51 +1061,6 @@
         <span class="k">if</span> <span class="n">name</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">expr</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">expr</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;An expression named &#39;</span><span class="si">{}</span><span class="s2">&#39; already exists: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span><span class="p">[</span><span class="n">name</span><span class="p">]))</span>
-
-
-    <span class="k">def</span> <span class="nf">_add_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Add a variable to the model</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            var: Variable expression to add</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Check if variable already in expressions</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">name</span>
-        <span class="n">ov</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ov</span> <span class="ow">is</span> <span class="n">var</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="n">ov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Variable name &#39;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&#39; is already used.&quot;</span><span class="p">)</span>
-        <span class="c1"># Add variable in structures</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">map_expr</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">var</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">var_set</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var</span><span class="p">)</span>
-
-
-    <span class="k">def</span> <span class="nf">_scan_expression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Scan an expression to add all referenced variables and update statistics</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            expr: Expression to scan</span>
-<span class="sd">        Raises:</span>
-<span class="sd">            CpoException if error detected</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Loop while expression stack is not empty</span>
-        <span class="n">estack</span> <span class="o">=</span> <span class="p">[</span><span class="n">expr</span><span class="p">]</span>  
-        <span class="n">eset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_expr_set</span>
-        <span class="k">while</span> <span class="n">estack</span><span class="p">:</span>
-            <span class="c1"># Get expression to check</span>
-            <span class="n">e</span> <span class="o">=</span> <span class="n">estack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-            <span class="n">t</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">type</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">is_constant</span><span class="p">:</span>
-                <span class="n">eid</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">eid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">eset</span><span class="p">:</span>
-                    <span class="n">eset</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">eid</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nb_expr_nodes</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">is_variable</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_add_variable</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-                    <span class="c1"># Stack children expressions</span>
-                    <span class="n">estack</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">children</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">_ensure_all_root_constraints_named</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1026,7 +1123,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.3 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
