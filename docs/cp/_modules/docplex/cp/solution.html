@@ -571,6 +571,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;var_solutions&#39;</span><span class="p">,</span>     <span class="c1"># Map of variable solutions</span>
                  <span class="s1">&#39;objective_values&#39;</span><span class="p">,</span>  <span class="c1"># Objective values</span>
+                 <span class="s1">&#39;objective_bounds&#39;</span><span class="p">,</span>  <span class="c1"># Objective bound values</span>
+                 <span class="s1">&#39;objective_gaps&#39;</span><span class="p">,</span>    <span class="c1"># Objective gap values</span>
                  <span class="s1">&#39;kpi_values&#39;</span><span class="p">,</span>        <span class="c1"># Values of the KPIs</span>
                  <span class="p">)</span>
 
@@ -578,6 +580,8 @@
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoModelSolution</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">var_solutions</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objective_bounds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objective_gaps</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kpi_values</span> <span class="o">=</span> <span class="p">{}</span>
 
 
@@ -590,6 +594,40 @@
 <span class="sd">            Array of objective values, None if none.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span></div>
+
+
+<div class="viewcode-block" id="CpoModelSolution.get_objective_bounds"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.get_objective_bounds">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the numeric values of all objectives bound.</span>
+
+<span class="sd">        Note that when :meth:`~docplex.cp.modeler.minimize_static_lex` or :meth:`~docplex.cp.modeler.maximize_static_lex` is used,</span>
+<span class="sd">        the bound values must be taken as a whole, as are the values delivered by :meth:`get_objective_values`.</span>
+<span class="sd">        One cannot interpret bound values on each criterion independently.</span>
+<span class="sd">        For example, suppose, we have a problem with two criteria specified to minimize_static_lex,</span>
+<span class="sd">        a number of workers, and a number of days to complete a job.</span>
+<span class="sd">        That is, we always prefer to use less workers, but for equal numbers of workers, we prefer to take less days.</span>
+<span class="sd">        Then a solution with 3 workers and 10 days is perfectly compatible with a lower bound of 2 workers and 13 days,</span>
+<span class="sd">        even though the lower bound on the number of days is higher than the value in the solution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Array of all objective bound values, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_bounds</span></div>
+
+
+<div class="viewcode-block" id="CpoModelSolution.get_objective_gaps"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.get_objective_gaps">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_gaps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the numeric values of the gap between objective value and objective bound.</span>
+
+<span class="sd">        For a single objective, gap is calculated as gap = |value - bound| / max(1e-10, |value|)</span>
+
+<span class="sd">        For multiple objectives, each gap is the gap between corresponding value and bound.</span>
+<span class="sd">        However, after the first gap whose value is not within optimality tolerance specified by</span>
+<span class="sd">        :attr:`~docplex.cp.CpoParameters.OptimalityTolerance` and :attr:`~docplex.cp.CpoParameters.RelativeOptimalityTolerance`,</span>
+<span class="sd">        all returned gap values are positive infinity.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Array of all objective gap values, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_gaps</span></div>
 
 
 <div class="viewcode-block" id="CpoModelSolution.add_var_solution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution.add_var_solution">[docs]</a>    <span class="k">def</span> <span class="nf">add_var_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vsol</span><span class="p">):</span>
@@ -705,16 +743,41 @@
         <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_solutions</span><span class="p">)</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_add_json_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jsol</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_add_json_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jsol</span><span class="p">,</span> <span class="n">prms</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Add a json solution to this solution descriptor</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            jsol: JSON document representing solution.</span>
+<span class="sd">            prms: Solving parameters</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Add objectives</span>
-        <span class="n">ovals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;objectives&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">ovals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;objectives&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ovals</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ovals</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ovals</span><span class="p">])</span>
+
+        <span class="c1"># Add objectives bounds</span>
+        <span class="n">bvals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;bounds&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bvals</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective_bounds</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bvals</span><span class="p">])</span>
+
+        <span class="c1"># Add objectives gaps</span>
+        <span class="n">gvals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gaps&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gvals</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective_gaps</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">gvals</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">ovals</span> <span class="ow">and</span> <span class="n">bvals</span><span class="p">:</span>
+            <span class="c1"># Gaps not given but bounds present. Recompute gaps</span>
+            <span class="n">gvals</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">rt</span> <span class="o">=</span> <span class="n">prms</span><span class="o">.</span><span class="n">RelativeOptimalityTolerance</span>
+            <span class="n">at</span> <span class="o">=</span> <span class="n">prms</span><span class="o">.</span><span class="n">OptimalityTolerance</span>
+            <span class="n">intol</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_bounds</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">intol</span><span class="p">:</span>
+                    <span class="n">gap</span> <span class="o">=</span> <span class="n">_compute_gap</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+                    <span class="n">intol</span> <span class="o">=</span> <span class="n">_is_below_tolerance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">rt</span><span class="p">,</span> <span class="n">at</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">gap</span> <span class="o">=</span> <span class="n">POSITIVE_INFINITY</span>
+                <span class="n">gvals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gap</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective_gaps</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">gvals</span><span class="p">)</span>
 
         <span class="c1"># Add integer variables</span>
         <span class="nb">vars</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;intVars&#39;</span><span class="p">,</span> <span class="p">())</span>
@@ -791,9 +854,16 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Print objective value</span>
         <span class="n">ovals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_objective_values</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">ovals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Objective values: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ovals</span><span class="p">))</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ovals</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Objective values: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ovals</span><span class="p">))</span>
+        <span class="c1"># Print objective bounds</span>
+        <span class="n">bvals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_objective_bounds</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">bvals</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;          bounds: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">bvals</span><span class="p">))</span>
+        <span class="c1"># Print objective gaps</span>
+        <span class="n">gvals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_objective_gaps</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">gvals</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;          gaps: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">gvals</span><span class="p">))</span>
         <span class="c1"># Print all variables in name order</span>
         <span class="n">lvars</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">var_solutions</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
         <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">lvars</span><span class="p">:</span>
@@ -908,7 +978,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">search_status</span> <span class="o">=</span> <span class="kc">None</span>                  <span class="c1"># Search status, with value in SEARCH_STATUS_*</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stop_cause</span> <span class="o">=</span> <span class="kc">None</span>                     <span class="c1"># Stop cause, with values in STOP_CAUSE_*</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solveTime</span> <span class="o">=</span> <span class="mi">0</span>                         <span class="c1"># Solve time</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="kc">None</span>                     <span class="c1"># Solving parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">CpoParameters</span><span class="p">()</span>          <span class="c1"># Solving parameters</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solution</span> <span class="o">=</span> <span class="n">CpoModelSolution</span><span class="p">()</span>         <span class="c1"># Solution</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solver_infos</span> <span class="o">=</span> <span class="n">CpoSolverInfos</span><span class="p">()</span>       <span class="c1"># Solving information</span>
 
@@ -1030,11 +1100,45 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_objective_values</span><span class="p">()</span></div>
 
 
+<div class="viewcode-block" id="CpoSolveResult.get_objective_bounds"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_objective_bounds">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the numeric values of all objectives bound.</span>
+
+<span class="sd">        Note that when :meth:`~docplex.cp.modeler.minimize_static_lex` or :meth:`~docplex.cp.modeler.maximize_static_lex` is used,</span>
+<span class="sd">        the bound values must be taken as a whole, as are the values delivered by :meth:`get_objective_values`.</span>
+<span class="sd">        One cannot interpret bound values on each criterion independently.</span>
+<span class="sd">        For example, suppose, we have a problem with two criteria specified to minimize_static_lex,</span>
+<span class="sd">        a number of workers, and a number of days to complete a job.</span>
+<span class="sd">        That is, we always prefer to use less workers, but for equal numbers of workers, we prefer to take less days.</span>
+<span class="sd">        Then a solution with 3 workers and 10 days is perfectly compatible with a lower bound of 2 workers and 13 days,</span>
+<span class="sd">        even though the lower bound on the number of days is higher than the value in the solution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Array of all objective bound values, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_objective_bounds</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CpoSolveResult.get_objective_gaps"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_objective_gaps">[docs]</a>    <span class="k">def</span> <span class="nf">get_objective_gaps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the numeric values of the gap between objective value and objective bound.</span>
+
+<span class="sd">        For a single objective, gap is calculated as gap = |value - bound| / max(1e-10, |value|)</span>
+
+<span class="sd">        For multiple objectives, each gap is the gap between corresponding value and bound.</span>
+<span class="sd">        However, after the first gap whose value is not within optimality tolerance specified by</span>
+<span class="sd">        :attr:`~docplex.cp.CpoParameters.OptimalityTolerance` and :attr:`~docplex.cp.CpoParameters.RelativeOptimalityTolerance`,</span>
+<span class="sd">        all returned gap values are positive infinity.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Array of all objective gap values, None if none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">objective_gaps</span></div>
+
+
 <div class="viewcode-block" id="CpoSolveResult.get_parameters"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the complete dictionary of solving parameters.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Solving parameters (object of class CpoParameters), None if undefined.</span>
+<span class="sd">            Solving parameters (object of class CpoParameters).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span></div>
 
@@ -1056,14 +1160,16 @@
 <div class="viewcode-block" id="CpoSolveResult.get_infos"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_infos">[docs]</a>    <span class="k">def</span> <span class="nf">get_infos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the complete dictionary of solver information attributes.</span>
 
+<span class="sd">        Deprecated. use :meth:`get_solver_infos` instead.</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            Dictionary of information attributes, None if undefined.</span>
+<span class="sd">            Object of class :class:`CpoSolverInfos` that contains information on solve.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver_infos</span></div>
 
 
 <div class="viewcode-block" id="CpoSolveResult.get_solver_infos"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoSolveResult.get_solver_infos">[docs]</a>    <span class="k">def</span> <span class="nf">get_solver_infos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Gets the set of informations provided by the solver concerning to the solving of the model.</span>
+        <span class="sd">&quot;&quot;&quot; Gets the set of information provided by the solver concerning to the solving of the model.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Object of class :class:`CpoSolverInfos` that contains information on solve.</span>
@@ -1174,19 +1280,19 @@
 
         <span class="c1"># Add solver status</span>
         <span class="n">status</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;solutionStatus&#39;</span><span class="p">,</span> <span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span>  <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;solveStatus&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span>   <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;failStatus&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">search_status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SearchStatus&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stop_cause</span>    <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SearchStopCause&#39;</span><span class="p">)</span>
-        <span class="n">nsts</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;nextStatus&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">nsts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">nsts</span> <span class="o">!=</span> <span class="s1">&#39;NextTrue&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">=</span> <span class="n">FAIL_STATUS_SEARCH_COMPLETED</span>
+        <span class="k">if</span> <span class="n">status</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span>  <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;solveStatus&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_status</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span>   <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;failStatus&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">search_status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SearchStatus&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_cause</span>    <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SearchStopCause&#39;</span><span class="p">)</span>
+            <span class="n">nsts</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;nextStatus&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nsts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">nsts</span> <span class="o">!=</span> <span class="s1">&#39;NextTrue&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">=</span> <span class="n">FAIL_STATUS_SEARCH_COMPLETED</span>
 
         <span class="c1"># Add parameters</span>
         <span class="n">prms</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;parameters&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">prms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">CpoParameters</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">prms</span><span class="p">)</span>
 
         <span class="c1"># Add information attributes</span>
@@ -1195,7 +1301,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">solver_infos</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">cpinf</span><span class="p">)</span>
 
         <span class="c1"># Add solution</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">_add_json_solution</span><span class="p">(</span><span class="n">jsol</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">_add_json_solution</span><span class="p">(</span><span class="n">jsol</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
 
         <span class="c1"># Set kpis</span>
         <span class="n">kpis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span><span class="o">.</span><span class="n">get_kpis</span><span class="p">()</span>
@@ -1655,9 +1761,14 @@
 <span class="c1">###############################################################################</span>
 
 <span class="c1"># Constants conversion</span>
-<span class="n">_CONSTANTS_VALUES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;intmin&#39;</span><span class="p">:</span> <span class="n">INT_MIN</span><span class="p">,</span> <span class="s1">&#39;intmax&#39;</span><span class="p">:</span> <span class="n">INT_MAX</span><span class="p">,</span>
+<span class="n">_NUMERIC_VALUES</span> <span class="o">=</span> <span class="p">{</span><span class="c1"># Numeric value generated by CPO</span>
+                     <span class="s1">&#39;intmin&#39;</span><span class="p">:</span> <span class="n">INT_MIN</span><span class="p">,</span> <span class="s1">&#39;intmax&#39;</span><span class="p">:</span> <span class="n">INT_MAX</span><span class="p">,</span>
                      <span class="s1">&#39;intervalmin&#39;</span><span class="p">:</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="s1">&#39;intervalmax&#39;</span><span class="p">:</span> <span class="n">INTERVAL_MAX</span><span class="p">,</span>
-                     <span class="s1">&#39;NaN&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span> <span class="s1">&#39;Infinity&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="s1">&#39;-Infinity&#39;</span><span class="p">:</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)}</span>
+                     <span class="s1">&#39;infinity&#39;</span><span class="p">:</span> <span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="s1">&#39;-infinity&#39;</span><span class="p">:</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">,</span>
+                     <span class="c1"># Numeric values generated by JSON</span>
+                     <span class="s1">&#39;NaN&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span>
+                     <span class="s1">&#39;Infinity&#39;</span><span class="p">:</span> <span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="s1">&#39;-Infinity&#39;</span><span class="p">:</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">}</span>
+
 
 <span class="c1"># Marker of interval with holes</span>
 <span class="n">_HOLE_MARKER</span> <span class="o">=</span> <span class="s2">&quot;holes&quot;</span>
@@ -1698,7 +1809,7 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        Converted value, itself if not found</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">_CONSTANTS_VALUES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_NUMERIC_VALUES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_check_arg_domain</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
@@ -1754,6 +1865,41 @@
 <span class="sd">        Constraint string</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">ctr</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_compute_gap</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">bnd</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Compute the gap of a value</span>
+<span class="sd">    Args:</span>
+<span class="sd">        val:  Objective value</span>
+<span class="sd">        bnd:  Objective bound</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Objective gap</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">(</span><span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">)</span> <span class="ow">or</span> <span class="n">bnd</span> <span class="ow">in</span> <span class="p">(</span><span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">POSITIVE_INFINITY</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_number</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">is_number</span><span class="p">(</span><span class="n">bnd</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">POSITIVE_INFINITY</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">val</span> <span class="o">-</span> <span class="n">bnd</span><span class="p">))</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1e-10</span><span class="p">,</span> <span class="nb">abs</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_is_below_tolerance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">bnd</span><span class="p">,</span> <span class="n">rt</span><span class="p">,</span> <span class="n">at</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check if an objective value is in the tolerance with given bound.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        val:  Value to check</span>
+<span class="sd">        bnd:  Objective bound</span>
+<span class="sd">        rt:   Relative tolerance</span>
+<span class="sd">        at:   Absolute tolerance</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if value is below the tolerance, false otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">(</span><span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">)</span> <span class="ow">or</span> <span class="n">bnd</span> <span class="ow">in</span> <span class="p">(</span><span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="n">bnd</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="n">bnd</span><span class="p">:</span> <span class="c1"># Maximization</span>
+       <span class="n">val</span> <span class="o">=</span> <span class="o">-</span><span class="n">val</span>
+       <span class="n">bnd</span> <span class="o">=</span> <span class="o">-</span><span class="n">bnd</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">val</span> <span class="o">-</span> <span class="n">at</span> <span class="o">&lt;</span> <span class="n">bnd</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">val</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">rt</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">bnd</span><span class="p">)</span>
 
 
 </pre></div>
