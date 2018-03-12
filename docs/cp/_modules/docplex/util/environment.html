@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.util.environment &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</title>
+    <title>docplex.util.environment &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.4',
+        VERSION:     'V2.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -163,6 +163,7 @@
 <span class="kn">import</span> <span class="nn">tempfile</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">pandas</span>
@@ -218,6 +219,9 @@
             <span class="k">with</span> <span class="n">env</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
                 <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span></div>
 
+<span class="c1"># The global output lock</span>
+<span class="n">global_output_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
 
 <div class="viewcode-block" id="Environment"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment">[docs]</a><span class="k">class</span> <span class="nc">Environment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39; Methods for interacting with the execution environment.</span>
@@ -251,14 +255,36 @@
 <span class="sd">        is_dods: True if the environment is Decision Optimization for Data Science.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">output_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_lock</span> <span class="o">=</span> <span class="n">global_output_lock</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solution_storage_handler</span> <span class="o">=</span> <span class="n">default_solution_storage_handler</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">def</span> <span class="nf">store_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+<div class="viewcode-block" id="Environment.store_solution"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.store_solution">[docs]</a>    <span class="k">def</span> <span class="nf">store_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Stores the specified solution.</span>
+
+<span class="sd">        This method guarantees that the solution is fully saved if the model</span>
+<span class="sd">        is running on DOcplexcloud python worker and an abort of the job is</span>
+<span class="sd">        triggered.</span>
+
+<span class="sd">        For each (key, value) pairs of the solution, the default solution</span>
+<span class="sd">        storage handler does the following depending of the type of `value`, in</span>
+<span class="sd">        the following order:</span>
+
+<span class="sd">        * If `value` is a `pandas.DataFrame`, then the data frame is saved</span>
+<span class="sd">          as an output with the specified `name`. Note that `name` must include</span>
+<span class="sd">          an extension file for the serialization. See</span>
+<span class="sd">          :meth:`Environment.write_df` for supported formats.</span>
+<span class="sd">        * If `value` is a `bytes`, it is saved as binary data with `name`.</span>
+<span class="sd">        * The `value` is saved as an output with the `name`, after it has been</span>
+<span class="sd">          converted to JSON.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            solution: a dict containing the solution.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_lock</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">solution_storage_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solution_storage_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Environment.get_input_stream"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.get_input_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39; Get an input of the program as a stream (file-like object).</span>
@@ -350,6 +376,25 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;no default writer defined for files with extension: </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ext</span><span class="p">)</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">ost</span><span class="p">:</span>
             <span class="n">writer</span><span class="p">(</span><span class="n">ost</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.set_output_attachment"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.set_output_attachment">[docs]</a>    <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Attach the file which filename is specified as an output of the</span>
+<span class="sd">        program.</span>
+
+<span class="sd">        The file is recorded as being part of the program output.</span>
+<span class="sd">        This method can be called multiple times if the program contains</span>
+<span class="sd">        multiple output objects.</span>
+
+<span class="sd">        When run on premise, ``filename`` is copied to the the working</span>
+<span class="sd">        directory (if not already there) under the name ``name``.</span>
+
+<span class="sd">        When run on DOcplexcloud, the file is attached as output attachment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the output object.</span>
+<span class="sd">            filename: The name of the file to attach.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">pass</span></div>
 
 <div class="viewcode-block" id="Environment.get_output_stream"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.get_output_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39; Get a file-like object to write the output of the program.</span>
@@ -496,6 +541,15 @@
     <span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="c1"># check that name leads to a file in cwd</span>
+        <span class="n">attachment_abs_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">attachment_abs_path</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Illegal attachment name&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">():</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>  <span class="c1"># copy to current</span>
+
 
 <span class="k">class</span> <span class="nc">OutputFileWrapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="c1"># Wraps a file object so that on __exit__() and on close(), the wrapped file is closed and</span>
@@ -543,6 +597,7 @@
         <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span> <span class="o">=</span> <span class="n">solve_hook</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">stop_callback</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">worker_env_stop_callback</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span> <span class="nf">get_available_core_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">get_available_core_count</span><span class="p">()</span>
@@ -556,11 +611,22 @@
         <span class="n">f</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w+b&quot;</span><span class="p">,</span> <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">OutputFileWrapper</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">set_output_attachments</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="n">filename</span><span class="p">})</span>
+
     <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">get_parameter_value</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">update_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span><span class="p">:</span>
+            <span class="n">previous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">details</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">previous</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">notify_start_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_details</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># model</span>
@@ -569,7 +635,7 @@
     <span class="k">def</span> <span class="nf">notify_end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span> <span class="nn">docloud.status</span> <span class="k">import</span> <span class="n">JobSolveStatus</span>
-            <span class="n">engine_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+            <span class="n">engine_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="k">if</span> <span class="n">status</span> <span class="k">else</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># model, unused</span>
                                              <span class="kc">None</span><span class="p">,</span>  <span class="c1"># has_solution, unused</span>
                                              <span class="n">engine_status</span><span class="p">,</span>
@@ -586,6 +652,30 @@
     <span class="k">def</span> <span class="nf">get_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;get_stop_callback() is deprecated since 2.4 - Use the abort_callbacks property instead&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="OverrideEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.OverrideEnvironment">[docs]</a><span class="k">class</span> <span class="nc">OverrideEnvironment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Allows to temporarily replace the default environment.</span>
+
+<span class="sd">    If the override environment is None, nothing happens and the default</span>
+<span class="sd">    environment is not replaced</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_env</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_env</span> <span class="o">=</span> <span class="n">new_env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_env</span><span class="p">:</span>
+            <span class="k">global</span> <span class="n">default_environment</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span> <span class="o">=</span> <span class="n">default_environment</span>
+            <span class="n">default_environment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_env</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span><span class="p">:</span>
+            <span class="k">global</span> <span class="n">default_environment</span>
+            <span class="n">default_environment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span></div>
 
 
 <span class="k">def</span> <span class="nf">_get_default_environment</span><span class="p">():</span>
@@ -631,6 +721,26 @@
 <span class="sd">        A file object to read the input from.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">get_input_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="set_output_attachment"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.set_output_attachment">[docs]</a><span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Attach the file which filename is specified as an output of the</span>
+<span class="sd">    program.</span>
+
+<span class="sd">    The file is recorded as being part of the program output.</span>
+<span class="sd">    This method can be called multiple times if the program contains</span>
+<span class="sd">    multiple output objects.</span>
+
+<span class="sd">    When run on premise, ``filename`` is copied to the the working</span>
+<span class="sd">    directory (if not already there) under the name ``name``.</span>
+
+<span class="sd">    When run on DOcplexcloud, the file is attached as output attachment.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: Name of the output object.</span>
+<span class="sd">        filename: The name of the file to attach.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">set_output_attachment</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="get_output_stream"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.get_output_stream">[docs]</a><span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
@@ -782,7 +892,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.cp.modeler &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</title>
+    <title>docplex.cp.modeler &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.4',
+        VERSION:     'V2.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -333,7 +333,9 @@
 <span class="kn">from</span> <span class="nn">docplex.cp.catalog</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="k">import</span> <span class="n">CpoExpr</span><span class="p">,</span> <span class="n">CpoFunctionCall</span><span class="p">,</span> <span class="n">build_cpo_expr</span><span class="p">,</span> <span class="n">build_cpo_tupleset</span><span class="p">,</span> \
                                   <span class="n">build_cpo_transition_matrix</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
+<span class="kn">import</span> <span class="nn">docplex.cp.expression</span> <span class="k">as</span> <span class="nn">expression</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.config</span> <span class="k">import</span> <span class="n">context</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 
 
@@ -358,10 +360,8 @@
 <span class="k">def</span> <span class="nf">_is_cpo_array</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Check if argument could be mapped into CPO array &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
-        <span class="k">return</span> <span class="kc">True</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_array</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
-        <span class="k">return</span> <span class="kc">False</span>
-    <span class="k">return</span> <span class="n">builtin_any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_array</span>
+    <span class="k">return</span> <span class="n">is_array</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">and</span> <span class="n">builtin_any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">val</span><span class="p">)</span>
 
 
 <span class="c1"># Map of type names</span>
@@ -636,23 +636,35 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Build model expression</span>
     <span class="n">arr</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">):</span>
+        <span class="c1"># alen = len(arr.value)</span>
+        <span class="c1"># if alen == 1:</span>
+        <span class="c1">#     return arr.value[0]</span>
+        <span class="c1"># if alen == 2:</span>
+        <span class="c1">#     return arr.value[0] + arr.value[1]</span>
         <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_sum</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
     <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_sum</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
 
-    <span class="c1"># Build sum of cumul expressions as list of additions (waiting for function available in the layer)</span>
     <span class="k">assert</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_CumulExprArray</span><span class="p">),</span> <span class="s2">&quot;Argument should be an array of integer, float or cumul expressions&quot;</span>
+
+    <span class="c1"># Check generation version</span>
+    <span class="n">cpver</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">version</span>
+    <span class="k">if</span> <span class="n">cpver</span> <span class="ow">and</span> <span class="n">cpver</span> <span class="o">&gt;=</span> <span class="s2">&quot;12.8&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_sum</span><span class="p">,</span> <span class="n">Type_CumulExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
+
+    <span class="c1"># Build sum of cumul expressions as list of additions (waiting for function available in the layer)</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">children</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
     <span class="n">res</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">res</span> <span class="o">+</span> <span class="n">v</span>
-    <span class="c1"># Garbage the array because unused (remove links on children)</span>
-    <span class="n">arr</span><span class="o">.</span><span class="n">_garbage</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">res</span></div>
 
 
-<div class="viewcode-block" id="sum"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.sum">[docs]</a><span class="k">def</span> <span class="nf">sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<div class="viewcode-block" id="sum"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.sum">[docs]</a><span class="k">def</span> <span class="nf">sum</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Returns the sum of all expressions in an array of expressions.</span>
 
 <span class="sd">    The function *sum* computes the sum of all expressions in array *x*.</span>
@@ -663,106 +675,148 @@
 <span class="sd">    It recalls the builtin sum() function if no model expression is found in the parameters.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        x: An array of integer or floating-point expressions.</span>
+<span class="sd">        arr: An array of integer or floating-point expressions.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer or float expression depending on the type of argument.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Check calls to builtin sum()</span>
     <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">builtin_sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">builtin_sum</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
     <span class="c1"># Check array of model expressions</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">sum_of</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">builtin_sum</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sum_of</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="k">else</span> <span class="n">builtin_sum</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="min_of"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.min_of">[docs]</a><span class="k">def</span> <span class="nf">min_of</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Computes the minimum of an array of integer or floating-point expressions.</span>
+<div class="viewcode-block" id="min_of"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.min_of">[docs]</a><span class="k">def</span> <span class="nf">min_of</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Computes the minimum of an array or a list of integer or floating-point expressions.</span>
 
 <span class="sd">    The *min_of* function returns an expression which has the same value as the</span>
 <span class="sd">    minimum of the supplied arguments.</span>
 <span class="sd">    The return type corresponds to the type of arguments supplied.</span>
 
+<span class="sd">    List of expressions can be given extensively, or as a single iterable of expressions.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        x: An array of integer or floating-point expressions.</span>
+<span class="sd">        arr: Array of integer or floating-point expressions, or first expression of the list</span>
+<span class="sd">        *args: Other expressions if first argument is not already an iterable</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer or float expression according to the type of parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Call with array of expressions</span>
-    <span class="n">arr</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_min</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
+    <span class="c1"># Build array of arguments</span>
+    <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">arr</span><span class="p">]</span>
+        <span class="n">arr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+
+    <span class="c1"># Check if single argument that is not an array</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">arr</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_array</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">arr</span>
+
+    <span class="c1"># Determine array and element/result type</span>
     <span class="k">assert</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">),</span> <span class="s2">&quot;Argument should be an array of integer or float expressions&quot;</span>
-    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_min</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span></div>
+    <span class="n">rtype</span> <span class="o">=</span> <span class="n">Type_IntExpr</span> <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">)</span> <span class="k">else</span> <span class="n">Type_FloatExpr</span>
+
+    <span class="c1"># Check single and pair of expressions</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">value</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_min</span><span class="p">,</span> <span class="n">rtype</span><span class="p">,</span> <span class="p">(</span><span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_min</span><span class="p">,</span> <span class="n">rtype</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span></div>
 
 
-<div class="viewcode-block" id="min"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.min">[docs]</a><span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+<div class="viewcode-block" id="min"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.min">[docs]</a><span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Computes the minimum of an array of integer or floating-point expressions.</span>
 
 <span class="sd">    The *min* function returns an expression which has the same value as the</span>
 <span class="sd">    minimum of the supplied arguments.</span>
 <span class="sd">    The return type corresponds to the type of arguments supplied.</span>
 
+<span class="sd">    List of expressions can be given extensively, or as a single iterable of expressions.</span>
+
 <span class="sd">    Implementation of this method is proof to import all functions of this module at root level.</span>
 <span class="sd">    It recalls the builtin min() function if no model expression is found in the parameters.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        x: An array of integer or floating-point expressions.</span>
+<span class="sd">        arr: Array of integer or floating-point expressions, or first expression of the list</span>
+<span class="sd">        *args: Other expressions if first argument is not already an iterable</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer or float expression according to the type of parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Check calls to builtin min()</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">builtin_min</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">builtin_min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">min_of</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">builtin_min</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+        <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">arr</span><span class="p">]</span>
+        <span class="n">arr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">min_of</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="k">else</span> <span class="n">builtin_min</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="max_of"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.max_of">[docs]</a><span class="k">def</span> <span class="nf">max_of</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Computes the maximum of an array of integer or floating-point expressions.</span>
+<div class="viewcode-block" id="max_of"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.max_of">[docs]</a><span class="k">def</span> <span class="nf">max_of</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Computes the maximum of an array or a list of integer or floating-point expressions.</span>
 
 <span class="sd">    The *max_of* function returns an expression which has the same value as the</span>
-<span class="sd">    minimum of the supplied arguments.</span>
+<span class="sd">    maximum of the supplied arguments.</span>
 <span class="sd">    The return type corresponds to the type of arguments supplied.</span>
 
+<span class="sd">    List of expressions can be given extensively, or as a single iterable of expressions.</span>
+
 <span class="sd">    Args:</span>
-<span class="sd">        x: An array of integer or floating-point expressions.</span>
+<span class="sd">        arr: Array of integer or floating-point expressions, or first expression of the list</span>
+<span class="sd">        *args: Other expressions if first argument is not already an iterable</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer or float expression according to the type of parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Call with array of expressions</span>
-    <span class="n">arr</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_max</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
+    <span class="c1"># Build array of arguments</span>
+    <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">arr</span><span class="p">]</span>
+        <span class="n">arr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+
+    <span class="c1"># Check if single argument that is not an array</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">arr</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_array</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">arr</span>
+
+    <span class="c1"># Determine array and element/result type</span>
     <span class="k">assert</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">),</span> <span class="s2">&quot;Argument should be an array of integer or float expressions&quot;</span>
-    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_max</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span></div>
+    <span class="n">rtype</span> <span class="o">=</span> <span class="n">Type_IntExpr</span> <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">)</span> <span class="k">else</span> <span class="n">Type_FloatExpr</span>
+
+    <span class="c1"># Check single and pair of expressions</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">value</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_max</span><span class="p">,</span> <span class="n">rtype</span><span class="p">,</span> <span class="p">(</span><span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">vals</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_max</span><span class="p">,</span> <span class="n">rtype</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span></div>
 
 
-<div class="viewcode-block" id="max"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.max">[docs]</a><span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Computes the maximum of a pair or array of integer or floating-point expressions.</span>
+<div class="viewcode-block" id="max"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.max">[docs]</a><span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Computes the maximum of an array of integer or floating-point expressions.</span>
 
 <span class="sd">    The *max* function returns an expression which has the same value as the</span>
 <span class="sd">    maximum of the supplied arguments.</span>
 <span class="sd">    The return type corresponds to the type of arguments supplied.</span>
 
+<span class="sd">    List of expressions can be given extensively, or as a single iterable of expressions.</span>
+
 <span class="sd">    Implementation of this method is proof to import all functions of this module at root level.</span>
 <span class="sd">    It recalls the builtin max() function if no model expression is found in the parameters.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        x: An array of integer or floating-point expressions.</span>
+<span class="sd">        arr: Array of integer or floating-point expressions, or first expression of the list</span>
+<span class="sd">        *args: Other expressions if first argument is not already an iterable</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer or float expression according to the type of parameters.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Check calls to builtin max()</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">builtin_max</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">max_of</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">builtin_max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">builtin_max</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">arr</span><span class="p">]</span>
+        <span class="n">arr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">max_of</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="k">else</span> <span class="n">builtin_max</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span></div>
 
 
 <span class="c1">#==============================================================================</span>
@@ -805,9 +859,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Build and of expressions as list of logical and</span>
     <span class="n">lexpr</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">lexpr</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">all_of</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">builtin_all</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">all_of</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span> <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span> <span class="k">else</span> <span class="n">builtin_all</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="any_of"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.any_of">[docs]</a><span class="k">def</span> <span class="nf">any_of</span><span class="p">(</span><span class="n">lexpr</span><span class="p">):</span>
@@ -845,9 +897,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Build and of expressions as list of logical and</span>
     <span class="n">lexpr</span> <span class="o">=</span> <span class="n">_expand</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">lexpr</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">any_of</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">builtin_any</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">any_of</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span> <span class="k">if</span> <span class="n">_is_cpo_array</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span> <span class="k">else</span> <span class="n">builtin_any</span><span class="p">(</span><span class="n">lexpr</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="logical_and"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.logical_and">[docs]</a><span class="k">def</span> <span class="nf">logical_and</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -1041,14 +1091,18 @@
 <span class="c1">#==============================================================================</span>
 
 
-<div class="viewcode-block" id="all_diff"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.all_diff">[docs]</a><span class="k">def</span> <span class="nf">all_diff</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+<div class="viewcode-block" id="all_diff"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.all_diff">[docs]</a><span class="k">def</span> <span class="nf">all_diff</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Returns a constraint stating that multiple expressions must be all different.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        arr: Array (list or tuple) of integer expressions.</span>
+<span class="sd">        arr: Array (list, tuple or iterable) of expressions, or first element of the list</span>
+<span class="sd">        *args: Other expressions if first argument is a single expression</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        New constraint expression.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="p">[</span><span class="n">arr</span><span class="p">]</span>
+        <span class="n">arr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_all_diff</span><span class="p">,</span> <span class="n">Type_Constraint</span><span class="p">,</span> <span class="p">(</span><span class="n">_convert_arg</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="s2">&quot;arr&quot;</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">),))</span></div>
 
 
@@ -3524,7 +3578,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.4 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
