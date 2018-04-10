@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.cp.modeler &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</title>
+    <title>docplex.cp.modeler &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.6 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.5',
+        VERSION:     'V2.6',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.6 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -165,6 +165,8 @@
 <span class="sd"> * :meth:`lexicographic`: Constraint which maintains two arrays to be lexicographically ordered.</span>
 <span class="sd"> * :meth:`standard_deviation`: Standard deviation of the values of the variables in an array.</span>
 <span class="sd"> * :meth:`strong`: Encourage CP Optimizer to produce stronger (higher inference) constraints.</span>
+<span class="sd"> * :meth:`slope_piecewise_linear`: Evaluates piecewise-linear function given by set of breaking points and slopes.</span>
+<span class="sd"> * :meth:`coordinate_piecewise_linear`: Evaluates piecewise-linear function given by set of breaking points and values.</span>
 
 <span class="sd">**Objective**</span>
 
@@ -332,10 +334,10 @@
 
 <span class="kn">from</span> <span class="nn">docplex.cp.catalog</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="k">import</span> <span class="n">CpoExpr</span><span class="p">,</span> <span class="n">CpoFunctionCall</span><span class="p">,</span> <span class="n">build_cpo_expr</span><span class="p">,</span> <span class="n">build_cpo_tupleset</span><span class="p">,</span> \
-                                  <span class="n">build_cpo_transition_matrix</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
+                                  <span class="n">build_cpo_transition_matrix</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span><span class="p">,</span> <span class="n">POSITIVE_INFINITY</span><span class="p">,</span> <span class="n">NEGATIVE_INFINITY</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.expression</span> <span class="k">as</span> <span class="nn">expression</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="k">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.config</span> <span class="k">import</span> <span class="n">context</span>
+<span class="kn">import</span> <span class="nn">docplex.cp.config</span> <span class="k">as</span> <span class="nn">config</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 
 
@@ -420,6 +422,15 @@
     <span class="n">val</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">val</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="nb">type</span><span class="p">),</span> <span class="n">errmsg</span> <span class="k">if</span> <span class="n">errmsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;Argument &#39;</span><span class="si">{}</span><span class="s2">&#39; should be a </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">TYPE_NAMES</span><span class="p">[</span><span class="nb">type</span><span class="p">])</span>
     <span class="k">return</span> <span class="n">val</span>
+
+
+<span class="k">def</span> <span class="nf">_get_generation_version</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Get the CPO format version used for model generation</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        CPO format version</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cpver</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">version</span>
+    <span class="k">return</span> <span class="s2">&quot;12.7&quot;</span> <span class="k">if</span> <span class="n">cpver</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cpver</span>
 
 
 <span class="c1">#==============================================================================</span>
@@ -637,6 +648,7 @@
     <span class="c1"># Build model expression</span>
     <span class="n">arr</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
+    <span class="c1"># Array of integer expressions</span>
     <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">):</span>
         <span class="c1"># alen = len(arr.value)</span>
         <span class="c1"># if alen == 1:</span>
@@ -644,14 +656,16 @@
         <span class="c1"># if alen == 2:</span>
         <span class="c1">#     return arr.value[0] + arr.value[1]</span>
         <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_sum</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
+
+    <span class="c1"># Array of float expressions</span>
     <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_sum</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
 
+    <span class="c1"># Array of Cumul expr</span>
     <span class="k">assert</span> <span class="n">arr</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_CumulExprArray</span><span class="p">),</span> <span class="s2">&quot;Argument should be an array of integer, float or cumul expressions&quot;</span>
 
     <span class="c1"># Check generation version</span>
-    <span class="n">cpver</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">version</span>
-    <span class="k">if</span> <span class="n">cpver</span> <span class="ow">and</span> <span class="n">cpver</span> <span class="o">&gt;=</span> <span class="s2">&quot;12.8&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">_get_generation_version</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="s2">&quot;12.8&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_sum</span><span class="p">,</span> <span class="n">Type_CumulExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">arr</span><span class="p">,))</span>
 
     <span class="c1"># Build sum of cumul expressions as list of additions (waiting for function available in the layer)</span>
@@ -1181,8 +1195,8 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression representing the number of occurrences of *v* in *exprs*</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">exprs</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">exprs</span><span class="p">);</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+    <span class="n">exprs</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">exprs</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_Int</span><span class="p">):</span>
         <span class="k">assert</span> <span class="n">exprs</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;exprs&#39; should be an array of integer expressions&quot;</span>
     <span class="k">else</span><span class="p">:</span>
@@ -1223,8 +1237,8 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        An expression of type float expression or integer expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">y</span><span class="p">);</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">)</span> <span class="ow">and</span> <span class="n">y</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">Type_IntExprArray</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_scal_prod</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
 
@@ -1365,8 +1379,8 @@
     <span class="sd">&quot;&quot;&quot; Checks if an integer expression is member of an array of expressions.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        value:  Integer expression whose value is to check in the array.</span>
-<span class="sd">        array:  Array of integer values</span>
+<span class="sd">        element:  Integer expression whose value is to check in the array.</span>
+<span class="sd">        array:    Array of integer values</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        A boolean expression denoting the presence of the value in the array.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1601,22 +1615,27 @@
                                                                  <span class="n">_convert_arg</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">)))</span></div>
 
 
-<div class="viewcode-block" id="standard_deviation"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.standard_deviation">[docs]</a><span class="k">def</span> <span class="nf">standard_deviation</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">meanLB</span><span class="p">,</span> <span class="n">meanUB</span><span class="p">):</span>
+<div class="viewcode-block" id="standard_deviation"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.standard_deviation">[docs]</a><span class="k">def</span> <span class="nf">standard_deviation</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">meanLB</span><span class="o">=</span><span class="n">NEGATIVE_INFINITY</span><span class="p">,</span> <span class="n">meanUB</span><span class="o">=</span><span class="n">POSITIVE_INFINITY</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Creates a constrained numeric expression equal</span>
 <span class="sd">    to the standard deviation of the values of the variables in an array.</span>
 
 <span class="sd">    This function creates a new constrained numeric expression which is equal to the</span>
 <span class="sd">    standard deviation of the values of the variables in the array *x*.</span>
+
 <span class="sd">    The mean of the values of the variables in the array x is constrained to be in the</span>
 <span class="sd">    interval [meanLB, meanUB].</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        x:      An array of integer expressions.</span>
-<span class="sd">        meanLB: A float value for lower bound on the mean of the array.</span>
-<span class="sd">        meanUB: A float value upper bound on the mean of the array.</span>
+<span class="sd">        meanLB (Optional): A float value for lower bound on the mean of the array, -infinity if not given.</span>
+<span class="sd">        meanUB (Optional): A float value upper bound on the mean of the array, infinity if not given.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        A float expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check optional bounds</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">meanLB</span> <span class="ow">is</span> <span class="n">NEGATIVE_INFINITY</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">meanUB</span> <span class="ow">is</span> <span class="n">POSITIVE_INFINITY</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">_get_generation_version</span><span class="p">()</span> <span class="o">&gt;</span> <span class="s2">&quot;12.8&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_standard_deviation</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">_convert_arg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">),))</span>
+
     <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_standard_deviation</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">_convert_arg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">),</span>
                                                                      <span class="n">_convert_arg</span><span class="p">(</span><span class="n">meanLB</span><span class="p">,</span> <span class="s2">&quot;meanLB&quot;</span><span class="p">,</span> <span class="n">Type_Float</span><span class="p">),</span>
                                                                      <span class="n">_convert_arg</span><span class="p">(</span><span class="n">meanUB</span><span class="p">,</span> <span class="s2">&quot;meanUB&quot;</span><span class="p">,</span> <span class="n">Type_Float</span><span class="p">),))</span></div>
@@ -1641,6 +1660,83 @@
 <span class="sd">        Constraint expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_strong</span><span class="p">,</span> <span class="n">Type_Constraint</span><span class="p">,</span> <span class="p">(</span><span class="n">_convert_arg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">),))</span></div>
+
+
+<div class="viewcode-block" id="slope_piecewise_linear"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.slope_piecewise_linear">[docs]</a><span class="k">def</span> <span class="nf">slope_piecewise_linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">slopes</span><span class="p">,</span> <span class="n">refX</span><span class="p">,</span> <span class="n">refY</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Evaluates piecewise-linear function given by set of breaking points and slopes.</span>
+
+<span class="sd">    This function evaluates piecewise-linear function at a point *x*.</span>
+<span class="sd">    The function consists of several segments separated by *points*, within each segment the function is linear.</span>
+<span class="sd">    The function is defined by slopes of all segments (*slopes*) and by breaking points (*points*) on x-axis.</span>
+<span class="sd">    Furthermore it is necessary to specify reference value *refX* and corresponding function value *refY*.</span>
+
+<span class="sd">    The function is continuous unless some value in *points* is specified twice.</span>
+<span class="sd">    Specifying the same value in *points* allows to model discontinuous function,</span>
+<span class="sd">    in this case the corresponding value in *slopes* is not interpreted as a slope but as the height of the jump (delta)</span>
+<span class="sd">    at that point.</span>
+
+<span class="sd">    Assuming that the array *points* has size *n*, the function consists of the following linear segments:</span>
+
+<span class="sd">     * the segment 0 is defined on interval (-infinity, *points*[0]) and has a *slope*[0].</span>
+<span class="sd">     * the segment i, i in 1, 2, .., n-1, is defined on the interval [*points*[i-1], *points*[i]) with a slope *slope*[i].</span>
+<span class="sd">     * the segment n is defined on the interval [*points*[n-1], infinity) with a slope *slope*[n].</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x:      x-value for which the function should be evaluated.</span>
+<span class="sd">        points: sorted array of n-1 x-values (breaking points) that separate n function segments.</span>
+<span class="sd">        slopes: array of n slopes, one for each segments.</span>
+<span class="sd">        refX:   reference x-value.</span>
+<span class="sd">        refY:   value of the function at refX(reference y-value).</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Value of the function at point x.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_slope_piecewise_linear</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span>
+                           <span class="p">(</span><span class="n">_convert_arg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>      <span class="s2">&quot;x&quot;</span><span class="p">,</span>      <span class="n">Type_FloatExpr</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="s2">&quot;points&quot;</span><span class="p">,</span> <span class="n">Type_FloatArray</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">slopes</span><span class="p">,</span> <span class="s2">&quot;slopes&quot;</span><span class="p">,</span> <span class="n">Type_FloatArray</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">refX</span><span class="p">,</span>   <span class="s2">&quot;refX&quot;</span><span class="p">,</span>   <span class="n">Type_FloatExpr</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">refY</span><span class="p">,</span>   <span class="s2">&quot;refY&quot;</span><span class="p">,</span>   <span class="n">Type_FloatExpr</span><span class="p">),</span>
+                            <span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="coordinate_piecewise_linear"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.coordinate_piecewise_linear">[docs]</a><span class="k">def</span> <span class="nf">coordinate_piecewise_linear</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">firstSlope</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">lastSlope</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Evaluates piecewise-linear function given by set of breaking points and values.</span>
+
+<span class="sd">    This function evaluates piecewise-linear function at point *x*.</span>
+<span class="sd">    The function consists of several segments separated by *points*, within each segment the function is linear.</span>
+<span class="sd">    The function is defined by slope of the first segment (*firstSlope*), an array of breaking points (*points*)</span>
+<span class="sd">    on x-axis, an array of corresponding values on y-axis (*values*) and the slope of the last segment.</span>
+<span class="sd">    In each segment the function is linear.</span>
+<span class="sd">    The function may be discontinuous, in this case it is necessary to specify the point of discontinuity</span>
+<span class="sd">    twice in *points*.</span>
+
+<span class="sd">    Assuming that the common length of arrays *points* and *values* is *n*, the function consists of the</span>
+<span class="sd">    following linear segments:</span>
+
+<span class="sd">     * the segment 0 is defined on interval (-infinity, *points*[0]) and is a linear function with slope *firstSlope*</span>
+<span class="sd">       ending at (*points*[0], *values*[0]).</span>
+<span class="sd">     * the segment i, i in 1, 2, .., n-1, is defined on the interval [*points*[i-1], *points*[i]) and is a</span>
+<span class="sd">       linear function from (*points*[-1], *values*[i-1]) to (*points*[i], *values*[i]).</span>
+<span class="sd">     * the segment n is defined on the interval [*points*[n-1], infinity) and is a linear function</span>
+<span class="sd">       from (*points*[n-1], *values*[n-1]) with slope *lastSlope*.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x :         x-value for which the function should be evaluated.</span>
+<span class="sd">        firstSlope: slope of the first function segment (ending at (points[0], values[0])).</span>
+<span class="sd">        points:     sorted array of x-values that separate function segments (breaking points).</span>
+<span class="sd">        values:     y-values corresponding to the breaking points (the array must have the same length as points).</span>
+<span class="sd">        lastSlope:  slope of the last segment beginning at (points[n-1], values[n-1])</span>
+<span class="sd">                    where n is length of points and  values.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Value of the function at point x.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_coordinate_piecewise_linear</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span>
+                           <span class="p">(</span><span class="n">_convert_arg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span>          <span class="s2">&quot;x&quot;</span><span class="p">,</span>          <span class="n">Type_FloatExpr</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">firstSlope</span><span class="p">,</span> <span class="s2">&quot;firstSlope&quot;</span><span class="p">,</span> <span class="n">Type_Float</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">points</span><span class="p">,</span>     <span class="s2">&quot;points&quot;</span><span class="p">,</span>     <span class="n">Type_FloatArray</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">values</span><span class="p">,</span>     <span class="s2">&quot;values&quot;</span><span class="p">,</span>     <span class="n">Type_FloatArray</span><span class="p">),</span>
+                            <span class="n">_convert_arg</span><span class="p">(</span><span class="n">lastSlope</span><span class="p">,</span>  <span class="s2">&quot;lastSlope&quot;</span><span class="p">,</span>  <span class="n">Type_Float</span><span class="p">),</span>
+                            <span class="p">))</span></div>
 
 
 <span class="c1">#==============================================================================</span>
@@ -1753,7 +1849,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
-<span class="sd">        absentValue: (Optional) Value to return if the interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if the interval variable interval becomes absent.</span>
 <span class="sd">                      Zero if not given.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
@@ -1773,7 +1869,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
-<span class="sd">        absentValue: (Optional) Value to return if the interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if the interval variable interval becomes absent.</span>
 <span class="sd">                      Zero if not given.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
@@ -1793,7 +1889,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
-<span class="sd">        absentValue: (Optional) Value to return if the interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if the interval variable interval becomes absent.</span>
 <span class="sd">                     Zero if not given.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
@@ -1813,7 +1909,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
-<span class="sd">        absentValue: (Optional) Value to return if the interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if the interval variable interval becomes absent.</span>
 <span class="sd">                     Zero if not given.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
@@ -2084,7 +2180,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval:    Interval variable.</span>
 <span class="sd">        array:       Array of interval variables.</span>
-<span class="sd">        cardinality: (Optional) Cardinality of the alternative constraint.</span>
+<span class="sd">        cardinality (Optional): Cardinality of the alternative constraint.</span>
 <span class="sd">                     By default, when this optional argument is not specified, a unit cardinality is assumed (cardinality=1).</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        Constraint expression</span>
@@ -2127,9 +2223,9 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        array1: The first array of interval variables.</span>
-<span class="sd">        array1: The second array of interval variables.</span>
+<span class="sd">        array2: The second array of interval variables.</span>
 <span class="sd">        map:    (Optional) Array of integer expressions mapping intervals of array2 on array1.</span>
-<span class="sd">        absentValue: (Optional) Integer value of map[i] when array2[i] is absent.</span>
+<span class="sd">        absentValue (Optional): Integer value of map[i] when array2[i] is absent.</span>
 
 <span class="sd">    Possible argument and return type combinations are:</span>
 
@@ -2333,7 +2429,7 @@
 <span class="sd">        sequence: Sequence variable.</span>
 <span class="sd">        interval: Interval variable.</span>
 <span class="sd">        lastValue: (Optional) Value to return if interval variable interval is the last one in sequence.</span>
-<span class="sd">        absentValue: (Optional) Value to return if interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if interval variable interval becomes absent.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2352,7 +2448,7 @@
 <span class="sd">        sequence: Sequence variable.</span>
 <span class="sd">        interval: Interval variable.</span>
 <span class="sd">        firstValue: (Optional) Value to return if interval variable interval is the first one in sequence.</span>
-<span class="sd">        absentValue: (Optional) Value to return if interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if interval variable interval becomes absent.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2532,12 +2628,13 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        sequence: A sequence variable, or an array of interval variables.</span>
-<span class="sd">        distance_matrix: An optional transition matrix defining the transition distance between consecutive interval</span>
-<span class="sd">                         variables.</span>
+<span class="sd">        distance_matrix (Optional): An optional transition matrix defining the transition distance between consecutive</span>
+<span class="sd">                         interval variables.</span>
 <span class="sd">                         Transition matrix is given as an iterable of iterables of positive integers,</span>
 <span class="sd">                         or as the result of a call to the method :meth:`~docplex.cp.expression.transition_matrix`.</span>
-<span class="sd">        is_direct: A boolean flag stating whether the distance specified in the transition matrix *distance_matrix*</span>
-<span class="sd">                   holds between direct bs (is_direct=True) or also between indirect bs (is_direct=None, default).</span>
+<span class="sd">        is_direct (Optional): A boolean flag stating whether the distance specified in the transition matrix</span>
+<span class="sd">                 *distance_matrix* holds between direct successors (is_direct=True)</span>
+<span class="sd">                 or also between indirect successors (is_direct=False, default).</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        Constraint expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2577,7 +2674,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable</span>
 <span class="sd">        interval2: Another interval variable, or fixed interval expressed as a tuple of 2 integers.</span>
-<span class="sd">        absentValue: Value to return if some interval variable is absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if some interval variable is absent.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2611,7 +2708,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
 <span class="sd">        function: Function to evaluate.</span>
-<span class="sd">        absentValue: (Optional) Value to return if interval variable interval is absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if interval variable interval is absent.</span>
 <span class="sd">                     If not given, absent value is zero.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        A float expression</span>
@@ -2632,7 +2729,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
 <span class="sd">        function: Function to evaluate.</span>
-<span class="sd">        absentValue: (Optional) Value to return if interval variable interval is absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if interval variable interval is absent.</span>
 <span class="sd">                     If not given, absent value is zero.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        A float expression</span>
@@ -2653,7 +2750,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
 <span class="sd">        function: Function to evaluate.</span>
-<span class="sd">        absentValue: (Optional) Value to return if interval variable interval is absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if interval variable interval is absent.</span>
 <span class="sd">                     If not given, absent value is zero.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        A float expression</span>
@@ -2674,7 +2771,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval: Interval variable.</span>
 <span class="sd">        function: Function to evaluate.</span>
-<span class="sd">        absentValue: (Optional) Value to return if interval variable interval is absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if interval variable interval is absent.</span>
 <span class="sd">                     If not given, absent value is zero.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        A float expression</span>
@@ -2703,8 +2800,8 @@
 <span class="sd">    Args:</span>
 <span class="sd">        seq1: First constrained sequence variables.</span>
 <span class="sd">        seq2: Second constrained sequence variables.</span>
-<span class="sd">        array1: (Optional) First array of interval variables defining the mapping between the two sequence variables.</span>
-<span class="sd">        array2: (Optional) Second array of interval variables defining the mapping between the two sequence variables.</span>
+<span class="sd">        array1 (Optional): First array of interval variables defining the mapping between the two sequence variables.</span>
+<span class="sd">        array2 (Optional): Second array of interval variables defining the mapping between the two sequence variables.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        Constraint expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2738,8 +2835,8 @@
 <span class="sd">    Args:</span>
 <span class="sd">        seq1:   First constrained sequence variables.</span>
 <span class="sd">        seq2:   Second constrained sequence variables.</span>
-<span class="sd">        array1: (Optional) First array of interval variables defining the mapping between the two sequence variables.</span>
-<span class="sd">        array2: (Optional) Second array of interval variables defining the mapping between the two sequence variables.</span>
+<span class="sd">        array1 (Optional): First array of interval variables defining the mapping between the two sequence variables.</span>
+<span class="sd">        array2 (Optional): Second array of interval variables defining the mapping between the two sequence variables.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        Constraint expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2756,7 +2853,7 @@
 
 
 <span class="c1">#==============================================================================</span>
-<span class="c1">#  Cumuative expressions</span>
+<span class="c1">#  Cumulative expressions</span>
 <span class="c1">#==============================================================================</span>
 
 <div class="viewcode-block" id="pulse"><a class="viewcode-back" href="../../../docplex.cp.modeler.py.html#docplex.cp.modeler.pulse">[docs]</a><span class="k">def</span> <span class="nf">pulse</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">_x</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -2904,7 +3001,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval:    Interval variable.</span>
 <span class="sd">        function:    Cumul function expression.</span>
-<span class="sd">        absentValue: (Optional) Value to return if the interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if the interval variable interval becomes absent.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2928,7 +3025,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        interval:    Interval variable.</span>
 <span class="sd">        function:    Cumul function expression.</span>
-<span class="sd">        absentValue: (Optional) Value to return if the interval variable interval becomes absent.</span>
+<span class="sd">        absentValue (Optional): Value to return if the interval variable interval becomes absent.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An integer expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3057,8 +3154,8 @@
 <span class="sd">        function: Constrained state function.</span>
 <span class="sd">        interval: Interval variable contributing to the cumul function,</span>
 <span class="sd">                  or fixed interval expressed as a tuple of 2 integers.</span>
-<span class="sd">        isStartAligned: Boolean flag that states whether the interval is start aligned (default: no alignment).</span>
-<span class="sd">        isEndAligned: Boolean flag that states whether the interval is end aligned (default: no alignment).</span>
+<span class="sd">        isStartAligned (Optional): Boolean flag that states whether the interval is start aligned (default: no alignment).</span>
+<span class="sd">        isEndAligned (Optional): Boolean flag that states whether the interval is end aligned (default: no alignment).</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        Constraint expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3106,8 +3203,8 @@
 <span class="sd">        interval: Interval variable contributing to the cumul function,</span>
 <span class="sd">                  or fixed interval expressed as a tuple of 2 integers.</span>
 <span class="sd">        value: Value of the function during the interval.</span>
-<span class="sd">        isStartAligned: Boolean flag that states whether the interval is start aligned (default: no alignment).</span>
-<span class="sd">        isEndAligned: Boolean flag that states whether the interval is end aligned (default: no alignment).</span>
+<span class="sd">        isStartAligned (Optional): Boolean flag that states whether the interval is start aligned (default: no alignment).</span>
+<span class="sd">        isEndAligned (Optional): Boolean flag that states whether the interval is end aligned (default: no alignment).</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        Constraint expression</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3196,7 +3293,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        vars:  Array of integer variables.</span>
-<span class="sd">        defaultIndex: Default index that is returned if the variable does not appear in the array.</span>
+<span class="sd">        defaultIndex (Optional): Default index that is returned if the variable does not appear in the array.</span>
 <span class="sd">                      If not given, -1 is used.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An evaluator of integer variable</span>
@@ -3217,7 +3314,7 @@
 <span class="sd">    will increase as the effort value increases.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        effort: Integer representing how much effort should be spent to compute this impact.</span>
+<span class="sd">        effort (Optional): Integer representing how much effort should be spent to compute this impact.</span>
 <span class="sd">                By default, -1 is used.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An evaluator of integer variable</span>
@@ -3266,7 +3363,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        vars: Array of integer variables</span>
 <span class="sd">        vals: Array of values</span>
-<span class="sd">        defaultEval: (Optional) Default value of a variable that is not in the array</span>
+<span class="sd">        defaultEval (Optional): Default value of a variable that is not in the array</span>
 <span class="sd">                     If not given, default eval value is zero.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An evaluator of integer variable</span>
@@ -3326,7 +3423,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        vals: Array of integer values</span>
-<span class="sd">        defaultValue: (Optional) Default value that is returned if value is not in the array.</span>
+<span class="sd">        defaultValue (Optional): Default value that is returned if value is not in the array.</span>
 <span class="sd">                      By default, this value is -1.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An evaluator of integer value</span>
@@ -3349,7 +3446,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        vals: Array of values</span>
 <span class="sd">        evals: Array of the evaluations of values</span>
-<span class="sd">        defaultEval: (Optional) Evaluation of a value that does not appears in *vals*.</span>
+<span class="sd">        defaultEval (Optional): Evaluation of a value that does not appears in *vals*.</span>
 <span class="sd">                     By default, this value is zero.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An evaluator of integer value</span>
@@ -3392,9 +3489,9 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        evaluator: Evaluator of integer variable or integer value</span>
-<span class="sd">        minNumber: (Optional) Minimum number of values that are selected,</span>
+<span class="sd">        minNumber (Optional): Minimum number of values that are selected,</span>
 <span class="sd">                    with the smallest evaluation according to the evaluator e</span>
-<span class="sd">        tolerance: Tolerance of the values to be selected</span>
+<span class="sd">        tolerance (Optional): Tolerance of the values to be selected</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An expression of type selector of integer value or selector of integer variable</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3447,9 +3544,9 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        evaluator: Evaluator of integer variable or integer value</span>
-<span class="sd">        minNumber: (Optional) Minimum number of values that are selected,</span>
-<span class="sd">                    with the largest evaluation according to the evaluator e</span>
-<span class="sd">        tolerance: Tolerance of the values to be selected</span>
+<span class="sd">        minNumber (Optional): Minimum number of values that are selected,</span>
+<span class="sd">                    with the smallest evaluation according to the evaluator e</span>
+<span class="sd">        tolerance (Optional): Tolerance of the values to be selected</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        An expression of type selector of integer value or selector of integer variable</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3525,17 +3622,17 @@
 <span class="sd">        mdl.set_search_phases([search_phase(x), search_phase(y)])</span>
 
 <span class="sd">    indicates to CP search that variables from the array x must be instantiated before those from the array y.</span>
-<span class="sd">    The way to instantate them will be choosen by CP search.</span>
+<span class="sd">    The way to instantiate them will be chosen by CP search.</span>
 
 <span class="sd">    Similarly, it is not necessary to specify an array of variables to a search phase.</span>
 <span class="sd">    A search phase defined this way will be applied to every integer variable extracted from the model.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        vars: (Optional) Array of integer, interval or sequence variables.</span>
-<span class="sd">        varchooser: (Optional) Chooser of integer variable.</span>
+<span class="sd">        vars (Optional): Array of integer, interval or sequence variables.</span>
+<span class="sd">        varchooser (Optional): Chooser of integer variable.</span>
 <span class="sd">                    Used only if *vars* is undefined or contains an array of integer variables.</span>
 <span class="sd">                    Must be defined if a *valuechooser* is defined.</span>
-<span class="sd">        valuechooser: (Optional) Chooser of integer value</span>
+<span class="sd">        valuechooser (Optional): Chooser of integer value</span>
 <span class="sd">                    Used only if *vars* is undefined or contains an array of integer variables.</span>
 <span class="sd">                    Must be defined if a *varchooser* is defined.</span>
 <span class="sd">    Returns:</span>
@@ -3578,7 +3675,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.5 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.6 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
