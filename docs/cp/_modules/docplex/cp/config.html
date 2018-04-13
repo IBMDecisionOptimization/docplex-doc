@@ -175,13 +175,6 @@
 <span class="sd">    :class:`~docplex.cp.parameters.CpoParameters` (in :doc:`parameters.py&lt;/docplex.cp.parameters.py&gt;`)</span>
 <span class="sd">    which describes all of the public solver parameters as properties.</span>
 
-<span class="sd">    The default configuration limits the solving time to 100 seconds by using following settings:</span>
-<span class="sd">    ::</span>
-
-<span class="sd">        context.params.TimeMode = &quot;ElapsedTime&quot;</span>
-<span class="sd">        context.params.TimeLimit = 100</span>
-
-<span class="sd">    These parameters may have a different default setting if the solver is not *DOcplexcloud*.</span>
 
 <span class="sd">Configuration of the model solving</span>
 <span class="sd">----------------------------------</span>
@@ -312,6 +305,9 @@
 
 <span class="n">EXE_EXTENSION</span> <span class="o">=</span> <span class="s2">&quot;.exe&quot;</span> <span class="k">if</span> <span class="n">IS_WINDOWS</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
 
+<span class="c1"># CP Optimizer Interactive executable name</span>
+<span class="n">CPO_EXEC_INTERACTIVE</span> <span class="o">=</span> <span class="s2">&quot;cpoptimizer&quot;</span> <span class="o">+</span> <span class="n">EXE_EXTENSION</span>
+
 
 <span class="c1">##############################################################################</span>
 <span class="c1">## Define default context for DOcloud solving</span>
@@ -373,11 +369,11 @@
 
 <span class="n">context</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">CpoParameters</span><span class="p">()</span>
 
-<span class="c1"># Default time limit</span>
-<span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">TimeLimit</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="c1"># Default time limit in seconds (None for no limit)</span>
+<span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">TimeLimit</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="c1"># Workers count</span>
-<span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="c1"># Workers count (None for number of cores)</span>
+<span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span> <span class="o">=</span> <span class="kc">None</span>
 
 
 <span class="c1">#-----------------------------------------------------------------------------</span>
@@ -468,7 +464,7 @@
 <span class="c1"># Local solving agent context</span>
 
 <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span> <span class="o">=</span> <span class="n">Context</span><span class="p">(</span><span class="n">class_name</span> <span class="o">=</span> <span class="s2">&quot;docplex.cp.solver.solver_local.CpoSolverLocal&quot;</span><span class="p">,</span>
-                               <span class="n">execfile</span>   <span class="o">=</span> <span class="s2">&quot;cpoptimizer&quot;</span> <span class="o">+</span> <span class="n">EXE_EXTENSION</span><span class="p">,</span>
+                               <span class="n">execfile</span>   <span class="o">=</span> <span class="n">CPO_EXEC_INTERACTIVE</span><span class="p">,</span>
                                <span class="n">parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;-angel&#39;</span><span class="p">],</span>
                                <span class="n">log_prefix</span> <span class="o">=</span> <span class="s2">&quot;[Local] &quot;</span><span class="p">)</span>
 
@@ -476,31 +472,29 @@
 <span class="n">DOCLOUD_CONTEXT</span> <span class="o">=</span> <span class="n">context</span>
 <span class="n">LOCAL_CONTEXT</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
 
-<span class="c1"># Unlimit local parameters</span>
-<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;TimeLimit&#39;</span><span class="p">)</span>
-<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;Workers&#39;</span><span class="p">)</span>
+<span class="c1"># Remove all possible default settins for local parameters</span>
+<span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">CpoParameters</span><span class="p">()</span>
 
+<span class="c1"># Set local context</span>
 <span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">trace_log</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">IS_IN_NOTEBOOK</span>
 <span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="s1">&#39;local&#39;</span>
 <span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">max_threads</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">length_for_alias</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="c1"># Select local context if execfile is given extensively (with a parent directory)</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">execfile</span><span class="p">):</span>
-    <span class="c1"># Search exec file in the path</span>
-    <span class="n">python_home</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">IS_WINDOWS</span><span class="p">:</span>
-        <span class="n">pext</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">python_home</span><span class="p">,</span> <span class="s2">&quot;Scripts&quot;</span><span class="p">)]</span>
-        <span class="n">appdata</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;APPDATA&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">appdata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">pext</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">appdata</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;Scripts&#39;</span><span class="p">)))</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">pext</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;~/.local/bin&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">python_home</span><span class="p">,</span> <span class="s2">&quot;bin&quot;</span><span class="p">)]</span>
-    <span class="n">cpfile</span> <span class="o">=</span> <span class="n">search_file_in_path</span><span class="p">(</span><span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">execfile</span><span class="p">,</span> <span class="n">pext</span><span class="p">)</span>
-    <span class="c1"># Select local context if exec file is visible in the path</span>
-    <span class="k">if</span> <span class="n">cpfile</span><span class="p">:</span>
-        <span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">execpath</span> <span class="o">=</span> <span class="n">cpfile</span>
-        <span class="n">context</span> <span class="o">=</span> <span class="n">LOCAL_CONTEXT</span>
+<span class="c1"># Search exec file in the path</span>
+<span class="n">python_home</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">IS_WINDOWS</span><span class="p">:</span>
+    <span class="n">pext</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">python_home</span><span class="p">,</span> <span class="s2">&quot;Scripts&quot;</span><span class="p">)]</span>
+    <span class="n">appdata</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;APPDATA&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">appdata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pext</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">appdata</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;Python&#39;</span><span class="p">,</span> <span class="s1">&#39;Scripts&#39;</span><span class="p">)))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">pext</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;~/.local/bin&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">python_home</span><span class="p">,</span> <span class="s2">&quot;bin&quot;</span><span class="p">)]</span>
+<span class="n">cpfile</span> <span class="o">=</span> <span class="n">search_file_in_path</span><span class="p">(</span><span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">execfile</span><span class="p">,</span> <span class="n">pext</span><span class="p">)</span>
+<span class="c1"># Select local context if exec file is visible in the path</span>
+<span class="k">if</span> <span class="n">cpfile</span><span class="p">:</span>
+    <span class="n">LOCAL_CONTEXT</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">execfile</span> <span class="o">=</span> <span class="n">cpfile</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">LOCAL_CONTEXT</span>
 
 
 <span class="c1">#-----------------------------------------------------------------------------</span>
