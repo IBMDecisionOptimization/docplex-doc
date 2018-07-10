@@ -13,7 +13,7 @@ This library is composed of 2 modules:
 * IBM® Decision Optimization CPLEX Optimizer Modeling for Python - with namespace docplex.mp
 * IBM® Decision Optimization CP Optimizer Modeling for Python - with namespace docplex.cp
 
-Solving with CPLEX locally requires that IBM® ILOG CPLEX Optimization Studio V12.6.3 or V12.7.0
+Solving with CPLEX locally requires that IBM® ILOG CPLEX Optimization Studio V12.8.0
 is installed on your machine.
 
 Solving with the IBM Decision Optimization on Cloud service requires that you

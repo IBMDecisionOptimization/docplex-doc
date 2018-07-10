@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.util.environment &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.6 documentation</title>
+    <title>docplex.util.environment &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.7 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.6',
+        VERSION:     'V2.7',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.6 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.7 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -139,7 +139,7 @@
 
 <span class="sd">Environment representation can be accessed with different ways:</span>
 
-<span class="sd">    * direct object method calls, after retrieving an instance using </span>
+<span class="sd">    * direct object method calls, after retrieving an instance using</span>
 <span class="sd">      :meth:`docplex.util.environment.get_environment` and using methods of</span>
 <span class="sd">      :class:`docplex.util.environment.Environment`.</span>
 <span class="sd">    * using the function in package `docplex.util.environment`. They will call</span>
@@ -157,6 +157,7 @@
 <span class="sd">           * :meth:`docplex.util.environment.remove_abort_callback`</span>
 
 <span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
 <span class="kn">import</span> <span class="nn">os</span>
@@ -164,6 +165,15 @@
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">string</span> <span class="k">import</span> <span class="n">maketrans</span><span class="p">,</span> <span class="n">translate</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">maketrans</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span>
+    <span class="n">translate</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">translate</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">pandas</span>
@@ -171,6 +181,18 @@
     <span class="n">pandas</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">iteritems</span>
+
+<span class="kn">from</span> <span class="nn">docplex.util.logging_utils</span> <span class="k">import</span> <span class="n">LoggerToFile</span><span class="p">,</span> <span class="n">LoggerToDocloud</span>
+
+<span class="n">log_level_mapping</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;OFF&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="s1">&#39;SEVERE&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span>
+                     <span class="s1">&#39;WARNING&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
+                     <span class="s1">&#39;INFO&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+                     <span class="s1">&#39;CONFIG&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+                     <span class="s1">&#39;FINE&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                     <span class="s1">&#39;FINER&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                     <span class="s1">&#39;FINEST&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                     <span class="s1">&#39;ALL&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">}</span>
 
 
 <div class="viewcode-block" id="NotAvailableError"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.NotAvailableError">[docs]</a><span class="k">class</span> <span class="nc">NotAvailableError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
@@ -223,6 +245,30 @@
 <span class="n">global_output_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
 
 
+<div class="viewcode-block" id="SolveDetailsFilter"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.SolveDetailsFilter">[docs]</a><span class="k">class</span> <span class="nc">SolveDetailsFilter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Default solve detail filter class.</span>
+
+<span class="sd">    This default class filters details so that there are no more than 1 solve</span>
+<span class="sd">    details per second.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_accept_time</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="n">interval</span>
+
+<div class="viewcode-block" id="SolveDetailsFilter.filter"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.SolveDetailsFilter.filter">[docs]</a>    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Filters the details.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the details are to be published.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">ret_val</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_accept_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="p">):</span>
+            <span class="n">ret_val</span> <span class="o">=</span> <span class="n">details</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_accept_time</span> <span class="o">=</span> <span class="n">now</span>
+        <span class="k">return</span> <span class="n">ret_val</span></div></div>
+
+
 <div class="viewcode-block" id="Environment"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment">[docs]</a><span class="k">class</span> <span class="nc">Environment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39; Methods for interacting with the execution environment.</span>
 
@@ -252,14 +298,50 @@
 <span class="sd">            the :class:`~Environment` on which a solution should be saved. The</span>
 <span class="sd">            `solution` is a dict containing all the data for an optimization</span>
 <span class="sd">            solution. The default is :meth:`~default_solution_storage_handler`.</span>
-<span class="sd">        is_dods: True if the environment is Decision Optimization for Data Science.</span>
+<span class="sd">        record_history_fields: Fields which history is to be kept</span>
+<span class="sd">        record_history_size: maximum number of records in history</span>
+<span class="sd">        record_interval: min time between to history records</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">output_lock</span> <span class="o">=</span> <span class="n">global_output_lock</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solution_storage_handler</span> <span class="o">=</span> <span class="n">default_solution_storage_handler</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># stores the latest published details</span>
+        <span class="c1"># private behaviour for now: allows to filter details</span>
+        <span class="c1"># the SolveDetailsFilter.filter() method returns true if the details</span>
+        <span class="c1"># are to be kept</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">details_filter</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># self.record_history_fields = [&#39;PROGRESS_CURRENT_OBJECTIVE&#39;]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># maps name -&gt; deque</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># we keep the last here so that we can publish at end of solve</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_history_time_decimals</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># number of decimals for time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_history_size</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_min_time</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">autoreset</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_reset_record_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">autoreset</span> <span class="ow">or</span> <span class="n">force</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">get_record_history_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PROGRESS_CURRENT_OBJECTIVE&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># the default out of dods is to not record any history</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span>
+
+    <span class="k">def</span> <span class="nf">set_record_history_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="c1"># let record_history_fields be a property that is lazy initialized</span>
+    <span class="c1"># this gives the opportunity to set is_dods before record history fields are needed</span>
+    <span class="n">record_history_fields</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_record_history_fields</span><span class="p">,</span> <span class="n">set_record_history_fields</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Environment.store_solution"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.store_solution">[docs]</a>    <span class="k">def</span> <span class="nf">store_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Stores the specified solution.</span>
@@ -432,6 +514,7 @@
         <span class="sd">&#39;&#39;&#39; Returns a parameter of the program.</span>
 
 <span class="sd">        On DOcplexcloud, this method returns the job parameter whose name is specified.</span>
+<span class="sd">        On local solver, this method returns the environment variable whose name is specified.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            name: The name of the parameter.</span>
@@ -466,7 +549,7 @@
         <span class="c1">#             :attr:`.Context.solver.auto_publish.solve_details`</span>
         <span class="c1">#         &#39;&#39;&#39;</span>
         <span class="c1"># ===============================================================================</span>
-        <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset_record_history</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Environment.update_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.update_solve_details">[docs]</a>    <span class="k">def</span> <span class="nf">update_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Update the solve details.</span>
@@ -478,6 +561,50 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            details: A ``dict`` with solve details as key/value pairs.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># publish details</span>
+        <span class="n">to_publish</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span><span class="p">:</span>
+            <span class="n">previous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span>
+            <span class="n">to_publish</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">details</span><span class="p">:</span>
+                <span class="n">to_publish</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">previous</span><span class="p">)</span>
+                <span class="n">to_publish</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="n">to_publish</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">to_publish</span> <span class="o">=</span> <span class="n">details</span>
+        <span class="c1"># process history</span>
+        <span class="n">to_publish</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_in_history</span><span class="p">(</span><span class="n">to_publish</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">details_filter</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">details_filter</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">details</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">to_publish</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># just store the details for later use</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span> <span class="o">=</span> <span class="n">to_publish</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">to_publish</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">record_in_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history_fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">details</span><span class="p">:</span>
+                <span class="n">current_ts</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history_time_decimals</span><span class="p">)</span>
+                <span class="n">current_history_element</span> <span class="o">=</span> <span class="p">[</span><span class="n">current_ts</span><span class="p">,</span> <span class="n">details</span><span class="p">[</span><span class="n">f</span><span class="p">]]</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">deque</span><span class="p">([],</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history_size</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span>
+                <span class="n">last_ts</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="o">-</span><span class="mi">9999</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">current_ts</span> <span class="o">-</span> <span class="n">last_ts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_min_time</span><span class="p">:</span>
+                    <span class="n">l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_history_element</span><span class="p">)</span>
+                    <span class="n">details</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.history&#39;</span> <span class="o">%</span> <span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>  <span class="c1"># make new copy</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.history&#39;</span> <span class="o">%</span> <span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_history_element</span>
+        <span class="k">return</span> <span class="n">details</span>
+
+<div class="viewcode-block" id="Environment.publish_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.publish_solve_details">[docs]</a>    <span class="k">def</span> <span class="nf">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Actually publish the solve specified details.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The published details</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="k">pass</span></div>
 
@@ -500,7 +627,8 @@
         <span class="c1">#             status: The solve status</span>
         <span class="c1">#         &#39;&#39;&#39;</span>
         <span class="c1"># ===============================================================================</span>
-        <span class="k">pass</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Environment.set_stop_callback"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.set_stop_callback">[docs]</a>    <span class="k">def</span> <span class="nf">set_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Sets a callback that is called when the script is run on</span>
@@ -527,19 +655,68 @@
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;get_stop_callback() is deprecated since 2.4 - Use the abort_callbacks property instead&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span></div>
 
-    <span class="n">stop_callback</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_stop_callback</span><span class="p">,</span> <span class="n">set_stop_callback</span><span class="p">)</span></div>
+    <span class="n">stop_callback</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_stop_callback</span><span class="p">,</span> <span class="n">set_stop_callback</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment.get_engine_log_level"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.get_engine_log_level">[docs]</a>    <span class="k">def</span> <span class="nf">get_engine_log_level</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns the engine log level as set by job parameter oaas.engineLogLevel.</span>
+
+<span class="sd">        oaas.engineLogLevel values are: OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST, ALL</span>
+
+<span class="sd">        The mapping to logging levels in python are:</span>
+
+<span class="sd">           * OFF: None</span>
+<span class="sd">           * SEVERE: logging.ERROR</span>
+<span class="sd">           * WARNING: logging.WARNING</span>
+<span class="sd">           * INFO, CONFIG: logging.INFO</span>
+<span class="sd">           * FINE, FINER, FINEST: logging.DEBUG</span>
+<span class="sd">           * ALL: logging.DEBUG</span>
+
+
+<span class="sd">        All other values are considered invalid values and will return None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The logging level or None if not set (off)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">oaas_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_parameter</span><span class="p">(</span><span class="s1">&#39;oaas.engineLogLevel&#39;</span><span class="p">)</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">oaas_level</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">oaas_level</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">log_level</span></div>
+
+<div class="viewcode-block" id="Environment.is_debug_mode"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.is_debug_mode">[docs]</a>    <span class="k">def</span> <span class="nf">is_debug_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns true if the engine should run in debug mode.</span>
+
+<span class="sd">        This is equivalent to ``env.get_engine_log_level() &lt;= logging.DEBUG``</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">lvl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_engine_log_level</span><span class="p">()</span>
+        <span class="c1"># logging.NOTSET is zero so will return false</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_engine_log_level</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span> <span class="k">if</span> <span class="n">lvl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Environment.is_dods"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.is_dods">[docs]</a>    <span class="k">def</span> <span class="nf">is_dods</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns true if this environment in running in DODS.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;IS_DODS&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span></div>
+
+<div class="viewcode-block" id="Environment.get_logger"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.Environment.get_logger">[docs]</a>    <span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns a ``docplex.util.logging.DocplexLogger`` that can be use</span>
+<span class="sd">        for logging purposes.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div></div>
 
 
 <span class="k">class</span> <span class="nc">LocalEnvironment</span><span class="p">(</span><span class="n">Environment</span><span class="p">):</span>
     <span class="c1"># The environment solving environment using all local input and outputs.</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">LocalEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">get_input_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
         <span class="c1"># check that name leads to a file in cwd</span>
@@ -549,6 +726,11 @@
 
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">():</span>
             <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>  <span class="c1"># copy to current</span>
+
+    <span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>  <span class="c1"># lazy init</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">LoggerToFile</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span>
 
 
 <span class="k">class</span> <span class="nc">OutputFileWrapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -597,7 +779,7 @@
         <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span> <span class="o">=</span> <span class="n">solve_hook</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">stop_callback</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">worker_env_stop_callback</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">get_available_core_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">get_available_core_count</span><span class="p">()</span>
@@ -617,24 +799,19 @@
     <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">get_parameter_value</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">update_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span><span class="p">:</span>
-            <span class="n">previous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">if</span> <span class="n">details</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">previous</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">notify_start_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_details</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="n">solve_details</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># model</span>
                                            <span class="n">solve_details</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">notify_end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="kn">from</span> <span class="nn">docloud.status</span> <span class="k">import</span> <span class="n">JobSolveStatus</span>
+            <span class="kn">from</span> <span class="nn">docplex.util.status</span> <span class="k">import</span> <span class="n">JobSolveStatus</span>
             <span class="n">engine_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="k">if</span> <span class="n">status</span> <span class="k">else</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># model, unused</span>
                                              <span class="kc">None</span><span class="p">,</span>  <span class="c1"># has_solution, unused</span>
@@ -652,6 +829,14 @@
     <span class="k">def</span> <span class="nf">get_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;get_stop_callback() is deprecated since 2.4 - Use the abort_callbacks property instead&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="p">,</span> <span class="s1">&#39;logger&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">LoggerToDocloud</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">LoggerToFile</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span>
 
 
 <div class="viewcode-block" id="OverrideEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.OverrideEnvironment">[docs]</a><span class="k">class</span> <span class="nc">OverrideEnvironment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -876,6 +1061,37 @@
 <span class="sd">        cb: The abort callback</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">default_environment</span><span class="o">.</span><span class="n">abort_callbacks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span></div>
+
+<span class="n">attachment_invalid_characters</span> <span class="o">=</span> <span class="s1">&#39;/</span><span class="se">\\</span><span class="s1">?%*:|&quot;#&lt;&gt; &#39;</span>
+<span class="n">attachment_trans_table</span> <span class="o">=</span> <span class="n">maketrans</span><span class="p">(</span><span class="n">attachment_invalid_characters</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">attachment_invalid_characters</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="make_attachment_name"><a class="viewcode-back" href="../../../docplex.util.environment.py.html#docplex.util.environment.make_attachment_name">[docs]</a><span class="k">def</span> <span class="nf">make_attachment_name</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;From `name`, create an attachment name that is correct for DOcplexcloud.</span>
+
+<span class="sd">    Attachment filenames in DOcplexcloud has certain restrictions. A file name:</span>
+
+<span class="sd">        - is limited to 255 characters;</span>
+<span class="sd">        - can include only ASCII characters;</span>
+<span class="sd">        - cannot include the characters `/\?%*:|&quot;&lt;&gt;`, the space character, or the null character; and</span>
+<span class="sd">        - cannot include _ as the first character.</span>
+
+<span class="sd">    This method replace all unauthorized characters with _, then removing leading</span>
+<span class="sd">    &#39;_&#39;.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: The original attachment name</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        An attachment name that conforms to the restrictions.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError if the attachment name is more than 255 characters</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">new_name</span> <span class="o">=</span> <span class="n">translate</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">attachment_trans_table</span><span class="p">)</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">new_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)):</span>
+        <span class="n">new_name</span> <span class="o">=</span> <span class="n">new_name</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">255</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Attachment names are limited to 255 characters&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_name</span></div>
 </pre></div>
 
           </div>
@@ -892,7 +1108,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.6 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.7 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

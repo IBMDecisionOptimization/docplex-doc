@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.mp.context &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.6 documentation</title>
+    <title>docplex.mp.context &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.7 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.6',
+        VERSION:     'V2.7',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.6 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.7 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -80,6 +80,7 @@
 <span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">deepcopy</span>
 <span class="kn">import</span> <span class="nn">six</span>
 <span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">iteritems</span>
+<span class="kn">import</span> <span class="nn">shlex</span>
 <span class="kn">import</span> <span class="nn">socket</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
@@ -163,8 +164,6 @@
 
 
 <span class="k">def</span> <span class="nf">is_auto_publishing_solve_details</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">get_solve_hook</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># not in a worker</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">auto_publish_details</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">solve_details</span>
     <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
@@ -176,8 +175,6 @@
 
 
 <span class="k">def</span> <span class="nf">get_auto_publish_names</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">prop_name</span><span class="p">,</span> <span class="n">default_name</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">get_solve_hook</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># not in a worker</span>
     <span class="c1"># comparing auto_publish to boolean values because it can be a non-boolean</span>
     <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">default_name</span><span class="p">]</span>
@@ -288,6 +285,7 @@
             <span class="k">raise</span> <span class="ne">AttributeError</span>
         <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">res</span>
+
 
 <span class="k">class</span> <span class="nc">SolverContext</span><span class="p">(</span><span class="n">BaseContext</span><span class="p">):</span>
     <span class="c1"># for internal use</span>
@@ -462,6 +460,16 @@
         <span class="n">context</span> <span class="o">=</span> <span class="n">Context</span><span class="p">()</span>
         <span class="n">context</span><span class="o">.</span><span class="n">read_settings</span><span class="p">(</span><span class="n">file_list</span><span class="o">=</span><span class="n">file_list</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
         <span class="n">context</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;DOCPLEX_CONTEXT&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+            <span class="n">values_pairs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;DOCPLEX_CONTEXT&#39;</span><span class="p">]):</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># max 1 split</span>
+                <span class="c1"># convert values to bool if relevant</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">_BOOLEAN_STATES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">values_pairs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">value</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Setting context value </span><span class="si">%s</span><span class="s1"> to </span><span class="si">%s</span><span class="s1"> (from DOCPLEX_CONTEXT env)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">value</span><span class="p">))</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">update_from_list</span><span class="p">(</span><span class="n">values_pairs</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">context</span></div>
 
     <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -676,7 +684,8 @@
     <span class="n">auto_publish</span> <span class="o">=</span> <span class="n">BaseContext</span><span class="p">()</span>
     <span class="c1"># in a future version, we might want to be able to set individual</span>
     <span class="c1"># default values with a dict =&gt; that&#39;s why we compare to True and False</span>
-    <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="kc">True</span> <span class="ow">and</span> <span class="n">get_solve_hook</span><span class="p">:</span>
+        <span class="c1"># Set default values when in a worker</span>
         <span class="n">auto_publish</span><span class="o">.</span><span class="n">solve_details</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">auto_publish</span><span class="o">.</span><span class="n">result_output</span> <span class="o">=</span> <span class="s1">&#39;solution.json&#39;</span>
         <span class="n">auto_publish</span><span class="o">.</span><span class="n">kpis_output</span> <span class="o">=</span> <span class="s1">&#39;kpis.csv&#39;</span>
@@ -743,7 +752,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.6 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.7 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
