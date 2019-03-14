@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
     
-    <title>docplex.cp.model &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.8 documentation</title>
+    <title>docplex.cp.model &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.9 documentation</title>
     
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
@@ -15,7 +15,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
-        VERSION:     'V2.8',
+        VERSION:     'V2.9',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  false,
@@ -44,7 +44,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.8 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.9 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -72,7 +72,7 @@
 <span></span><span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
 <span class="c1"># http://www.apache.org/licenses/</span>
-<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016, 2017, 2018</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
 
@@ -588,6 +588,21 @@
 <span class="sd">         * In integer variable, if the domain is not fixed to a single value, only a single range of values is allowed.</span>
 <span class="sd">           If the variable domain is sparse, the range domain_min..domain_max is used.</span>
 
+<span class="sd">        An empty starting point can be created using method :meth:`~CpoModel.create_empty_solution`, and then filled</span>
+<span class="sd">        using dedicated methods :meth:`~docplex.cp.solution.CpoModelSolution.add_integer_var_solution` and</span>
+<span class="sd">        :meth:`~docplex.cp.solution.CpoModelSolution.add_interval_var_solution`, or using indexed assignment</span>
+<span class="sd">        as in the following example:</span>
+<span class="sd">        ::</span>
+
+<span class="sd">            mdl = CpoModel()</span>
+<span class="sd">            a = integer_var(0, 3)</span>
+<span class="sd">            b = interval_var(length=(1, 4))</span>
+<span class="sd">            . . .</span>
+<span class="sd">            stp = mdl.create_empty_solution()</span>
+<span class="sd">            stp[a] = 2</span>
+<span class="sd">            stp[b] = (2, 3, 4)</span>
+<span class="sd">            mdl.set_starting_point(stp)</span>
+
 <span class="sd">        Starting point is available for CPO solver release greater or equal to 12.7.0.</span>
 
 <span class="sd">        Args:</span>
@@ -607,13 +622,27 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">starting_point</span></div>
 
 
+<div class="viewcode-block" id="CpoModel.create_empty_solution"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.create_empty_solution">[docs]</a>    <span class="k">def</span> <span class="nf">create_empty_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create an empty model solution that can be filled to be used as a starting point.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            New empty model solution, object of class :class:`~docplex.cp.solution.CpoModelSolution`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">CpoModelSolution</span><span class="p">()</span></div>
+
+
 <div class="viewcode-block" id="CpoModel.add_kpi"><a class="viewcode-back" href="../../../docplex.cp.model.py.html#docplex.cp.model.CpoModel.add_kpi">[docs]</a>    <span class="k">def</span> <span class="nf">add_kpi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Add a Key Performance Indicator to the model.</span>
 
 <span class="sd">        A Key Performance Indicators (KPI) is an expression whose value is considered as representative of the</span>
 <span class="sd">        model solution and its quality.</span>
 
-<span class="sd">        The KPI expression can be:</span>
+<span class="sd">        For example, in a scheduling problem one may wish to minimize the makespan</span>
+<span class="sd">        (date at which all tasks are completed), but other values may be of interest, like the average job</span>
+<span class="sd">        completion time, or the maximum number of tasks executing in parallel over the horizon.</span>
+<span class="sd">        One can identify such expressions in the model by marking them as KPIs.</span>
+
+<span class="sd">        For CPO solver version lower than 12.9, KPI expressions are limited to:</span>
 
 <span class="sd">         * an integer variable,</span>
 <span class="sd">         * a Python lambda expression that computes the value of the KPI from the solve result given as parameter.</span>
@@ -627,7 +656,11 @@
 <span class="sd">            mdl.add(a &lt; b)</span>
 <span class="sd">            mdl.add_kpi(lambda res: (res[a] + res[b]) / 2, &quot;Average&quot;)</span>
 
-<span class="sd">        If the model is solved in a cloud context, these KPIs are associated to the objective value in the</span>
+<span class="sd">        For CPO solver version greater or equal to 12.9, KPI expressions can be any model expression.</span>
+<span class="sd">        KPI values are automatically displayed in the log, can be queried after the solve or for each solution,</span>
+<span class="sd">        and are exported to a CPO file when the model is exported.</span>
+
+<span class="sd">        If the model is solved in a cloud context, the KPIs are associated to the objective value in the</span>
 <span class="sd">        solve details that are sent periodically to the client.</span>
 
 <span class="sd">        Args:</span>
@@ -637,7 +670,7 @@
 <span class="sd">                              If the expression has no name, an exception is raised.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_usable_format_version</span><span class="p">()</span>
-        <span class="n">iskexpr</span> <span class="o">=</span> <span class="n">ver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">compare_natural</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s1">&#39;12.8.9&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">iskexpr</span> <span class="o">=</span> <span class="n">ver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">compare_natural</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s1">&#39;12.9&#39;</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">CpoExpr</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">iskexpr</span><span class="p">:</span>
@@ -1506,7 +1539,7 @@
     <span class="k">def</span> <span class="nf">_get_calling_location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Determine the calling location, outside docplex.cp</span>
 <span class="sd">        Returns:</span>
-<span class="sd">             Couplt (file, line), or None if impossible to determine</span>
+<span class="sd">             Couple (file, line), or None if impossible to determine</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">frm</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span>
         <span class="c1"># Skip at least 2 frames (first called method + this one)</span>
@@ -1545,7 +1578,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.8 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.9 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
