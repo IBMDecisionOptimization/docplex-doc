@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.cp.solver.solver &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.10 documentation</title>
+    <title>docplex.cp.solver.solver &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.11 documentation</title>
     <link rel="stylesheet" href="../../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     
@@ -32,7 +32,7 @@
         <li class="right" >
           <a href="../../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.10 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.11 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -118,9 +118,10 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span> <span class="nn">docplex.cp.config</span> <span class="k">as</span> <span class="nn">config</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.cpo_compiler</span> <span class="k">import</span> <span class="n">CpoCompiler</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.cpo.cpo_compiler</span> <span class="k">import</span> <span class="n">CpoCompiler</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.solution</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.solver.solver_listener</span> <span class="k">import</span> <span class="n">CpoSolverListener</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.solver.cpo_callback</span> <span class="k">import</span> <span class="n">CpoCallback</span>
 
 <span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">importlib</span><span class="o">,</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
@@ -392,7 +393,6 @@
 <span class="sd">        Args:</span>
 <span class="sd">            json: JSON result string</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;JSON result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">json</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_json_result</span> <span class="o">=</span> <span class="n">json</span>
 
 
@@ -417,7 +417,7 @@
         <span class="n">res</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="p">)</span>
 
         <span class="c1"># Process JSON solution</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;JSON result:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">jsol</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;JSON data:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">jsol</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_json_result</span> <span class="o">=</span> <span class="n">jsol</span>
 
         <span class="c1"># Parse JSON solution</span>
@@ -456,6 +456,7 @@
                  <span class="s1">&#39;last_result&#39;</span><span class="p">,</span>  <span class="c1"># Last returned solution</span>
                  <span class="s1">&#39;listeners&#39;</span><span class="p">,</span>    <span class="c1"># List of solve listeners</span>
                  <span class="s1">&#39;status_lock&#39;</span><span class="p">,</span>  <span class="c1"># Lock protecting status change</span>
+                 <span class="s1">&#39;callbacks&#39;</span><span class="p">,</span>    <span class="c1"># List of CPO solver callbacks</span>
                 <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -490,6 +491,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">STATUS_IDLE</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># Build effective context from args</span>
         <span class="n">context</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">_get_effective_context</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -924,6 +926,7 @@
         <span class="c1"># Add listener</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add_listener</span><span class="p">(</span><span class="n">lclass</span><span class="p">())</span>
 
+
 <div class="viewcode-block" id="CpoSolver.remove_listener"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.remove_listener">[docs]</a>    <span class="k">def</span> <span class="nf">remove_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lstnr</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Remove a solver listener previously added with :meth:`~docplex.cp.solver.solver.CpoSolver.add_listener`.</span>
 
@@ -931,6 +934,29 @@
 <span class="sd">            lstnr:  Listener to remove.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">lstnr</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CpoSolver.add_callback"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.add_callback">[docs]</a>    <span class="k">def</span> <span class="nf">add_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add a CPO solver callback.</span>
+
+<span class="sd">        A solver callback is an object extending the class :class:`~docplex.cp.solver.cpo_callback.CpoCallback`</span>
+<span class="sd">        which provides multiple functions that are called to notify about the different solving steps.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cback:  Solver callback</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cback</span><span class="p">,</span> <span class="n">CpoCallback</span><span class="p">),</span> \
+            <span class="s2">&quot;CPO callback should be an object of class docplex.cp.solver.cpo_callback.CpoCallback&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CpoSolver.remove_callback"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.remove_callback">[docs]</a>    <span class="k">def</span> <span class="nf">remove_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Remove a CPO solver callback. previously added with :meth:`~docplex.cp.solver.solver.CpoSolver.add_callback`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cback:  Callback to remove.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cback</span><span class="p">)</span></div>
 
 
     <span class="k">def</span> <span class="nf">_set_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
@@ -953,6 +979,18 @@
         <span class="c1"># Notify listeners</span>
         <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
             <span class="n">lstnr</span><span class="o">.</span><span class="n">new_log_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_notify_callback_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Notify a CPO callback event (called by agent)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event:  Event id</span>
+<span class="sd">            data:   JSON document associated to this event</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Notify callbacks</span>
+        <span class="k">for</span> <span class="n">cback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+            <span class="n">cback</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">_solve_with_start_next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1202,7 +1240,7 @@
         <li class="right" >
           <a href="../../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.10 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.11 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
