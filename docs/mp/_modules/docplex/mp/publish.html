@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.mp.publish &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.14 documentation</title>
+    <title>docplex.mp.publish &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.15 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.14 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.15 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -78,6 +78,7 @@
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">pd</span> <span class="o">=</span> <span class="kc">None</span>
 
+<span class="kn">from</span> <span class="nn">docplex.util.csv_utils</span> <span class="k">import</span> <span class="n">write_csv</span><span class="p">,</span> <span class="n">write_table_as_csv</span>
 
 <span class="k">class</span> <span class="nc">_KpiRecorder</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">):</span>
     <span class="c1"># &#39;&#39;&#39;A specialized subclass of :class:`~SolutionListener` that stores the KPI values</span>
@@ -111,26 +112,39 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kpi_dicts</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">notify_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sol</span><span class="p">):</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">get_environment</span><span class="p">()</span>
         <span class="n">pdata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_progress_data</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_context</span>
 
-        <span class="n">publish_name_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">publish_name_fn</span>
-        <span class="c1"># 1. build a dict from formatted names to kpi values.</span>
-        <span class="n">name_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">publish_name_fn</span><span class="p">(</span><span class="n">kp</span><span class="o">.</span><span class="n">name</span><span class="p">):</span> <span class="n">kp</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span> <span class="k">for</span> <span class="n">kp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">iter_kpis</span><span class="p">()}</span>
+        <span class="c1"># 1. Start with empty table</span>
+        <span class="n">name_values</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="c1"># 2. add predefined keys for obj, time.</span>
         <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;PROGRESS_CURRENT_OBJECTIVE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sol</span><span class="o">.</span><span class="n">objective_value</span>
-        <span class="n">name_values</span><span class="p">[</span><span class="n">publish_name_fn</span><span class="p">(</span><span class="s1">&#39;_time&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">time</span>
 
         <span class="c1"># 3. store it (why???)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_kpi_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name_values</span><span class="p">)</span>
+
+        <span class="c1"># new stats for https://github.ibm.com/IBMDecisionOptimization/dd-planning/issues/2491</span>
+        <span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">is_dods</span><span class="p">():</span>
+            <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;PROGRESS_GAP&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">mip_gap</span>
+            <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">best_bound</span>
+            <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;STAT.cplex.solve.explored&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">current_nb_nodes</span>
+            <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;STAT.cplex.solve.opened&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">remaining_nb_nodes</span>
+            <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;STAT.cplex.solve.iterationCount&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">current_nb_iterations</span>
+            <span class="n">name_values</span><span class="p">[</span><span class="s1">&#39;STAT.cplex.solve.elapsedTime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">time</span>
+
+        <span class="c1"># add KPIs</span>
+        <span class="n">publish_name_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">publish_name_fn</span>
+        <span class="n">name_values</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">publish_name_fn</span><span class="p">(</span><span class="n">kp</span><span class="o">.</span><span class="n">name</span><span class="p">):</span> <span class="n">kp</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span> <span class="k">for</span> <span class="n">kp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">iter_kpis</span><span class="p">()})</span>
+        <span class="n">name_values</span><span class="p">[</span><span class="n">publish_name_fn</span><span class="p">(</span><span class="s1">&#39;_time&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">time</span>
 
         <span class="c1"># usually publish kpis in environment...</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">publish_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">publish_hook</span><span class="p">(</span><span class="n">name_values</span><span class="p">)</span>
 
         <span class="c1"># save kpis.csv table</span>
-        <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_context</span>
-        <span class="k">if</span> <span class="n">auto_publising_kpis_table_names</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">write_kpis_table</span><span class="p">(</span><span class="n">env</span><span class="o">=</span><span class="n">get_environment</span><span class="p">(),</span>
+        <span class="k">if</span> <span class="n">auto_publishing_kpis_table_names</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">write_kpis_table</span><span class="p">(</span><span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
                              <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
                              <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
                              <span class="n">solution</span><span class="o">=</span><span class="n">sol</span><span class="p">)</span>
@@ -146,38 +160,6 @@
 
         <span class="n">df</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kpi_dicts</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">df</span>
-
-
-<div class="viewcode-block" id="encode_csv_string"><a class="viewcode-back" href="../../../docplex.mp.publish.html#docplex.mp.publish.encode_csv_string">[docs]</a><span class="k">def</span> <span class="nf">encode_csv_string</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Encode a string to be used in CSV file</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        text:  String to encode</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        Encoded string, including starting and ending double quote</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&quot;&#39;</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">text</span><span class="p">:</span>
-        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">:</span>
-            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
-    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">res</span><span class="p">)</span></div>
-
-
-<span class="k">def</span> <span class="nf">write_csv_line</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">encoding</span><span class="p">):</span>
-    <span class="n">line</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">encode_csv_string</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">line</span><span class="p">])</span>
-    <span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="p">))</span>
-    <span class="n">output</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="p">))</span>
-
-
-<span class="k">def</span> <span class="nf">write_csv</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-    <span class="c1"># table must be a named tuple</span>
-    <span class="n">encoding</span> <span class="o">=</span> <span class="s1">&#39;utf-8&#39;</span>
-    <span class="k">with</span> <span class="n">env</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">ostr</span><span class="p">:</span>
-        <span class="n">write_csv_line</span><span class="p">(</span><span class="n">ostr</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">table</span><span class="p">:</span>
-            <span class="n">write_csv_line</span><span class="p">(</span><span class="n">ostr</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">get_auto_publish_names</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">prop_name</span><span class="p">,</span> <span class="n">default_name</span><span class="p">):</span>
@@ -214,9 +196,10 @@
     <span class="k">return</span> <span class="n">get_auto_publish_names</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="s1">&#39;result_output&#39;</span><span class="p">,</span> <span class="s1">&#39;solution.json&#39;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">auto_publising_kpis_table_names</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">auto_publishing_kpis_table_names</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
     <span class="c1"># Return the list of kpi table names for saving</span>
     <span class="k">return</span> <span class="n">get_auto_publish_names</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="s1">&#39;kpis_output&#39;</span><span class="p">,</span> <span class="s1">&#39;kpis.csv&#39;</span><span class="p">)</span>
+
 
 <span class="k">def</span> <span class="nf">get_kpis_name_field</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
     <span class="n">autopubs</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span>
@@ -229,6 +212,7 @@
         <span class="n">field</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">kpis_output_field_name</span>
     <span class="k">return</span> <span class="n">field</span>
 
+
 <span class="k">def</span> <span class="nf">get_kpis_value_field</span><span class="p">(</span><span class="n">context</span><span class="p">):</span>
     <span class="n">autopubs</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span>
     <span class="n">field</span> <span class="o">=</span> <span class="kc">None</span>
@@ -239,6 +223,7 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">field</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">auto_publish</span><span class="o">.</span><span class="n">kpis_output_field_value</span>
     <span class="k">return</span> <span class="n">field</span>
+
 
 <div class="viewcode-block" id="PublishResultAsDf"><a class="viewcode-back" href="../../../docplex.mp.publish.html#docplex.mp.publish.PublishResultAsDf">[docs]</a><span class="k">class</span> <span class="nc">PublishResultAsDf</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Mixin for classes publishing a result as data frame</span>
@@ -318,27 +303,8 @@
         <span class="k">return</span> <span class="n">names</span></div>
 
 
-<div class="viewcode-block" id="write_kpis"><a class="viewcode-back" href="../../../docplex.mp.publish.html#docplex.mp.publish.write_kpis">[docs]</a><span class="k">def</span> <span class="nf">write_kpis</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">kpis_table</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">field_names</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Writes a kpis dataframe as file which name is specified.</span>
-<span class="sd">    The data type depends of extension of name.</span>
-
-<span class="sd">    This uses the specfied env to write data as attachments</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-    <span class="n">ext</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.csv&#39;</span><span class="p">:</span>
-        <span class="n">encoding</span> <span class="o">=</span> <span class="s1">&#39;utf-8&#39;</span>
-        <span class="k">with</span> <span class="n">env</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">ostr</span><span class="p">:</span>
-            <span class="n">write_csv_line</span><span class="p">(</span><span class="n">ostr</span><span class="p">,</span> <span class="n">field_names</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">kpis_table</span><span class="p">:</span>
-                <span class="n">write_csv_line</span><span class="p">(</span><span class="n">ostr</span><span class="p">,</span> <span class="n">line</span><span class="p">,</span> <span class="n">encoding</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># right now, only csv is supported</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;file format not supported for KPIs file: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ext</span><span class="p">)</span></div>
-
-
 <span class="k">def</span> <span class="nf">write_kpis_table</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
-    <span class="n">names</span> <span class="o">=</span> <span class="n">auto_publising_kpis_table_names</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">auto_publishing_kpis_table_names</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
     <span class="n">kpis_table</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">iter_kpis</span><span class="p">():</span>
         <span class="n">kpis_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">k</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">solution</span><span class="p">)])</span>
@@ -347,7 +313,7 @@
         <span class="n">field_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_kpis_name_field</span><span class="p">(</span><span class="n">context</span><span class="p">),</span>
                        <span class="n">get_kpis_value_field</span><span class="p">(</span><span class="n">context</span><span class="p">)]</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
-            <span class="n">write_kpis</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">kpis_table</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">field_names</span><span class="p">)</span>
+            <span class="n">write_table_as_csv</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">kpis_table</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">field_names</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">write_solution</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">solution</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
@@ -375,7 +341,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.14 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.15 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

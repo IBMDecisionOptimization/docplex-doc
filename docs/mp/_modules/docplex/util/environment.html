@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.util.environment &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.14 documentation</title>
+    <title>docplex.util.environment &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.15 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.14 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.15 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -176,6 +176,7 @@
 <span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">iteritems</span>
 
 <span class="kn">from</span> <span class="nn">docplex.util.logging_utils</span> <span class="k">import</span> <span class="n">LoggerToFile</span><span class="p">,</span> <span class="n">LoggerToDocloud</span>
+<span class="kn">from</span> <span class="nn">docplex.util.csv_utils</span> <span class="k">import</span> <span class="n">write_table_as_csv</span>
 
 <span class="n">in_ws_nb</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -334,7 +335,9 @@
     <span class="k">def</span> <span class="nf">get_record_history_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span><span class="p">():</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PROGRESS_CURRENT_OBJECTIVE&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">,</span>
+                                               <span class="s1">&#39;PROGRESS_CURRENT_OBJECTIVE&#39;</span><span class="p">,</span>
+                                               <span class="s1">&#39;PROGRESS_GAP&#39;</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># the default out of dods is to not record any history</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[]</span>
@@ -888,7 +891,22 @@
 
 <div class="viewcode-block" id="WorkerEnvironment.publish_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.publish_solve_details">[docs]</a>    <span class="k">def</span> <span class="nf">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+        <span class="c1"># if on dods, we want to publish stats.csv if any</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_publish_stats_csv</span><span class="p">(</span><span class="n">details</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_publish_stats_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats</span><span class="p">):</span>
+        <span class="c1"># generate the stats.csv file with the specified stats</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;stats.csv&#39;</span><span class="p">]</span>
+        <span class="n">stats_table</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;STAT.&quot;</span><span class="p">):</span>
+                <span class="n">stats_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]])</span>
+        <span class="k">if</span> <span class="n">stats_table</span><span class="p">:</span>
+            <span class="n">field_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Value&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                <span class="n">write_table_as_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats_table</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">field_names</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">notify_start_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_details</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="n">solve_details</span><span class="p">)</span>
@@ -1205,7 +1223,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.14 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.15 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
