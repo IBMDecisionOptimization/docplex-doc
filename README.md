@@ -1,23 +1,18 @@
-# IBM® Decision Optimization Modeling for Python (DOcplex)
+# IBM&reg; Decision Optimization Modeling for Python (DOcplex)
 
-Welcome to the IBM® Decision Optimization Modeling for Python.
+Welcome to the IBM&reg; Decision Optimization Modeling for Python.
 Licensed under the Apache License v2.0.
 
 With this library, you can quickly and easily add the power of optimization to
-your application. You can model your problems by using the Python API and solve
-them on the cloud with the IBM® Decision Optimization on Cloud service or on
-your computer with IBM® ILOG CPLEX Optimization Studio.
+your application. ou need IBM ILOG CPLEX Optimization Studio to solve the models.
 
 This library is composed of 2 modules:
 
-* IBM® Decision Optimization CPLEX Optimizer Modeling for Python - with namespace docplex.mp
-* IBM® Decision Optimization CP Optimizer Modeling for Python - with namespace docplex.cp
+* IBM&reg; Decision Optimization CPLEX Optimizer Modeling for Python - with namespace docplex.mp
+* IBM&reg; Decision Optimization CP Optimizer Modeling for Python - with namespace docplex.cp
 
-Solving with CPLEX locally requires that IBM® ILOG CPLEX Optimization Studio V12.8.0
+Solving with CPLEX locally requires that IBM&reg; ILOG CPLEX Optimization Studio V12.8 or later
 is installed on your machine.
-
-Solving with the IBM Decision Optimization on Cloud service requires that you
-register for an account and get the API key.
 
 This library is numpy friendly.
 
@@ -32,27 +27,13 @@ This library is numpy friendly.
 * [Documentation](http://ibmdecisionoptimization.github.io/docplex-doc/)
 * [Examples](https://github.com/IBMDecisionOptimization/docplex-examples)
 
-## Get your IBM® Decision Optimization on Cloud API key
+## Get your IBM&reg; ILOG CPLEX Optimization Studio edition
 
-Optionally, you can run your optimization in the cloud with the IBM
-Decision Optimization on Cloud service.
-   
-- Register for the DOcplexcloud free trial and use it free for 30 days. See [Free trial](https://developer.ibm.com/docloud/try-docloud-free).
- 
-- Get your API key
-    With your free trial, you can generate a key to access the DOcplexcloud API. 
-    Visit the [Get API key & base URL](http://developer.ibm.com/docloud/docs/api-key) page to generate the key once you've registered. 
-    This page also contains the base URL you must use for DOcplexcloud.
-    
-- Copy/paste your API key and service URL where appropriate in the examples to be able to run them, or have a look at *Setting up an optimization engine* section of the documentation
-
-## Get your IBM® ILOG CPLEX Optimization Studio edition
-
-- You can get a free [Community Edition](http://www-01.ibm.com/software/websphere/products/optimization/cplex-studio-community-edition)
+- You can get a free [Community Edition](https://www.ibm.com/account/reg/us-en/signup?formid=urx-20028)
  of CPLEX Optimization Studio, with limited solving capabilities in term of problem size.
 
 - Faculty members, research professionals at accredited institutions can get access to an unlimited version of CPLEX through the
- [IBM® Academic Initiative](http://www-304.ibm.com/ibm/university/academic/pub/page/ban_ilog_programming).
+ [IBM&reg; Academic Initiative](http://ibm.biz/cplex-free-for-students).
 
 ## Dependencies
 
@@ -63,6 +44,11 @@ These third-party dependencies are automatically installed with ``pip``
 - [futures](https://pypi.python.org/pypi/futures)
 - [requests](https://pypi.python.org/pypi/requests)
 - [six](https://pypi.python.org/pypi/six)
+- [certifi](https://pypi.python.org/pypi/certifi)
+- [chardet](https://pypi.python.org/pypi/chardet)
+- [idna](https://pypi.python.org/pypi/idna)
+- [urllib3](https://pypi.python.org/pypi/urllib3)
+
 
 ## License
 
