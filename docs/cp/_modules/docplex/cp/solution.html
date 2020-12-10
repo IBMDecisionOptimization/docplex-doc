@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.cp.solution &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</title>
+    <title>docplex.cp.solution &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.19 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -32,7 +32,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.19 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -67,27 +67,28 @@
 <span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">This module contains the different elements that represent a solution resulting</span>
-<span class="sd">from the solve of a model.</span>
+<span class="sd">This module contains the different elements representing the result to a solver request.</span>
+<span class="sd">The main classes are:</span>
 
-<span class="sd">This module implements the following object classes to represent solution elements:</span>
+<span class="sd"> * :class:`CpoRunResult`: root class for all results returned by the solver.</span>
+<span class="sd">   It contains general purpose information such as the model that has been solved, solver parameters, solver info and log.</span>
+<span class="sd"> * :class:`CpoSolveResult`: result of a solve request, including a solution to the model if any.</span>
+<span class="sd"> * :class:`CpoRefineConflictResult`: result of a refine conflict request.</span>
 
+<span class="sd">These classes are using the following classes to store utility information:</span>
+
+<span class="sd"> * :class:`CpoSolverInfos`: miscellaneous information coming from the solver.</span>
+<span class="sd"> * :class:`CpoProcessInfos`: miscellaneous information about the processing and solving of the model by the Python API.</span>
+
+<span class="sd">When a solution is found by the solver, it is represented by the following classes:</span>
+
+<span class="sd"> * :class:`CpoModelSolution`: aggregation of all individual model element solutions,</span>
 <span class="sd"> * :class:`CpoIntVarSolution`: solution of an integer variable,</span>
 <span class="sd"> * :class:`CpoIntervalVarSolution`: solution of an interval variable,</span>
 <span class="sd"> * :class:`CpoSequenceVarSolution`: solution of a sequence variable,</span>
 <span class="sd"> * :class:`CpoStateFunctionSolution`: solution of a state function, and</span>
-<span class="sd"> * :class:`CpoModelSolution`: aggregation of all individual model element solutions,</span>
 
-<span class="sd">and the following ones to represent results:</span>
-
-<span class="sd"> * :class:`CpoSolveResult`: result of a model solve, including a solution to the model (if any)</span>
-<span class="sd">   plus other technical information (solve details, log, etc)</span>
-<span class="sd"> * :class:`CpoRefineConflictResult`: result of an invocation of the conflict refiner.</span>
-<span class="sd"> * :class:`CpoSolverInfos`: miscellaneous information coming from the solver.</span>
-<span class="sd"> * :class:`CpoProcessInfos`: miscellaneous information about the processing and solving of the model by the Python API.</span>
-
-
-<span class="sd">The solution objects (:class:`CpoModelSolution`, :class:`CpoIntVarSolution`, etc) can be used in multiple ways:</span>
+<span class="sd">These solution objects can be used in multiple ways:</span>
 
 <span class="sd"> * To represent a *complete* (fully instantiated) solution, where each model has a unique fixed value, as returned</span>
 <span class="sd">   by a successful model solve.</span>
@@ -643,19 +644,26 @@
         
      
 <div class="viewcode-block" id="CpoModelSolution"><a class="viewcode-back" href="../../../docplex.cp.solution.py.html#docplex.cp.solution.CpoModelSolution">[docs]</a><span class="k">class</span> <span class="nc">CpoModelSolution</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; This class represents a solution to a model. It contains the solutions of model variables plus</span>
-<span class="sd">    the value of the objective(s), if any.</span>
+    <span class="sd">&quot;&quot;&quot; This class represents a solution to the problem represented by the model.</span>
+<span class="sd">    It contains the solutions for the model variables plus the value of the objective(s), if any.</span>
 
-<span class="sd">    Each variable solution is accessed with its name</span>
-<span class="sd">    and its value is either :class:`CpoIntVarSolution`, :class:`CpoIntervalVarSolution`,</span>
+<span class="sd">    Each variable solution can be accessed using its name, or the variable object of the model.</span>
+<span class="sd">    The solution is either :class:`CpoIntVarSolution`, :class:`CpoIntervalVarSolution`,</span>
 <span class="sd">    :class:`CpoSequenceVarSolution` or :class:`CpoStateFunctionSolution` depending on the type of the variable.</span>
 
-<span class="sd">    The solution can be:</span>
+<span class="sd">    A variable solution can be accessed in two ways:</span>
+
+<span class="sd">     * using the method :meth:`CpoModelSolution.get_var_solution`, that returns an object representing</span>
+<span class="sd">       the solution to the variable, or None if the variable is not in the solution.</span>
+<span class="sd">     * using the standard Python expression `sol[&lt;var&gt;]` that does the same but raises a `KeyError` exception</span>
+<span class="sd">       if the variable is not in the solution.</span>
+
+<span class="sd">    Depending if the request to solver was a solve or a propagate, the solution can be:</span>
 <span class="sd">      * *complete*, if each variable is assigned to a single value,</span>
 <span class="sd">      * *partial* if not all variables are defined, or if some variables are defined with domains that are not</span>
 <span class="sd">        restricted to a single value.</span>
 
-<span class="sd">    An instance of this class may be created explicitly by the programmer of the model to express a *starting point*</span>
+<span class="sd">    An instance of this class may also be created explicitly by the programmer of the model to express a *starting point*</span>
 <span class="sd">    that can be passed to the model to optimize its solve</span>
 <span class="sd">    (see :meth:`docplex.cp.model.CpoModel.set_starting_point` for details).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -961,7 +969,7 @@
         <span class="c1"># Add objectives</span>
         <span class="n">ovals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;objectives&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ovals</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ovals</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective_values</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">_get_interval</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ovals</span><span class="p">])</span>
 
         <span class="c1"># Add objectives bounds</span>
         <span class="n">bvals</span> <span class="o">=</span> <span class="n">jsol</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;bounds&#39;</span><span class="p">)</span>
@@ -2220,6 +2228,20 @@
         <span class="k">return</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
 
 
+<span class="k">def</span> <span class="nf">_get_interval</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert a solution value given in JSON.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val: JSON value to convert</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Converted value</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">)</span> <span class="k">if</span> <span class="n">lb</span> <span class="o">!=</span> <span class="n">ub</span> <span class="k">else</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">lb</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_get_num_value</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+
 <span class="k">def</span> <span class="nf">_get_num_value</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Convert a solution value into number.</span>
 <span class="sd">    Interpret intmin, intmax, intervalmin, intervalmax, NaN, Infinity if any.</span>
@@ -2355,7 +2377,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.19 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
