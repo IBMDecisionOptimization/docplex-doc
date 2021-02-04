@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.mp.solution &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.19 documentation</title>
+    <title>docplex.mp.solution &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.20 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.19 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.20 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -85,11 +85,13 @@
 <span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="k">import</span> <span class="n">CplexScope</span><span class="p">,</span> <span class="n">BasisStatus</span><span class="p">,</span> <span class="n">WriteLevel</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">is_iterable</span><span class="p">,</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">is_indexable</span><span class="p">,</span> <span class="n">str_maxed</span><span class="p">,</span> <span class="n">normalize_basename</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">make_output_path2</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.linear</span> <span class="k">import</span> <span class="n">Var</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.dvar</span> <span class="k">import</span> <span class="n">Var</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="k">import</span> <span class="n">docplex_fatal</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.sttck</span> <span class="k">import</span> <span class="n">StaticTypeChecker</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.solmst</span> <span class="k">import</span> <span class="n">SolutionMSTPrinter</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.solmst</span>  <span class="k">import</span> <span class="n">SolutionMSTPrinter</span>
 <span class="kn">from</span> <span class="nn">docplex.mp.soljson</span> <span class="k">import</span> <span class="n">SolutionJSONPrinter</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.solsol</span>  <span class="k">import</span> <span class="n">SolutionSolPrinter</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
 
@@ -1035,15 +1037,14 @@
             <span class="n">outs</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">outs</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;mst&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">_export_as_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fmt</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
-        <span class="n">printer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_printer</span><span class="p">(</span><span class="n">fmt</span><span class="p">)</span>
-        <span class="n">printer</span><span class="o">.</span><span class="n">print_to_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oss</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_export_as_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">format_spec</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">printer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_printer</span><span class="p">(</span><span class="n">format_spec</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">printer</span><span class="o">.</span><span class="n">print_to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">export_as_mst_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">write_level</span><span class="o">=</span><span class="n">WriteLevel</span><span class="o">.</span><span class="n">Auto</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;write_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">WriteLevel</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">write_level</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_as_string</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;mst&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_as_string</span><span class="p">(</span><span class="n">format_spec</span><span class="o">=</span><span class="s1">&#39;mst&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
 <div class="viewcode-block" id="SolveSolution.export_as_mst"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.export_as_mst">[docs]</a>    <span class="k">def</span> <span class="nf">export_as_mst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">write_level</span><span class="o">=</span><span class="n">WriteLevel</span><span class="o">.</span><span class="n">Auto</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Exports a solution to a file in CPLEX mst format.</span>
@@ -1082,32 +1083,68 @@
 
 <span class="sd">            ``sol.export_as_mst(basename=&quot;my_%s_mipstart&quot;, path =&quot;z:/home/&quot;)`` will write &quot;z:/home/my_prob_mipstart.mst&quot;.</span>
 
+<span class="sd">        Note:</span>
+<span class="sd">            The complete description of MST format is found here:</span>
+<span class="sd">        https://www.ibm.com/support/knowledgecenter/SSSA5P_20.1.0/ilog.odms.cplex.help/CPLEX/FileFormats/topics/MST.html</span>
+
+
 <span class="sd">        See Also:</span>
 <span class="sd">            :class:`docplex.mp.constants.WriteLevel`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sol_basename</span> <span class="o">=</span> <span class="n">normalize_basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem_name</span><span class="p">,</span> <span class="n">force_lowercase</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">mst_path</span> <span class="o">=</span> <span class="n">make_output_path2</span><span class="p">(</span><span class="n">actual_name</span><span class="o">=</span><span class="n">sol_basename</span><span class="p">,</span>
-                                     <span class="n">extension</span><span class="o">=</span><span class="n">SolutionMSTPrinter</span><span class="o">.</span><span class="n">mst_extension</span><span class="p">,</span>
-                                     <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
-                                     <span class="n">basename_fmt</span><span class="o">=</span><span class="n">basename</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">mst_path</span><span class="p">:</span>
-            <span class="n">kwargs2</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">kwargs2</span><span class="p">[</span><span class="s1">&#39;write_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">WriteLevel</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">write_level</span><span class="p">)</span>
-            <span class="n">SolutionMSTPrinter</span><span class="o">.</span><span class="n">print_to_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mst_path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs2</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">mst_path</span></div>
+        <span class="n">kwargs2</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">kwargs2</span><span class="p">[</span><span class="s1">&#39;write_level&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">WriteLevel</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">write_level</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export</span><span class="p">(</span><span class="n">format_spec</span><span class="o">=</span><span class="s1">&#39;mst&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="n">basename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SolveSolution.export_as_sol"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.export_as_sol">[docs]</a>    <span class="k">def</span> <span class="nf">export_as_sol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Exports a solution to a file in CPLEX SOL format.</span>
+
+<span class="sd">        SOL format is valid for all types of solutions, LP or MIP, but cannot be used for warm starts.</span>
+
+<span class="sd">        Arguments are identical to the method :func:`export_as_mst`</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">        The complete description of SOL format is found here:</span>
+<span class="sd">        https://www.ibm.com/support/knowledgecenter/SSSA5P_20.1.0/ilog.odms.cplex.help/CPLEX/FileFormats/topics/SOL.html</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :func:`docplex.mp.model.SolveSolution.export_as_mst`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export</span><span class="p">(</span><span class="n">format_spec</span><span class="o">=</span><span class="s1">&#39;sol&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="n">basename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">format_spec</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">printer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_printer</span><span class="p">(</span><span class="n">format_spec</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_static_export</span><span class="p">(</span><span class="n">exported</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                                   <span class="n">basename</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem_name</span><span class="p">,</span>
+                                   <span class="n">printer</span><span class="o">=</span><span class="n">printer</span><span class="p">,</span>
+                                   <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+                                   <span class="n">basename_fmt</span><span class="o">=</span><span class="n">basename</span><span class="p">,</span>
+                                   <span class="o">**</span><span class="n">kwargs</span>
+                                   <span class="p">)</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">get_printer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="n">printers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;json&#39;</span><span class="p">:</span> <span class="n">SolutionJSONPrinter</span><span class="p">,</span>
-                    <span class="s1">&#39;xml&#39;</span><span class="p">:</span> <span class="n">SolutionMSTPrinter</span><span class="p">,</span>
-                    <span class="s1">&#39;mst&#39;</span><span class="p">:</span> <span class="n">SolutionMSTPrinter</span>
-                    <span class="p">}</span>
+    <span class="k">def</span> <span class="nf">_static_export</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">exported</span><span class="p">,</span> <span class="n">basename</span><span class="p">,</span> <span class="n">printer</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">basename_fmt</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">sol_basename</span> <span class="o">=</span> <span class="n">normalize_basename</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="n">force_lowercase</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">mst_path</span> <span class="o">=</span> <span class="n">make_output_path2</span><span class="p">(</span><span class="n">actual_name</span><span class="o">=</span><span class="n">sol_basename</span><span class="p">,</span>
+                                     <span class="n">extension</span><span class="o">=</span><span class="n">printer</span><span class="o">.</span><span class="n">extension</span><span class="p">(),</span>
+                                     <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+                                     <span class="n">basename_fmt</span><span class="o">=</span><span class="n">basename_fmt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mst_path</span><span class="p">:</span>
+            <span class="n">printer</span><span class="o">.</span><span class="n">print_to_stream</span><span class="p">(</span><span class="n">exported</span><span class="p">,</span> <span class="n">mst_path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">mst_path</span>
 
-        <span class="n">printer</span> <span class="o">=</span> <span class="n">printers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">printer</span><span class="p">:</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_new_printer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">format_spec</span><span class="p">):</span>
+        <span class="n">printers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;json&#39;</span><span class="p">:</span> <span class="n">SolutionJSONPrinter</span><span class="p">,</span>
+                    <span class="s1">&#39;xml&#39;</span> <span class="p">:</span> <span class="n">SolutionMSTPrinter</span><span class="p">,</span>
+                    <span class="s1">&#39;mst&#39;</span> <span class="p">:</span> <span class="n">SolutionMSTPrinter</span><span class="p">,</span>
+                    <span class="s1">&#39;sol&#39;</span> <span class="p">:</span> <span class="n">SolutionSolPrinter</span>
+                    <span class="p">}</span>
+        <span class="n">printer_type</span> <span class="o">=</span> <span class="n">printers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">format_spec</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">printer_type</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;format key must be one of </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">printers</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
-        <span class="k">return</span> <span class="n">printer</span>
+        <span class="k">return</span> <span class="n">printer_type</span><span class="p">()</span>
 
 <div class="viewcode-block" id="SolveSolution.export"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.export">[docs]</a>    <span class="k">def</span> <span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_or_filename</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Export this solution.</span>
@@ -1115,14 +1152,13 @@
 <span class="sd">        Args:</span>
 <span class="sd">            file_or_filename: If ``file_or_filename`` is a string, this argument contains the filename to</span>
 <span class="sd">                write to. If this is a file object, this argument contains the file object to write to.</span>
-<span class="sd">            format: Name of format to use. Possible values are:</span>
+<span class="sd">            format_spec: Name of format to use. Possible values are:</span>
 <span class="sd">                - &quot;json&quot;</span>
 <span class="sd">                - &quot;mst&quot;: the MST cplex format for MIP starts</span>
 <span class="sd">                - &quot;xml&quot;: same as MST</span>
 <span class="sd">            kwargs: The kwargs passed to the actual exporter</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
-        <span class="n">printer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_printer</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
+        <span class="n">printer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_new_printer</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file_or_filename</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
             <span class="n">fp</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_or_filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
@@ -1143,13 +1179,15 @@
 
 <span class="sd">        *New in version 2.10*</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_as_string</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;json&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_as_string</span><span class="p">(</span><span class="n">format_spec</span><span class="o">=</span><span class="s1">&#39;json&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">export_as_sol_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_export_as_string</span><span class="p">(</span><span class="n">format_spec</span><span class="o">=</span><span class="s1">&#39;sol&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
 <div class="viewcode-block" id="SolveSolution.check_as_mip_start"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.check_as_mip_start">[docs]</a>    <span class="k">def</span> <span class="nf">check_as_mip_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strong_check</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Checks that this solution is a valid MIP start.</span>
 
 <span class="sd">        To be valid, it must have:</span>
-
 <span class="sd">            * at least one discrete variable (integer or binary), and</span>
 <span class="sd">            * the values for decision variables should be consistent with the type.</span>
 
@@ -1178,17 +1216,32 @@
                 <span class="n">var_value_dict</span><span class="p">[</span><span class="n">dvar</span><span class="p">]</span> <span class="o">=</span> <span class="n">dval</span>
         <span class="k">return</span> <span class="n">var_value_dict</span>
 
-    <span class="k">def</span> <span class="nf">as_name_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="c1"># INTERNAL: return a dictionary of variable_name: variable_value</span>
-        <span class="n">var_value_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">def</span> <span class="nf">as_name_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+        <span class="c1"># return a dictionary of variable_name: variable_value</span>
+        <span class="k">def</span> <span class="nf">var_name_or_lp_name</span><span class="p">(</span><span class="n">dvar_</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">dvar_</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="n">dvar_</span><span class="o">.</span><span class="n">lp_name</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_as_dict</span><span class="p">(</span><span class="n">var_name_or_lp_name</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">as_index_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+        <span class="c1"># return a dictionary of var index: variable_value</span>
+        <span class="c1"># invalid indices are ignored</span>
+        <span class="k">def</span> <span class="nf">var_valid_index</span><span class="p">(</span><span class="n">dvar_</span><span class="p">):</span>
+            <span class="n">var_idx</span> <span class="o">=</span> <span class="n">dvar_</span><span class="o">.</span><span class="n">index</span>
+            <span class="k">return</span> <span class="n">var_idx</span> <span class="k">if</span> <span class="n">var_idx</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_as_dict</span><span class="p">(</span><span class="n">var_valid_index</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="p">,</span> <span class="n">error</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var_to_key_fn</span><span class="p">,</span> <span class="n">keep_zeros</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">key_value_dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">dvar</span><span class="p">,</span> <span class="n">dval</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_var_values</span><span class="p">():</span>
-            <span class="n">dvar_name</span> <span class="o">=</span> <span class="n">dvar</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">keep_zeros</span> <span class="ow">or</span> <span class="n">dval</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">dvar_name</span><span class="p">:</span>
-                    <span class="n">var_value_dict</span><span class="p">[</span><span class="n">dvar_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dval</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">var_value_dict</span><span class="p">[</span><span class="n">dvar</span><span class="o">.</span><span class="n">lp_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dval</span>
-        <span class="k">return</span> <span class="n">var_value_dict</span>
+                <span class="n">dvar_key</span> <span class="o">=</span> <span class="n">var_to_key_fn</span><span class="p">(</span><span class="n">dvar</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">dvar_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">key_value_dict</span><span class="p">[</span><span class="n">dvar_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dval</span>
+                <span class="k">elif</span> <span class="n">error</span> <span class="o">==</span> <span class="s1">&#39;raise&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Invalid variable key in solution.as_dict, variable: </span><span class="si">{0}</span><span class="s2">, transformer: </span><span class="si">{1}</span><span class="s2">&quot;</span>
+                                     <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dvar</span><span class="p">,</span> <span class="n">var_to_key_fn</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">key_value_dict</span>
 
 <div class="viewcode-block" id="SolveSolution.kpi_value_by_name"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.kpi_value_by_name">[docs]</a>    <span class="k">def</span> <span class="nf">kpi_value_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">match_case</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39; Returns the solution value of a KPI from its name.</span>
@@ -1209,8 +1262,20 @@
 <span class="sd">            :func: `docplex.mp.model.kpi_by_name`</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="n">kpi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">kpi_by_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">try_match</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">match_case</span><span class="o">=</span><span class="n">match_case</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">kpi</span><span class="o">.</span><span class="n">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="n">kpi</span><span class="o">.</span><span class="n">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="SolveSolution.from_file"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolveSolution.from_file">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Builds solution(s) from a SOL file.</span>
+<span class="sd">            Assumes `filename` is in CPLEX SOL format,</span>
+<span class="sd">            reference: https://www.ibm.com/support/knowledgecenter/SSSA5P_12.10.0/ilog.odms.cplex.help/CPLEX/FileFormats/topics/SOL.html</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            a list of solution objects, read from the file, or None, if an error occured.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">docplex.mp.sol_xml_reader</span> <span class="k">import</span> <span class="n">read_sol_file</span>
+        <span class="n">sols</span> <span class="o">=</span> <span class="n">read_sol_file</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sols</span></div></div>
 
 <div class="viewcode-block" id="SolutionPool"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolutionPool">[docs]</a><span class="k">class</span> <span class="nc">SolutionPool</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;SolutionPool()</span>
@@ -1324,7 +1389,36 @@
         <span class="n">obj_mean</span> <span class="o">=</span> <span class="n">obj_sum1</span> <span class="o">/</span> <span class="n">nb_solutions</span>
         <span class="n">variance</span> <span class="o">=</span> <span class="p">(</span><span class="n">obj_sum2</span> <span class="o">/</span> <span class="n">nb_solutions</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">obj_mean</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
         <span class="n">obj_sd</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">nb_solutions</span><span class="p">,</span> <span class="n">obj_mean</span><span class="p">,</span> <span class="n">obj_sd</span><span class="p">,</span> <span class="n">obj_min</span><span class="p">,</span> <span class="n">obj_med</span><span class="p">,</span> <span class="n">obj_max</span></div>
+        <span class="k">return</span> <span class="n">nb_solutions</span><span class="p">,</span> <span class="n">obj_mean</span><span class="p">,</span> <span class="n">obj_sd</span><span class="p">,</span> <span class="n">obj_min</span><span class="p">,</span> <span class="n">obj_med</span><span class="p">,</span> <span class="n">obj_max</span>
+
+<div class="viewcode-block" id="SolutionPool.export_as_sol"><a class="viewcode-back" href="../../../docplex.mp.solution.html#docplex.mp.solution.SolutionPool.export_as_sol">[docs]</a>    <span class="k">def</span> <span class="nf">export_as_sol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">basename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Exports the solution pool as a SOL file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            basename: Controls the basename with which the solution is printed.</span>
+<span class="sd">                Accepts None, a plain string, or a string format.</span>
+<span class="sd">                If None, the model name is used.</span>
+<span class="sd">                If passed a plain string, the string is used in place of the model&#39;s name.</span>
+<span class="sd">                If passed a string format (either with %s or {0}), this format is used to format the</span>
+<span class="sd">                model name to produce the basename of the written file.</span>
+<span class="sd">            path: A path to write the file, expects a string path or None.</span>
+<span class="sd">                Can be a directory, in which case the basename</span>
+<span class="sd">                that was computed with the basename argument is appended to the directory to produce</span>
+<span class="sd">                the file.</span>
+<span class="sd">                If given a full path, the path is directly used to write the file, and</span>
+<span class="sd">                the basename argument is not used.</span>
+<span class="sd">                If passed None, the output directory will be ``tempfile.gettempdir()``.</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            The path to which the solutions from the pool are written, or None if an error occured.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">printer</span> <span class="o">=</span> <span class="n">SolutionSolPrinter</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">SolveSolution</span><span class="o">.</span><span class="n">_static_export</span><span class="p">(</span><span class="n">exported</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span><span class="p">,</span>
+                                            <span class="n">basename</span><span class="o">=</span><span class="s2">&quot;pool&quot;</span><span class="p">,</span>
+                                            <span class="n">printer</span><span class="o">=</span><span class="n">printer</span><span class="p">,</span>
+                                            <span class="n">basename_fmt</span><span class="o">=</span><span class="n">basename</span><span class="p">,</span>
+                                            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+                                            <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
 </pre></div>
 
           </div>
@@ -1341,12 +1435,12 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.19 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.20 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2016-2019, IBM&reg;.
+        &#169; Copyright 2016-2021, IBM&reg;.
     </div>
   </body>
 </html>

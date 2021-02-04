@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.cp.function &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.19 documentation</title>
+    <title>docplex.cp.function &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.20 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -32,7 +32,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.19 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.20 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -85,6 +85,7 @@
 <span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="k">import</span> <span class="n">CpoExpr</span><span class="p">,</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
 <span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="k">import</span> <span class="o">*</span>
 <span class="kn">import</span> <span class="nn">bisect</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 
 
 <div class="viewcode-block" id="CpoFunction"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction">[docs]</a><span class="k">class</span> <span class="nc">CpoFunction</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
@@ -146,37 +147,46 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_s</span> <span class="o">=</span> <span class="n">s</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">)</span> <span class="o">==</span> <span class="n">l</span><span class="p">,</span> <span class="s2">&quot;Lists x and s must have the same length&quot;</span>
 
+
     <span class="k">def</span> <span class="nf">_get_expr_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Get the string representing this expression, name excluded. &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;Function(...)&quot;</span>
+
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">v0</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span>
 
+
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">s0</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span>
+
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span>
 
+
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">v</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span>
+
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">s</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span>
 
+
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">is_step_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">Type_StepFunction</span>
 
+
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">is_segmented_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">Type_SegmentedFunction</span>
+
 
 <div class="viewcode-block" id="CpoFunction.get_value"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Gets the value of the function.</span>
@@ -204,21 +214,22 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">t</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span></div>
 
+
 <div class="viewcode-block" id="CpoFunction.copy"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Creates and returns a copy of the function. &quot;&quot;&quot;</span>
-        <span class="n">xcopy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[:]</span>
-        <span class="n">vcopy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[:]</span>
-        <span class="n">scopy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[:]</span>
-        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">tp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">tp</span> <span class="o">=</span> <span class="nb">type</span>
-        <span class="k">return</span> <span class="n">CpoFunction</span><span class="p">(</span><span class="n">tp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span><span class="p">,</span> <span class="n">xcopy</span><span class="p">,</span> <span class="n">vcopy</span><span class="p">,</span> <span class="n">scopy</span><span class="p">)</span></div>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[:]</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">_v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[:]</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">_s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[:]</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">tp</span> <span class="o">=</span> <span class="nb">type</span>
+        <span class="k">return</span> <span class="n">res</span></div>
+
 
 <div class="viewcode-block" id="CpoFunction.set_slope"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.set_slope">[docs]</a>    <span class="k">def</span> <span class="nf">set_slope</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Sets the value of the invoking function over an interval.</span>
 
-<span class="sd">        Sets the value of the invoking function on interval `[x1,x2)` to be equal</span>
+<span class="sd">        Sets the value of the invoking function on interval `[x1,x2)`</span>
 <span class="sd">        to equal to `f(x) = v1 + s * (x-x1)`.</span>
 
 <span class="sd">        Args:</span>
@@ -318,6 +329,7 @@
                     <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">i2</span><span class="p">]</span>
                     <span class="k">return</span></div>
 
+
 <div class="viewcode-block" id="CpoFunction.add_slope"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.add_slope">[docs]</a>    <span class="k">def</span> <span class="nf">add_slope</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Adds a piecewise linear step on an interval.</span>
 
@@ -402,6 +414,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">scurr</span><span class="p">)</span>
                 <span class="k">return</span></div>
 
+
     <span class="k">def</span> <span class="nf">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="n">ov0</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_v0</span>
         <span class="n">os0</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_s0</span>
@@ -411,6 +424,12 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">ov0</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ov0</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">:</span>
+            <span class="c1"># &#39;self&#39; is a constant function of value _v0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_s</span><span class="p">[:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">_v</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">ov0</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">ox0</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">ox0</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
@@ -434,11 +453,13 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">INTERVAL_MAX</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
         <span class="k">return</span> <span class="bp">self</span>
 
+
     <span class="k">def</span> <span class="nf">_add_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">k</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">k</span>
         <span class="k">return</span> <span class="bp">self</span>
+
 
     <span class="k">def</span> <span class="nf">_mul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">*=</span> <span class="n">k</span>
@@ -448,12 +469,14 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="n">k</span>
         <span class="k">return</span> <span class="bp">self</span>
 
+
     <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
             <span class="k">assert</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_segmented_function</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">is_segmented_function</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
 
     <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
@@ -462,6 +485,7 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="o">-</span><span class="n">other</span><span class="p">)</span>
+
 
     <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
@@ -472,8 +496,10 @@
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
+
     <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__add__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
 
     <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
@@ -484,17 +510,22 @@
         <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="o">-</span><span class="n">other</span><span class="p">)</span>
 
+
     <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
 
     <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
+
     <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
+
     <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__mul__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="CpoFunction.set_value"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.set_value">[docs]</a>    <span class="k">def</span> <span class="nf">set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Sets the value of the function over an interval.</span>
@@ -503,11 +534,12 @@
 <span class="sd">        on the interval `[x1,x2)`.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            x1 (int): Start of the interval.</span>
-<span class="sd">            x2 (int): End of the interval.</span>
+<span class="sd">            x1 (int): Start of the interval (included).</span>
+<span class="sd">            x2 (int): End of the interval (excluded)</span>
 <span class="sd">            v (int or float): Function value.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">set_slope</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="CpoFunction.add_value"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.add_value">[docs]</a>    <span class="k">def</span> <span class="nf">add_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Adds a constant to the value of the function over an interval.</span>
@@ -521,6 +553,7 @@
 <span class="sd">            v (int or float): Added value.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
 
     <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span></div>
@@ -650,7 +683,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.19 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.20 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
