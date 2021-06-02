@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.mp.progress &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.20 documentation</title>
+    <title>docplex.mp.progress &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.20 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -201,22 +201,50 @@
 <span class="n">default_reldiff</span> <span class="o">=</span> <span class="mf">1e-2</span>
 
 
-<div class="viewcode-block" id="ProgressListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener">[docs]</a><span class="k">class</span> <span class="nc">ProgressListener</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;  The base class for progress listeners.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="k">class</span> <span class="nc">_AbstractProgressListener</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock_arg</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">All</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">clock</span> <span class="o">=</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">clock_arg</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_clock</span> <span class="o">=</span> <span class="n">clock</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_absdiff</span> <span class="o">=</span> <span class="n">absdiff</span> <span class="k">if</span> <span class="n">absdiff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_absdiff</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_reldiff</span> <span class="o">=</span> <span class="n">reldiff</span> <span class="k">if</span> <span class="n">reldiff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_reldiff</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span> <span class="o">=</span> <span class="n">make_clock_filter</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">ccb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span>
         <span class="k">return</span> <span class="n">ccb</span><span class="o">.</span><span class="n">_model</span> <span class="k">if</span> <span class="n">ccb</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_set_current_progress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="n">pdata</span>
+
+    <span class="k">def</span> <span class="nf">_disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_connect_cb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="n">cb</span>
+
+    <span class="k">def</span> <span class="nf">abort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ccb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span>
+        <span class="k">if</span> <span class="n">ccb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ccb</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;!!! callback is not connected - abort() ignored&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">notify_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="ProgressListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener">[docs]</a><span class="k">class</span> <span class="nc">ProgressListener</span><span class="p">(</span><span class="n">_AbstractProgressListener</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;  The base class for progress listeners.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock_arg</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">All</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">clock</span> <span class="o">=</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">clock_arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clock</span> <span class="o">=</span> <span class="n">clock</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_absdiff</span> <span class="o">=</span> <span class="n">absdiff</span> <span class="k">if</span> <span class="n">absdiff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_absdiff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reldiff</span> <span class="o">=</span> <span class="n">reldiff</span> <span class="k">if</span> <span class="n">reldiff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_reldiff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span> <span class="o">=</span> <span class="n">make_clock_filter</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">clock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -246,20 +274,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span>
 
-    <span class="k">def</span> <span class="nf">_set_current_progress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="n">pdata</span>
-
     <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">pdata</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">def</span> <span class="nf">_connect_cb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
-        <span class="c1"># INTERNAL</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="n">cb</span>
 
     <span class="k">def</span> <span class="nf">requires_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">False</span>
@@ -284,7 +300,7 @@
 <span class="sd">        internal data which can be modified during solve.</span>
 <span class="sd">        Always call the superclass `notify_start` before adding specific code in a sub-class.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">notify_start</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="nf">notify_jobid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobid</span><span class="p">):</span>
@@ -319,11 +335,7 @@
 <span class="sd">            no effect.</span>
 
 <span class="sd">        &#39;&#39;&#39;</span>
-        <span class="n">ccb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span>
-        <span class="k">if</span> <span class="n">ccb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">ccb</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;!!! callback is not connected - abort() ignored&#39;</span><span class="p">)</span></div></div>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span></div></div>
 
 
 <span class="c1"># noinspection PyUnusedLocal,PyMethodMayBeStatic</span>
@@ -717,7 +729,6 @@
                 <span class="n">k_format</span> <span class="o">=</span> <span class="n">kpi_str_format</span>
             <span class="n">kps</span> <span class="o">=</span> <span class="n">k_format</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">max_kpi_name_len</span><span class="p">,</span> <span class="n">kn</span><span class="p">,</span> <span class="n">kv</span><span class="p">,</span> <span class="n">itcnt</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">kps</span><span class="p">)</span></div></div>
-
 </pre></div>
 
           </div>
@@ -734,7 +745,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.20 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
