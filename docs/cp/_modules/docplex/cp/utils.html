@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.cp.utils &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.20 documentation</title>
+    <title>docplex.cp.utils &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.21 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -32,7 +32,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.20 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.21 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -86,12 +86,13 @@
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">gzip</span>
 <span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
 <span class="kn">import</span> <span class="nn">importlib</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">collections.abc</span> <span class="k">import</span> <span class="n">Iterable</span>  <span class="c1"># Python &gt;= 3.7</span>
-<span class="k">except</span><span class="p">:</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">Iterable</span>      <span class="c1"># Python &lt; 3.7</span>
 
 <span class="k">try</span><span class="p">:</span>
@@ -100,12 +101,16 @@
     <span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">StringIO</span>        <span class="c1"># Python 3</span>
 
 
-<span class="c1">###############################################################################</span>
-<span class="c1">## Constants</span>
-<span class="c1">###############################################################################</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1">#  Constants</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># Python main version number</span>
+<span class="n">PYTHON_MAIN_VERSION</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 <span class="c1"># Python 2 indicator</span>
-<span class="n">IS_PYTHON_2</span> <span class="o">=</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">IS_PYTHON_2</span> <span class="o">=</span> <span class="p">(</span><span class="n">PYTHON_MAIN_VERSION</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span>
+
 
 <span class="c1"># Check if numpy is available</span>
 <span class="k">try</span><span class="p">:</span>
@@ -132,9 +137,9 @@
 <span class="n">IS_WINDOWS</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Windows&#39;</span>
 
 
-<span class="c1">###############################################################################</span>
-<span class="c1">## Public classes</span>
-<span class="c1">###############################################################################</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1">#  Public classes</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="CpoException"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.CpoException">[docs]</a><span class="k">class</span> <span class="nc">CpoException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Exception thrown in case of CPO errors.</span>
@@ -424,7 +429,8 @@
             <span class="n">prfx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_prefix</span>
             <span class="k">if</span> <span class="n">prfx</span><span class="p">:</span>
                 <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">prfx</span><span class="p">))</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">]))</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">out</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
 
 
@@ -496,7 +502,7 @@
         <span class="c1"># Check file</span>
         <span class="k">if</span> <span class="n">is_string</span><span class="p">(</span><span class="n">out</span><span class="p">):</span>
             <span class="k">with</span> <span class="n">open_utf8</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">export_flat</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
                 <span class="k">return</span>
         <span class="c1"># Check default output</span>
         <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -508,14 +514,14 @@
 
         <span class="c1"># Print values</span>
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adict</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; = &quot;</span><span class="p">)</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">make_unicode</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot; = &quot;</span><span class="p">)</span>
             <span class="n">v</span> <span class="o">=</span> <span class="n">adict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">is_string</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
                 <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">to_printable_string</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
-            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+                <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">make_unicode</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Context.export_flat_as_string"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.Context.export_flat_as_string">[docs]</a>    <span class="k">def</span> <span class="nf">export_flat_as_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -581,6 +587,28 @@
                 <span class="n">v</span><span class="o">.</span><span class="n">_build_path_dict</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="n">k</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">result</span><span class="p">[</span><span class="n">path</span> <span class="o">+</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span></div>
+
+
+<div class="viewcode-block" id="PersistentContext"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.PersistentContext">[docs]</a><span class="k">class</span> <span class="nc">PersistentContext</span><span class="p">(</span><span class="n">Context</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Persistent context stored in a file. &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cfile</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a new persistent Context</span>
+
+<span class="sd">        If the given file exists, it is read in this context.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cfile: File where context is stored with its flat representation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">PersistentContext</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)[</span><span class="s1">&#39;storage_file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfile</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">cfile</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">cfile</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PersistentContext.save"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.PersistentContext.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Save this context in the file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">export_flat</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)[</span><span class="s1">&#39;storage_file&#39;</span><span class="p">])</span></div></div>
 
 
 <div class="viewcode-block" id="IdAllocator"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.IdAllocator">[docs]</a><span class="k">class</span> <span class="nc">IdAllocator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -706,7 +734,7 @@
 
 
 <div class="viewcode-block" id="KeyIdDict"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.KeyIdDict">[docs]</a><span class="k">class</span> <span class="nc">KeyIdDict</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Dictionary using id of the key objects as key.</span>
+    <span class="sd">&quot;&quot;&quot; Dictionary using internally id of the key objects as dictionary key.</span>
 
 <span class="sd">    This object allows to use any Python object as key (with no __hash__() function),</span>
 <span class="sd">    and to map a value on the physical instance of the key.</span>
@@ -715,7 +743,6 @@
                  <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">KeyIdDict</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">kdict</span> <span class="o">=</span> <span class="p">{}</span>
 
 <div class="viewcode-block" id="KeyIdDict.set"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.KeyIdDict.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
@@ -772,7 +799,6 @@
                  <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maxsize</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">ObjectCache</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">obj_dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="o">=</span> <span class="n">maxsize</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">key_list</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
@@ -1181,9 +1207,9 @@
 
 
 
-<span class="c1">###############################################################################</span>
-<span class="c1">## Public functions</span>
-<span class="c1">###############################################################################</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1">#  Public functions</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="check_default"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.check_default">[docs]</a><span class="k">def</span> <span class="nf">check_default</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">default</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Check that an argument value is DEFAULT and returns the default value if so.</span>
@@ -1373,6 +1399,34 @@
         <span class="k">if</span> <span class="n">ns</span> <span class="ow">in</span> <span class="n">_DEFAULT_STRING_VALUES</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">_DEFAULT_STRING_VALUES</span><span class="p">[</span><span class="n">ns</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">s</span></div>
+
+<div class="viewcode-block" id="to_compact_SI"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.to_compact_SI">[docs]</a><span class="k">def</span> <span class="nf">to_compact_SI</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert a long value in a string using suffix k, M or G to display only 3 digits.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        val:  Integer value to convert</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        String representing this value with 3 significant digits</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">10000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">val</span> <span class="o">%</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">10</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;k&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">100000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">val</span> <span class="o">%</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">100</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;k&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;k&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">10000000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">val</span> <span class="o">%</span> <span class="mi">1000000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">10000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;M&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">100000000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">val</span> <span class="o">%</span> <span class="mi">1000000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">100000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;M&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">1000000000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;M&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">10000000000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">val</span> <span class="o">%</span> <span class="mi">1000000000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">10000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;G&quot;</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">100000000000</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">((</span><span class="n">val</span> <span class="o">%</span> <span class="mi">1000000000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">100000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;G&quot;</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span> <span class="o">//</span> <span class="mi">1000000000</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;G&quot;</span></div>
 
 
 <span class="k">def</span> <span class="nf">_get_vars</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
@@ -1901,6 +1955,17 @@
     <span class="k">return</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">_SYMBOL_CHARS</span></div>
 
 
+<div class="viewcode-block" id="is_symbol"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.is_symbol">[docs]</a><span class="k">def</span> <span class="nf">is_symbol</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Check whether a string can be used in a symbol.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        s: String to check</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if character string can be used as s symbol</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">s</span> <span class="ow">and</span> <span class="n">is_string</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">_DIGIT_CHARS</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">((</span><span class="n">c</span> <span class="ow">in</span> <span class="n">_SYMBOL_CHARS</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="to_printable_id"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.to_printable_id">[docs]</a><span class="k">def</span> <span class="nf">to_printable_id</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Build a CPO printable identifier from its raw string (add escape sequences and quotes if necessary).</span>
 
@@ -1913,7 +1978,7 @@
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">u</span><span class="s1">&#39;&quot;&quot;&#39;</span>
     <span class="c1"># Check if string can be used as it is</span>
-    <span class="k">if</span> <span class="p">(</span><span class="nb">all</span><span class="p">((</span><span class="n">c</span> <span class="ow">in</span> <span class="n">_SYMBOL_CHARS</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">_DIGIT_CHARS</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">_DIGIT_CHARS</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">((</span><span class="n">c</span> <span class="ow">in</span> <span class="n">_SYMBOL_CHARS</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">make_unicode</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
     <span class="c1"># Build result string</span>
     <span class="k">return</span> <span class="sa">u</span><span class="s1">&#39;&quot;&#39;</span> <span class="o">+</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_TO_SPECIAL_CHARS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">s</span><span class="p">)</span> <span class="o">+</span> <span class="sa">u</span><span class="s1">&#39;&quot;&#39;</span></div>
@@ -1992,7 +2057,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            String in unicode</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">s</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="ow">is</span> <span class="n">unicode</span> <span class="k">else</span> <span class="n">unicode</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">unicode</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
 <div class="viewcode-block" id="make_unicode"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.make_unicode">[docs]</a>    <span class="k">def</span> <span class="nf">make_unicode</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Convert a string in unicode.</span>
@@ -2181,6 +2246,33 @@
         <span class="k">return</span> <span class="kc">None</span></div>
 
 
+<div class="viewcode-block" id="is_in_notebook"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.is_in_notebook">[docs]</a><span class="k">def</span> <span class="nf">is_in_notebook</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Check whether program is currently running inside a IPython or Jupyter notebook.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if the program is running in a notebook, false otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rstk</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">extract_stack</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">rstk</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;&lt;ipython&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="write_checking_unicode_errors"><a class="viewcode-back" href="../../../docplex.cp.utils.py.html#docplex.cp.utils.write_checking_unicode_errors">[docs]</a><span class="k">def</span> <span class="nf">write_checking_unicode_errors</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Write data on a stream, and by-pass UnicodeEncodeError if any.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        out:  Output stream</span>
+<span class="sd">        data: Data to write</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">UnicodeEncodeError</span><span class="p">:</span>
+        <span class="c1"># Determine proper encoding</span>
+        <span class="n">encoding</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">encoding</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">encoding</span><span class="p">:</span>
+            <span class="n">encoding</span> <span class="o">=</span> <span class="s1">&#39;ascii&#39;</span>
+        <span class="c1"># Rewrite data encoding it explicitly</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;backslashreplace&#39;</span><span class="p">))</span></div>
+
 <span class="c1">#-----------------------------------------------------------------------------</span>
 <span class="c1"># Zip iterator functions to scan lists simultaneously</span>
 <span class="c1">#-----------------------------------------------------------------------------</span>
@@ -2261,7 +2353,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.20 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.21 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
