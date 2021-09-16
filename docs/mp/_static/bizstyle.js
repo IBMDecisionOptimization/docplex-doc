@@ -36,6 +36,6 @@ $(window).resize(function(){
         $("li.nav-item-0 a").text("Top");
     }
     else {
-        $("li.nav-item-0 a").text("DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation");
+        $("li.nav-item-0 a").text("DOcplex.MP: Mathematical Programming Modeling for Python V2.22 documentation");
     }
 });
