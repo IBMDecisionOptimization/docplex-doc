@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.mp.model_reader &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation</title>
+    <title>docplex.mp.model_reader &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.22 documentation</title>
     <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     
@@ -33,7 +33,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.22 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -67,20 +67,21 @@
 <span class="c1"># --------------------------------------------------------------------------</span>
 
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
 
 <span class="c1"># docplex</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="k">import</span> <span class="n">Model</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">DOcplexException</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="k">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="kn">import</span> <span class="n">DOcplexException</span><span class="p">,</span> <span class="n">MockIterable</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.params.cplex_params</span> <span class="k">import</span> <span class="n">get_params_from_cplex_version</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="k">import</span> <span class="n">ComparisonType</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.constr</span> <span class="k">import</span> <span class="n">LinearConstraint</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.params.cplex_params</span> <span class="kn">import</span> <span class="n">get_params_from_cplex_version</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="kn">import</span> <span class="n">ComparisonType</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constr</span> <span class="kn">import</span> <span class="n">LinearConstraint</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.cplex_adapter</span> <span class="k">import</span> <span class="n">CplexAdapter</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.cplex_adapter</span> <span class="kn">import</span> <span class="n">CplexAdapter</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.cplex_engine</span> <span class="kn">import</span> <span class="n">CplexEngine</span>
 
-<span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="k">import</span> <span class="n">izip</span>
-<span class="kn">from</span> <span class="nn">docplex.mp.quad</span> <span class="k">import</span> <span class="n">VarPair</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.quad</span> <span class="kn">import</span> <span class="n">VarPair</span>
 
 
 <div class="viewcode-block" id="ModelReaderError"><a class="viewcode-back" href="../../../docplex.mp.model_reader.html#docplex.mp.model_reader.ModelReaderError">[docs]</a><span class="k">class</span> <span class="nc">ModelReaderError</span><span class="p">(</span><span class="n">DOcplexException</span><span class="p">):</span>
@@ -88,12 +89,12 @@
 
 
 <span class="k">class</span> <span class="nc">_CplexReaderFileContext</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">read_method</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">read_method</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cplex</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span> <span class="o">=</span> <span class="n">filename</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_read_method</span> <span class="o">=</span> <span class="n">read_method</span> <span class="ow">or</span> <span class="p">[</span><span class="s2">&quot;read&quot;</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cpx_adapter</span> <span class="o">=</span> <span class="n">CplexAdapter</span><span class="p">()</span>
         <span class="n">cpx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpx_adapter</span><span class="o">.</span><span class="n">cpx</span>
         <span class="c1"># no output from CPLEX</span>
@@ -116,75 +117,59 @@
             <span class="k">raise</span> <span class="n">ModelReaderError</span><span class="p">(</span><span class="s2">&quot;*CPLEX error </span><span class="si">{0!s}</span><span class="s2"> reading file </span><span class="si">{1}</span><span class="s2"> - exiting&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cpx_e</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">))</span>
 
     <span class="c1"># noinspection PyUnusedLocal</span>
-    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
         <span class="n">cpx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex</span>
         <span class="k">if</span> <span class="n">cpx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">del</span> <span class="n">cpx</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cplex</span> <span class="o">=</span> <span class="kc">None</span>
 
 
-<div class="viewcode-block" id="compute_full_dotf"><a class="viewcode-back" href="../../../docplex.mp.model_reader.html#docplex.mp.model_reader.compute_full_dotf">[docs]</a><span class="k">def</span> <span class="nf">compute_full_dotf</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-
-<span class="sd">    :param constant:</span>
-<span class="sd">    :param mdl:</span>
-<span class="sd">    :param coefs:</span>
-<span class="sd">    :return:</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">coef_fn</span><span class="p">(</span><span class="n">dvx</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">coefs</span><span class="p">[</span><span class="n">dvx</span><span class="p">]</span>
-
-    <span class="n">lfactory</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_lfactory</span>
-    <span class="n">terms_dict</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_term_dict</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">dv</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
-        <span class="n">coef</span> <span class="o">=</span> <span class="n">coef_fn</span><span class="p">(</span><span class="n">dv</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">coef</span><span class="p">:</span>
-            <span class="n">terms_dict</span><span class="p">[</span><span class="n">dv</span><span class="p">]</span> <span class="o">=</span> <span class="n">coef</span>
-    <span class="n">linear_expr</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">terms_dict</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">constant</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">linear_expr</span></div>
+<span class="c1"># def compute_full_dotf(mdl, coefs, constant=0):</span>
+<span class="c1">#     def coef_fn(dvx):</span>
+<span class="c1">#         return coefs[dvx]</span>
+<span class="c1">#</span>
+<span class="c1">#     lfactory = mdl._lfactory</span>
+<span class="c1">#     terms_dict = lfactory._new_term_dict()</span>
+<span class="c1">#     for dv in mdl.iter_variables():</span>
+<span class="c1">#         coef = coef_fn(dv.index)</span>
+<span class="c1">#         if coef:</span>
+<span class="c1">#             terms_dict[dv] = coef</span>
+<span class="c1">#     linear_expr = lfactory.linear_expr(terms_dict, constant=constant, safe=True)</span>
+<span class="c1">#     return linear_expr</span>
 
 
-<div class="viewcode-block" id="compute_full_dot"><a class="viewcode-back" href="../../../docplex.mp.model_reader.html#docplex.mp.model_reader.compute_full_dot">[docs]</a><span class="k">def</span> <span class="nf">compute_full_dot</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-
-<span class="sd">    :param constant:</span>
-<span class="sd">    :param mdl:</span>
-<span class="sd">    :param coefs:</span>
-<span class="sd">    :return:</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="nf">compute_full_dot</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="c1"># compute a scalar product, with possible zeros as coefs</span>
     <span class="n">lfactory</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_lfactory</span>
     <span class="n">terms_dict</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_term_dict</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">dv</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">(),</span> <span class="n">coefs</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">k</span><span class="p">:</span>
             <span class="n">terms_dict</span><span class="p">[</span><span class="n">dv</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
     <span class="n">linear_expr</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">terms_dict</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">constant</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">linear_expr</span></div>
+    <span class="k">return</span> <span class="n">linear_expr</span>
 
 
 <span class="c1"># noinspection PyArgumentList</span>
 <div class="viewcode-block" id="ModelReader"><a class="viewcode-back" href="../../../docplex.mp.model_reader.html#docplex.mp.model_reader.ModelReader">[docs]</a><span class="k">class</span> <span class="nc">ModelReader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; This class is used to read models from CPLEX files (e.g.  SAV, LP, MPS)</span>
-
-<span class="sd">    Note:</span>
-<span class="sd">        This class requires CPLEX to be installed and present in ``PYTHONPATH``. The following file formats are</span>
-<span class="sd">        accepted: LP, SAV, MPS.</span>
+<span class="sd">    This class requires CPLEX runtime, otherwise an exception is raised.</span>
 
 <span class="sd">    Example:</span>
-<span class="sd">        Use the class method ``read`` to read a model file.</span>
+<span class="sd">        Use class method ``read`` to read a model file.</span>
 
-<span class="sd">        Reads the contents of file ``mymodel.sav`` into an `AdvModel` instance, built with the context `my_ctx`,</span>
-<span class="sd">        with the parameter ``ignore_names`` set to True::</span>
+<span class="sd">        &gt;&gt;&gt; m = ModelReader.read(&#39;mymodel.lp&#39;, ignore_names=True)</span>
 
-<span class="sd">            m = ModelReader.read(path=&#39;mymodel.lp&#39;, model_class=AdvModel, context=my_ctx, ignore_names=True)</span>
+<span class="sd">        reads a model while ignoring all names.</span>
+
+<span class="sd">        Global function ``read_model`` is a synonym for ``ModelReader.read``,</span>
+<span class="sd">        and is the preferred way to read model files.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_build_linear_expr_from_sparse_pair</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">var_map</span><span class="p">,</span> <span class="n">cpx_sparsepair</span><span class="p">):</span>
-        <span class="n">expr</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">ix</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">cpx_sparsepair</span><span class="o">.</span><span class="n">ind</span><span class="p">,</span> <span class="n">cpx_sparsepair</span><span class="o">.</span><span class="n">val</span><span class="p">):</span>
-            <span class="n">dv</span> <span class="o">=</span> <span class="n">var_map</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
-            <span class="n">expr</span><span class="o">.</span><span class="n">_add_term</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="n">terms</span> <span class="o">=</span> <span class="p">{</span><span class="n">var_map</span><span class="p">[</span><span class="n">ix</span><span class="p">]:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">ix</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cpx_sparsepair</span><span class="o">.</span><span class="n">ind</span><span class="p">,</span> <span class="n">cpx_sparsepair</span><span class="o">.</span><span class="n">val</span><span class="p">)}</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">expr</span>
 
     <span class="n">_sense2comp_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;L&#39;</span><span class="p">:</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">LE</span><span class="p">,</span> <span class="s1">&#39;E&#39;</span><span class="p">:</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">EQ</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">:</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">GE</span><span class="p">}</span>
@@ -250,7 +235,7 @@
                 <span class="k">raise</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">_read_cplex</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_read_cplex</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">datacheck</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">silent</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="n">cpx_adapter</span> <span class="o">=</span> <span class="n">CplexAdapter</span><span class="p">()</span>
         <span class="n">cpx</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">cpx</span>
         <span class="c1"># no warnings</span>
@@ -260,18 +245,53 @@
             <span class="n">cpx</span><span class="o">.</span><span class="n">set_warning_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
             <span class="n">cpx</span><span class="o">.</span><span class="n">set_error_stream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>  <span class="c1"># remove messages about names</span>
         <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">datacheck</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">datacheck</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">}</span>
+                <span class="n">cpx</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">datacheck</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">datacheck</span><span class="p">)</span>
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
             <span class="n">cpx</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">t1</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+            <span class="k">if</span> <span class="n">Model</span><span class="o">.</span><span class="n">is_docplex_debug</span><span class="p">()</span> <span class="ow">and</span> <span class="n">t1</span> <span class="o">&gt;=</span> <span class="mf">0.1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;-- cplex read time=</span><span class="si">{</span><span class="n">t1</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">cpx_adapter</span>
         <span class="k">except</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">CplexError</span> <span class="k">as</span> <span class="n">cpx_e</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">ModelReaderError</span><span class="p">(</span><span class="s2">&quot;*CPLEX error </span><span class="si">{0!s}</span><span class="s2"> reading file </span><span class="si">{1}</span><span class="s2"> - exiting&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cpx_e</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
 
     <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_make_expr_from_varmap_coefs_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lfactory</span><span class="p">,</span> <span class="n">varmap</span><span class="p">,</span> <span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">terms_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">):</span> <span class="n">k</span> <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms_dict</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_make_expr_from_var_coef_seq_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lfactory</span><span class="p">,</span> <span class="n">varmap</span><span class="p">,</span> <span class="n">var_coefs</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">terms_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">):</span> <span class="n">k</span> <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">var_coefs</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms_dict</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">constant</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_make_expr_from_varmap_coefs_nodict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lfactory</span><span class="p">,</span> <span class="n">varmap</span><span class="p">,</span> <span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">terms_dict</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_term_dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+            <span class="n">dv</span> <span class="o">=</span> <span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">terms_dict</span><span class="p">[</span><span class="n">dv</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms_dict</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_make_expr_from_var_coef_seq_nodict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lfactory</span><span class="p">,</span> <span class="n">varmap</span><span class="p">,</span> <span class="n">var_coefs</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">terms_dict</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_term_dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">var_coefs</span><span class="p">:</span>
+            <span class="n">dv</span> <span class="o">=</span> <span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">terms_dict</span><span class="p">[</span><span class="n">dv</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="n">arg</span><span class="o">=</span><span class="n">terms_dict</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">constant</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">_make_expr_from_varmap_coefs</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lfactory</span><span class="p">,</span> <span class="n">varmap</span><span class="p">,</span> <span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">Environment</span><span class="o">.</span><span class="n">env_is_python36</span><span class="p">:</span>
-            <span class="n">terms_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">):</span> <span class="n">k</span> <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)}</span>
+            <span class="n">terms_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">):</span> <span class="n">k</span> <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)}</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">terms_dict</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_term_dict</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">dvx</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">var_indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
                 <span class="n">dv</span> <span class="o">=</span> <span class="n">varmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">dvx</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">dv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">terms_dict</span><span class="p">[</span><span class="n">dv</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span>
@@ -293,12 +313,14 @@
 <span class="sd">            verbose: An optional flag to print informative messages, default is False.</span>
 <span class="sd">            model_class: An optional class type; must be a subclass of Model.</span>
 <span class="sd">                The returned model is built using this model_class and the keyword arguments kwargs, if any.</span>
-<span class="sd">                By default, the model is class is `Model`</span>
-<span class="sd">            kwargs: A dict of keyword-based arguments that are used when creating the model</span>
-<span class="sd">                instance.</span>
+<span class="sd">                By default, the model class is :class:`docplex.mp.model.Model`.</span>
+<span class="sd">            kwargs: A dict of keyword-based arguments that are used when creating the modelpassed to the</span>
+<span class="sd">                model constructor.</span>
 
 <span class="sd">        Example:</span>
-<span class="sd">            `m = read_model(&quot;c:/temp/foo.mps&quot;, model_name=&quot;docplex_foo&quot;, solver_agent=&quot;docloud&quot;, output_level=100)`</span>
+<span class="sd">            `m = read_model(&quot;c:/temp/foo.mps&quot;, model_name=&quot;docplex_foo&quot;, ignore_names=True)`</span>
+
+<span class="sd">            reads a ,odel from file &quot;c:/temp/foo.mps&quot;, sets its name to &quot;docplex_foo&quot;, and discard all names.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            An instance of Model, or None if an exception is raised.</span>
@@ -315,7 +337,7 @@
             <span class="n">name_to_use</span> <span class="o">=</span> <span class="n">model_name</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">basename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-            <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
                 <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;ModelReader.read_model(): path has no extension: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
             <span class="n">dotpos</span> <span class="o">=</span> <span class="n">basename</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">dotpos</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -329,9 +351,10 @@
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* file is empty: </span><span class="si">{0}</span><span class="s2"> - exiting&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
             <span class="k">return</span> <span class="n">model_class</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name_to_use</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
+        <span class="n">data_check</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;datacheck&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&gt; CPLEX starts reading file: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
-        <span class="n">cpx_adapter</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_read_cplex</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">cpx_adapter</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_read_cplex</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">datacheck</span><span class="o">=</span><span class="n">data_check</span><span class="p">)</span>
         <span class="n">cpx</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">cpx</span>
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&lt;- CPLEX finished reading file: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
@@ -341,6 +364,9 @@
 
         <span class="n">final_output_level</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;output_level&quot;</span><span class="p">,</span> <span class="s2">&quot;info&quot;</span><span class="p">)</span>
         <span class="n">debug_read</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;debug&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">final_agent</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;agent&#39;</span><span class="p">,</span> <span class="s1">&#39;cplex&#39;</span><span class="p">)</span>
+        <span class="n">use_new</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;use_new&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
 
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># force no tck</span>
@@ -350,11 +376,20 @@
                 <span class="n">final_checker</span> <span class="o">=</span> <span class="s1">&#39;default&#39;</span>
             <span class="c1"># build the model with no checker, then restore final_checker in the end.</span>
             <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;checker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;off&#39;</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;agent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;zero&#39;</span>
 
             <span class="n">ignore_names</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ignore_names&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
             <span class="c1"># -------------</span>
+            <span class="k">if</span> <span class="n">Environment</span><span class="o">.</span><span class="n">env_is_python36</span><span class="p">:</span>
+                <span class="n">make_terms_fn</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_expr_from_varmap_coefs_dict</span>
+                <span class="n">make_terms_seq_fn</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_expr_from_var_coef_seq_dict</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">make_terms_fn</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_expr_from_varmap_coefs_nodict</span>
+                <span class="n">make_terms_seq_fn</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_expr_from_var_coef_seq_nodict</span>
 
             <span class="n">mdl</span> <span class="o">=</span> <span class="n">model_class</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name_to_use</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">data_check</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">datacheck</span> <span class="o">=</span> <span class="n">data_check</span>
             <span class="n">mdl</span><span class="o">.</span><span class="n">_provenance</span> <span class="o">=</span> <span class="n">filename</span>
             <span class="n">lfactory</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_lfactory</span>
             <span class="n">qfactory</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_qfactory</span>
@@ -367,46 +402,62 @@
 
             <span class="k">def</span> <span class="nf">cpx_type_to_docplex_type</span><span class="p">(</span><span class="n">cpxt</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">vartype_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cpxt</span><span class="p">,</span> <span class="n">vartype_cont</span><span class="p">)</span>
+
             <span class="c1"># 1 upload variables</span>
             <span class="n">cpx_nb_vars</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_num</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-- uploading </span><span class="si">{0}</span><span class="s2"> variables...&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cpx_nb_vars</span><span class="p">))</span>
 
-            <span class="n">cpx_var_names</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">ignore_names</span> <span class="k">else</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_safe_call_get_names</span><span class="p">(</span><span class="n">cpx_adapter</span><span class="p">,</span>
-                                                                             <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_names</span><span class="p">)</span>
+            <span class="n">cpx_env_e</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">_e</span>
+            <span class="n">cpx_lp</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">_lp</span>
+            <span class="n">has_non_default_lb</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">has_non_default_lb</span>
+            <span class="n">has_non_default_ub</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">has_non_default_ub</span>
+            <span class="n">has_name</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">has_name</span>
+
+            <span class="n">cpx_var_names</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_names</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">has_name</span> <span class="ow">or</span> <span class="n">has_name</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cpx_nb_vars</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                    <span class="n">cpx_var_names</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_safe_call_get_names</span><span class="p">(</span><span class="n">cpx_adapter</span><span class="p">,</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_names</span><span class="p">)</span>
 
             <span class="c1"># check whether all varianbles have same type, it&#39;s worth it.</span>
             <span class="n">unique_type</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">cpx_vartypes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">docplex_vartypes</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">if</span> <span class="n">cpx</span><span class="o">.</span><span class="n">_is_MIP</span><span class="p">():</span>
                 <span class="n">cpx_types</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_types</span><span class="p">()</span>
                 <span class="n">first_cpxtype</span> <span class="o">=</span> <span class="n">cpx_types</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">cpxt</span> <span class="o">==</span> <span class="n">first_cpxtype</span> <span class="k">for</span> <span class="n">cpxt</span> <span class="ow">in</span> <span class="n">cpx_types</span><span class="p">):</span>
                     <span class="n">unique_type</span> <span class="o">=</span> <span class="n">cpx_type_to_docplex_type</span><span class="p">(</span><span class="n">first_cpxtype</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">cpx_vartypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">cpx_type_to_docplex_type</span><span class="p">(</span><span class="n">cpxt</span><span class="p">)</span> <span class="k">for</span> <span class="n">cpxt</span> <span class="ow">in</span> <span class="n">cpx_types</span><span class="p">]</span>
+                    <span class="c1"># docplex_vartypes = [cpx_type_to_docplex_type(cpxt) for cpxt in cpx_types]</span>
+                    <span class="k">def</span> <span class="nf">kth_vartype</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="n">cpx_type_to_docplex_type</span><span class="p">(</span><span class="n">cpx_types</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                    <span class="n">docplex_vartypes</span> <span class="o">=</span> <span class="n">MockIterable</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">cpx_nb_vars</span><span class="p">,</span> <span class="n">fn_k</span><span class="o">=</span><span class="n">kth_vartype</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">unique_type</span> <span class="o">=</span> <span class="n">vartype_cont</span>
 
-            <span class="n">cpx_var_lbs</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_lower_bounds</span><span class="p">()</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">cpx_var_lbs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">use_new</span> <span class="ow">and</span> <span class="n">has_non_default_lb</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_non_default_lb</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cpx_nb_vars</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="n">cpx_var_lbs</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">cpx_var_lbs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">cpx_var_lbs</span><span class="p">)</span>
+                <span class="c1"># either we have no fast predicate or we dont use it.</span>
+                <span class="n">cpx_var_lbs</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_lower_bounds</span><span class="p">()</span>
+                <span class="c1"># we have no predicate, so we might try to avoid building a large list??</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">has_non_default_lb</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">cpx_var_lbs</span><span class="p">):</span>  <span class="c1"># all equal 0</span>
+                    <span class="n">cpx_var_lbs</span> <span class="o">=</span> <span class="p">[]</span>
 
-            <span class="n">cpx_var_ubs</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_upper_bounds</span><span class="p">()</span>
-            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">cpxu</span> <span class="o">&gt;=</span> <span class="mf">1e+20</span> <span class="k">for</span> <span class="n">cpxu</span> <span class="ow">in</span> <span class="n">cpx_var_ubs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">use_new</span> <span class="ow">and</span> <span class="n">has_non_default_ub</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_non_default_ub</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cpx_nb_vars</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
                 <span class="n">cpx_var_ubs</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">cpx_var_ubs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">cpx_var_ubs</span><span class="p">)</span>
+                <span class="n">cpx_var_ubs</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">get_upper_bounds</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">has_non_default_ub</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">cpxu</span> <span class="o">&gt;=</span> <span class="mf">1e+20</span> <span class="k">for</span> <span class="n">cpxu</span> <span class="ow">in</span> <span class="n">cpx_var_ubs</span><span class="p">):</span>
+                    <span class="n">cpx_var_ubs</span> <span class="o">=</span> <span class="p">[]</span>
 
             <span class="c1"># if no names, None is fine.</span>
             <span class="n">model_varnames</span> <span class="o">=</span> <span class="n">cpx_var_names</span> <span class="ow">or</span> <span class="kc">None</span>
 
             <span class="n">model_lbs</span> <span class="o">=</span> <span class="n">cpx_var_lbs</span>
             <span class="n">model_ubs</span> <span class="o">=</span> <span class="n">cpx_var_ubs</span>
-            <span class="n">model_types</span> <span class="o">=</span> <span class="n">cpx_vartypes</span>
 
             <span class="c1"># vars</span>
             <span class="k">if</span> <span class="n">unique_type</span><span class="p">:</span>
@@ -420,9 +471,9 @@
                                                    <span class="n">_safe_names</span><span class="o">=</span><span class="kc">True</span>
                                                    <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">assert</span> <span class="n">model_types</span>
+                <span class="k">assert</span> <span class="n">docplex_vartypes</span>
                 <span class="n">model_vars</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">new_multitype_var_list</span><span class="p">(</span><span class="n">cpx_nb_vars</span><span class="p">,</span>
-                                                             <span class="n">model_types</span><span class="p">,</span>
+                                                             <span class="n">docplex_vartypes</span><span class="p">,</span>
                                                              <span class="n">model_lbs</span><span class="p">,</span>
                                                              <span class="n">model_ubs</span><span class="p">,</span>
                                                              <span class="n">model_varnames</span><span class="p">)</span>
@@ -433,9 +484,9 @@
             <span class="c1"># 2. upload linear constraints and ranges (mixed in cplex)</span>
             <span class="n">cpx_linearcts</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">linear_constraints</span>
             <span class="n">nb_linear_cts</span> <span class="o">=</span> <span class="n">cpx_linearcts</span><span class="o">.</span><span class="n">get_num</span><span class="p">()</span>
-            <span class="n">all_rows</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_get_rows</span><span class="p">(</span><span class="n">cpx</span><span class="p">)</span>
+
             <span class="n">all_rhs</span> <span class="o">=</span> <span class="n">cpx_linearcts</span><span class="o">.</span><span class="n">get_rhs</span><span class="p">()</span>
-            <span class="n">all_senses</span> <span class="o">=</span> <span class="n">cpx_linearcts</span><span class="o">.</span><span class="n">get_senses</span><span class="p">()</span>
+            <span class="n">all_senses</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">getsense</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nb_linear_cts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
             <span class="k">if</span> <span class="s1">&#39;R&#39;</span> <span class="ow">in</span> <span class="n">all_senses</span><span class="p">:</span>
                 <span class="n">all_range_values</span> <span class="o">=</span> <span class="n">cpx_linearcts</span><span class="o">.</span><span class="n">get_range_values</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
@@ -444,42 +495,52 @@
             <span class="n">cpx_ctnames</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">ignore_names</span> <span class="k">else</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_safe_call_get_names</span><span class="p">(</span><span class="n">cpx_adapter</span><span class="p">,</span>
                                                                            <span class="n">cpx_linearcts</span><span class="o">.</span><span class="n">get_names</span><span class="p">)</span>
 
-            <span class="n">deferred_cts</span> <span class="o">=</span> <span class="p">[]</span>
-
             <span class="k">def</span> <span class="nf">make_constant_expr</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">constant_expr</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">safe_number</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-- uploading </span><span class="si">{0}</span><span class="s2"> linear constraints...&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nb_linear_cts</span><span class="p">))</span>
-            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_linear_cts</span><span class="p">):</span>
-                <span class="n">row</span> <span class="o">=</span> <span class="n">all_rows</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
-                <span class="n">sense</span> <span class="o">=</span> <span class="n">all_senses</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
-                <span class="n">rhs</span> <span class="o">=</span> <span class="n">all_rhs</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
-                <span class="n">ctname</span> <span class="o">=</span> <span class="n">cpx_ctnames</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">if</span> <span class="n">cpx_ctnames</span> <span class="k">else</span> <span class="kc">None</span>
 
-                <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span> <span class="o">=</span> <span class="n">row</span>
-                <span class="n">expr</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_expr_from_varmap_coefs</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
+            <span class="k">def</span> <span class="nf">upload_rows</span><span class="p">(</span><span class="n">row_iter</span><span class="p">):</span>
+                <span class="n">cts_</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row_iter</span><span class="p">):</span>
+                    <span class="n">sense</span> <span class="o">=</span> <span class="n">all_senses</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+                    <span class="n">rhs</span> <span class="o">=</span> <span class="n">all_rhs</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
 
-                <span class="k">if</span> <span class="n">sense</span> <span class="o">==</span> <span class="s1">&#39;R&#39;</span><span class="p">:</span>
-                    <span class="c1"># no use of querying range vars if no R constraints</span>
-                    <span class="n">range_val</span> <span class="o">=</span> <span class="n">all_range_values</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
-                    <span class="c1"># rangeval can be negative !!! issue 52</span>
-                    <span class="k">if</span> <span class="n">range_val</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
-                        <span class="n">range_lb</span> <span class="o">=</span> <span class="n">rhs</span>
-                        <span class="n">range_ub</span> <span class="o">=</span> <span class="n">rhs</span> <span class="o">+</span> <span class="n">range_val</span>
+                    <span class="n">ctname</span> <span class="o">=</span> <span class="n">cpx_ctnames</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">if</span> <span class="n">cpx_ctnames</span> <span class="k">else</span> <span class="kc">None</span>
+
+                    <span class="n">expr</span> <span class="o">=</span> <span class="n">make_terms_fn</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">sense</span> <span class="o">==</span> <span class="s1">&#39;R&#39;</span><span class="p">:</span>
+                        <span class="c1"># no use of querying range vars if no R constraints</span>
+                        <span class="n">range_val</span> <span class="o">=</span> <span class="n">all_range_values</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+                        <span class="c1"># rangeval can be negative !!! issue 52</span>
+                        <span class="k">if</span> <span class="n">range_val</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">range_lb</span> <span class="o">=</span> <span class="n">rhs</span>
+                            <span class="n">range_ub</span> <span class="o">=</span> <span class="n">rhs</span> <span class="o">+</span> <span class="n">range_val</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">range_ub</span> <span class="o">=</span> <span class="n">rhs</span>
+                            <span class="n">range_lb</span> <span class="o">=</span> <span class="n">rhs</span> <span class="o">+</span> <span class="n">range_val</span>
+
+                        <span class="n">rgct</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">new_range_constraint</span><span class="p">(</span><span class="n">lb</span><span class="o">=</span><span class="n">range_lb</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">range_ub</span><span class="p">,</span> <span class="n">expr</span><span class="o">=</span><span class="n">expr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">ctname</span><span class="p">,</span>
+                                                             <span class="n">check_feasible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                        <span class="n">cts_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rgct</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">range_ub</span> <span class="o">=</span> <span class="n">rhs</span>
-                        <span class="n">range_lb</span> <span class="o">=</span> <span class="n">rhs</span> <span class="o">+</span> <span class="n">range_val</span>
+                        <span class="n">op</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">parse_sense</span><span class="p">(</span><span class="n">sense</span><span class="p">)</span>
+                        <span class="n">rhs_expr</span> <span class="o">=</span> <span class="n">make_constant_expr</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
 
-                    <span class="n">rgct</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">range_constraint</span><span class="p">(</span><span class="n">lb</span><span class="o">=</span><span class="n">range_lb</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="n">range_ub</span><span class="p">,</span> <span class="n">expr</span><span class="o">=</span><span class="n">expr</span><span class="p">,</span> <span class="n">rng_name</span><span class="o">=</span><span class="n">ctname</span><span class="p">)</span>
-                    <span class="n">deferred_cts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rgct</span><span class="p">)</span>
+                        <span class="n">ct</span> <span class="o">=</span> <span class="n">LinearConstraint</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">expr</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">rhs_expr</span><span class="p">,</span> <span class="n">ctname</span><span class="p">)</span>
+                        <span class="n">cts_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">cts_</span>
+            <span class="k">if</span> <span class="n">nb_linear_cts</span><span class="p">:</span>
+                <span class="n">fast_get_rows_tuple</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_get_row_tuples</span>
+                <span class="k">if</span> <span class="n">fast_get_rows_tuple</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="n">fast_get_rows_tuple</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">)</span> <span class="k">as</span> <span class="n">rowgen</span><span class="p">:</span>
+                        <span class="n">deferred_cts</span> <span class="o">=</span> <span class="n">upload_rows</span><span class="p">(</span><span class="n">rowgen</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">op</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">parse_sense</span><span class="p">(</span><span class="n">sense</span><span class="p">)</span>
-                    <span class="n">rhs_expr</span> <span class="o">=</span> <span class="n">make_constant_expr</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
-
-                    <span class="n">ct</span> <span class="o">=</span> <span class="n">LinearConstraint</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">expr</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">rhs_expr</span><span class="p">,</span> <span class="n">ctname</span><span class="p">)</span>
-                    <span class="n">deferred_cts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">deferred_cts</span><span class="p">:</span>
+                    <span class="n">all_rows</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_get_rows</span><span class="p">(</span><span class="n">cpx</span><span class="p">)</span>
+                    <span class="n">deferred_cts</span> <span class="o">=</span> <span class="n">upload_rows</span><span class="p">(</span><span class="n">all_rows</span><span class="p">)</span>
                 <span class="c1"># add constraint as a block</span>
                 <span class="n">lfactory</span><span class="o">.</span><span class="n">_post_constraint_block</span><span class="p">(</span><span class="n">posted_cts</span><span class="o">=</span><span class="n">deferred_cts</span><span class="p">)</span>
 
@@ -508,7 +569,7 @@
                     <span class="k">if</span> <span class="n">linear_nb_non_zeros</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                         <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span> <span class="o">=</span> <span class="n">linear_component</span><span class="o">.</span><span class="n">unpack</span><span class="p">()</span>
                         <span class="c1"># linexpr = mdl._aggregator._scal_prod((cpx_var_index_to_docplex[idx] for idx in indices), coefs)</span>
-                        <span class="n">linexpr</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_make_expr_from_varmap_coefs</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
+                        <span class="n">linexpr</span> <span class="o">=</span> <span class="n">make_terms_fn</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">linexpr</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -516,7 +577,7 @@
                         <span class="n">qfactory</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">_qfactory</span>
                         <span class="n">ind1</span><span class="p">,</span> <span class="n">ind2</span><span class="p">,</span> <span class="n">coefs</span> <span class="o">=</span> <span class="n">quadratic_component</span><span class="o">.</span><span class="n">unpack</span><span class="p">()</span>
                         <span class="n">quads</span> <span class="o">=</span> <span class="n">qfactory</span><span class="o">.</span><span class="n">term_dict_type</span><span class="p">()</span>
-                        <span class="k">for</span> <span class="n">idx1</span><span class="p">,</span> <span class="n">idx2</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">ind1</span><span class="p">,</span> <span class="n">ind2</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+                        <span class="k">for</span> <span class="n">idx1</span><span class="p">,</span> <span class="n">idx2</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ind1</span><span class="p">,</span> <span class="n">ind2</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
                             <span class="n">quads</span><span class="p">[</span><span class="n">VarPair</span><span class="p">(</span><span class="n">cpx_var_index_to_docplex</span><span class="p">[</span><span class="n">idx1</span><span class="p">],</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">[</span><span class="n">idx2</span><span class="p">])]</span> <span class="o">=</span> <span class="n">coef</span>
 
                     <span class="k">else</span><span class="p">:</span>  <span class="c1"># pragma: no cover</span>
@@ -548,7 +609,7 @@
                     <span class="n">ind_name</span> <span class="o">=</span> <span class="n">all_ind_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">all_ind_names</span> <span class="k">else</span> <span class="kc">None</span>
                     <span class="n">ind_rhs</span> <span class="o">=</span> <span class="n">all_ind_rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
                     <span class="n">ind_linear</span> <span class="o">=</span> <span class="n">all_ind_linearcts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>  <span class="c1"># SparsePair(ind, val)</span>
-                    <span class="n">ind_sense</span> <span class="o">=</span> <span class="n">all_ind_senses</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">ind_sense</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">parse_sense</span><span class="p">(</span><span class="n">all_ind_senses</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
                     <span class="n">ind_complemented</span> <span class="o">=</span> <span class="n">all_ind_complemented</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
                     <span class="n">ind_type</span> <span class="o">=</span> <span class="n">all_ind_types</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
                     <span class="c1"># 1 . check the bvar is ok</span>
@@ -556,8 +617,7 @@
                     <span class="c1"># each var appears once</span>
                     <span class="n">ind_linexpr</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_build_linear_expr_from_sparse_pair</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span>
                                                                           <span class="n">ind_linear</span><span class="p">)</span>
-                    <span class="n">op</span> <span class="o">=</span> <span class="n">ComparisonType</span><span class="o">.</span><span class="n">cplex_ctsense_to_python_op</span><span class="p">(</span><span class="n">ind_sense</span><span class="p">)</span>
-                    <span class="n">ind_lct</span> <span class="o">=</span> <span class="n">op</span><span class="p">(</span><span class="n">ind_linexpr</span><span class="p">,</span> <span class="n">ind_rhs</span><span class="p">)</span>
+                    <span class="n">ind_lct</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">_new_binary_constraint</span><span class="p">(</span><span class="n">ind_linexpr</span><span class="p">,</span> <span class="n">ind_sense</span><span class="p">,</span> <span class="n">ind_rhs</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">ind_type</span> <span class="o">==</span> <span class="n">ind_equiv_type</span><span class="p">:</span>
                         <span class="n">logct</span> <span class="o">=</span> <span class="n">lfactory</span><span class="o">.</span><span class="n">new_equivalence_constraint</span><span class="p">(</span>
                             <span class="n">ind_bvar</span><span class="p">,</span> <span class="n">ind_lct</span><span class="p">,</span> <span class="n">true_value</span><span class="o">=</span><span class="mi">1</span> <span class="o">-</span> <span class="n">ind_complemented</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">ind_name</span><span class="p">)</span>
@@ -574,7 +634,7 @@
                 <span class="n">cpx_pwl_names</span> <span class="o">=</span> <span class="n">pwl_fallback_names</span> <span class="k">if</span> <span class="n">ignore_names</span> <span class="k">else</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_safe_call_get_names</span><span class="p">(</span><span class="n">cpx_adapter</span><span class="p">,</span>
                                                                                                  <span class="n">cpx_pwl</span><span class="o">.</span><span class="n">get_names</span><span class="p">,</span>
                                                                                                  <span class="n">pwl_fallback_names</span><span class="p">)</span>
-                <span class="k">for</span> <span class="p">(</span><span class="n">vary_idx</span><span class="p">,</span> <span class="n">varx_idx</span><span class="p">,</span> <span class="n">preslope</span><span class="p">,</span> <span class="n">postslope</span><span class="p">,</span> <span class="n">breakx</span><span class="p">,</span> <span class="n">breaky</span><span class="p">),</span> <span class="n">pwl_name</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">cpx_pwl_defs</span><span class="p">,</span>
+                <span class="k">for</span> <span class="p">(</span><span class="n">vary_idx</span><span class="p">,</span> <span class="n">varx_idx</span><span class="p">,</span> <span class="n">preslope</span><span class="p">,</span> <span class="n">postslope</span><span class="p">,</span> <span class="n">breakx</span><span class="p">,</span> <span class="n">breaky</span><span class="p">),</span> <span class="n">pwl_name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cpx_pwl_defs</span><span class="p">,</span>
                                                                                                 <span class="n">cpx_pwl_names</span><span class="p">):</span>
                     <span class="n">varx</span> <span class="o">=</span> <span class="n">cpx_var_index_to_docplex</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">varx_idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
                     <span class="n">vary</span> <span class="o">=</span> <span class="n">cpx_var_index_to_docplex</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vary_idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
@@ -599,17 +659,21 @@
             <span class="k">if</span> <span class="n">cpx_multiobj</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">cpx_multiobj</span><span class="o">.</span><span class="n">get_num</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">cpx_obj</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">objective</span>
                 <span class="n">cpx_sense</span> <span class="o">=</span> <span class="n">cpx_obj</span><span class="o">.</span><span class="n">get_sense</span><span class="p">()</span>
-
-                <span class="n">cpx_all_lin_obj_coeffs</span> <span class="o">=</span> <span class="n">cpx_obj</span><span class="o">.</span><span class="n">get_linear</span><span class="p">()</span>
-                <span class="n">obj_expr</span> <span class="o">=</span> <span class="n">compute_full_dot</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">cpx_all_lin_obj_coeffs</span><span class="p">)</span>
+                <span class="n">fast_getobj</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_getobj</span>
+                <span class="k">if</span> <span class="n">fast_getobj</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="n">fast_getobj</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cpx_nb_vars</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">as</span> <span class="n">var_coefs_tuple</span><span class="p">:</span>
+                        <span class="n">obj_expr</span> <span class="o">=</span> <span class="n">make_terms_seq_fn</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">var_coefs_tuple</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cpx_all_lin_obj_coeffs</span> <span class="o">=</span> <span class="n">cpx_obj</span><span class="o">.</span><span class="n">get_linear</span><span class="p">()</span>
+                    <span class="n">obj_expr</span> <span class="o">=</span> <span class="n">compute_full_dot</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">cpx_all_lin_obj_coeffs</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">cpx_obj</span><span class="o">.</span><span class="n">get_num_quadratic_variables</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">cpx_all_quad_cols_coeffs</span> <span class="o">=</span> <span class="n">cpx_obj</span><span class="o">.</span><span class="n">get_quadratic</span><span class="p">()</span>
                     <span class="n">quads</span> <span class="o">=</span> <span class="n">qfactory</span><span class="o">.</span><span class="n">term_dict_type</span><span class="p">()</span>
-                    <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">col_coefs</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">cpx_all_quad_cols_coeffs</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">v</span><span class="p">,</span> <span class="n">col_coefs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">cpx_all_quad_cols_coeffs</span><span class="p">):</span>
                         <span class="n">var1</span> <span class="o">=</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
                         <span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span> <span class="o">=</span> <span class="n">col_coefs</span><span class="o">.</span><span class="n">unpack</span><span class="p">()</span>
-                        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
+                        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">coef</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">coefs</span><span class="p">):</span>
                             <span class="n">vp</span> <span class="o">=</span> <span class="n">VarPair</span><span class="p">(</span><span class="n">var1</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
                             <span class="n">quads</span><span class="p">[</span><span class="n">vp</span><span class="p">]</span> <span class="o">=</span> <span class="n">quads</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">vp</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">coef</span> <span class="o">/</span> <span class="mi">2</span>
 
@@ -624,6 +688,7 @@
                     <span class="n">mdl</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">obj_expr</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># we have multiple objective</span>
+
                 <span class="n">nb_multiobjs</span> <span class="o">=</span> <span class="n">cpx_multiobj</span><span class="o">.</span><span class="n">get_num</span><span class="p">()</span>
                 <span class="n">exprs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">nb_multiobjs</span>
                 <span class="n">priorities</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">nb_multiobjs</span>
@@ -631,13 +696,29 @@
                 <span class="n">abstols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">nb_multiobjs</span>
                 <span class="n">reltols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">nb_multiobjs</span>
                 <span class="k">if</span> <span class="n">ignore_names</span><span class="p">:</span>
-                    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Goal_</span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nb_multiobjs</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+                    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Goal_</span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nb_multiobjs</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">names</span> <span class="o">=</span> <span class="n">cpx_multiobj</span><span class="o">.</span><span class="n">get_names</span><span class="p">()</span>
 
+                <span class="n">fast_multiobj</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getobj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">fast_multiobj</span><span class="p">:</span>
+                    <span class="k">def</span> <span class="nf">get_kth_multiobj</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                        <span class="n">weight</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getweight</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                        <span class="n">offset</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getoffset</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                        <span class="n">priority</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getprio</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                        <span class="n">abstol</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getabstol</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                        <span class="n">reltol</span> <span class="o">=</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getreltol</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+                        <span class="k">with</span> <span class="n">cpx_adapter</span><span class="o">.</span><span class="n">fast_multiobj_getobj</span><span class="p">(</span><span class="n">cpx_env_e</span><span class="p">,</span> <span class="n">cpx_lp</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cpx_nb_vars</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">as</span> <span class="n">objk_tuples</span><span class="p">:</span>
+                            <span class="n">obj_expr</span> <span class="o">=</span> <span class="n">make_terms_seq_fn</span><span class="p">(</span><span class="n">lfactory</span><span class="p">,</span> <span class="n">cpx_var_index_to_docplex</span><span class="p">,</span> <span class="n">objk_tuples</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="n">offset</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="n">obj_expr</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">priority</span><span class="p">,</span> <span class="n">abstol</span><span class="p">,</span> <span class="n">reltol</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">def</span> <span class="nf">get_kth_multiobj</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+                        <span class="p">(</span><span class="n">obj_coeffs</span><span class="p">,</span> <span class="n">obj_offset</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">prio</span><span class="p">,</span> <span class="n">abstol</span><span class="p">,</span> <span class="n">reltol</span><span class="p">)</span> <span class="o">=</span> <span class="n">cpx_multiobj</span><span class="o">.</span><span class="n">get_definition</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                        <span class="n">obj_expr</span> <span class="o">=</span> <span class="n">compute_full_dot</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">obj_coeffs</span><span class="p">,</span> <span class="n">obj_offset</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="n">obj_expr</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">prio</span><span class="p">,</span> <span class="n">abstol</span><span class="p">,</span> <span class="n">reltol</span>
+
                 <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nb_multiobjs</span><span class="p">):</span>
-                    <span class="p">(</span><span class="n">obj_coeffs</span><span class="p">,</span> <span class="n">obj_offset</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">prio</span><span class="p">,</span> <span class="n">abstol</span><span class="p">,</span> <span class="n">reltol</span><span class="p">)</span> <span class="o">=</span> <span class="n">cpx_multiobj</span><span class="o">.</span><span class="n">get_definition</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
-                    <span class="n">obj_expr</span> <span class="o">=</span> <span class="n">compute_full_dot</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">obj_coeffs</span><span class="p">,</span> <span class="n">obj_offset</span><span class="p">)</span>
+                    <span class="p">(</span><span class="n">obj_expr</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">prio</span><span class="p">,</span> <span class="n">abstol</span><span class="p">,</span> <span class="n">reltol</span><span class="p">)</span> <span class="o">=</span> <span class="n">get_kth_multiobj</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
                     <span class="n">exprs</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj_expr</span>
                     <span class="n">priorities</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">prio</span>
                     <span class="n">weights</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">weight</span>
@@ -655,7 +736,7 @@
                 <span class="n">cpx_sos_names</span> <span class="o">=</span> <span class="n">cpx_sos</span><span class="o">.</span><span class="n">get_names</span><span class="p">()</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">cpx_sos_names</span><span class="p">:</span>
                     <span class="n">cpx_sos_names</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">cpx_sos_num</span>
-                <span class="k">for</span> <span class="n">sostype</span><span class="p">,</span> <span class="n">sos_sparse</span><span class="p">,</span> <span class="n">sos_name</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">cpx_sos_types</span><span class="p">,</span> <span class="n">cpx_sos_indices</span><span class="p">,</span> <span class="n">cpx_sos_names</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">sostype</span><span class="p">,</span> <span class="n">sos_sparse</span><span class="p">,</span> <span class="n">sos_name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cpx_sos_types</span><span class="p">,</span> <span class="n">cpx_sos_indices</span><span class="p">,</span> <span class="n">cpx_sos_names</span><span class="p">):</span>
                     <span class="n">sos_var_indices</span> <span class="o">=</span> <span class="n">sos_sparse</span><span class="o">.</span><span class="n">ind</span>
                     <span class="n">sos_weights</span> <span class="o">=</span> <span class="n">sos_sparse</span><span class="o">.</span><span class="n">val</span>
                     <span class="n">isostype</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sostype</span><span class="p">)</span>
@@ -699,7 +780,19 @@
 
         <span class="k">finally</span><span class="p">:</span>
             <span class="c1"># clean up CPLEX instance...</span>
-            <span class="n">cpx</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+            <span class="c1"># cpx.end()</span>
+            <span class="k">pass</span>
+        <span class="k">if</span> <span class="n">mdl</span><span class="p">:</span>
+            <span class="c1"># reset engine, if necessary</span>
+            <span class="k">if</span> <span class="n">final_agent</span> <span class="o">==</span> <span class="s1">&#39;zero&#39;</span><span class="p">:</span>
+                <span class="k">pass</span>  <span class="c1"># nothing to do</span>
+            <span class="k">if</span> <span class="n">final_agent</span> <span class="o">==</span> <span class="s1">&#39;cplex&#39;</span><span class="p">:</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">_set_engine</span><span class="p">(</span><span class="n">CplexEngine</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">_cplex</span><span class="o">=</span><span class="n">cpx_adapter</span><span class="p">))</span>
+                <span class="c1"># mdl._check_scope_indices()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># set a new non-cplex agent</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">_set_new_engine_from_agent</span><span class="p">(</span><span class="n">final_agent</span><span class="p">)</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">_set_solver_agent</span><span class="p">(</span><span class="n">final_agent</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">mdl</span></div>
 
@@ -726,16 +819,18 @@
 <span class="sd">        model_name: An optional name for the newly created model. If None,</span>
 <span class="sd">            the model name will be the path basename.</span>
 <span class="sd">        verbose: An optional flag to print informative messages, default is False.</span>
-<span class="sd">        model_class: An optional class type; must be a subclass of Model.</span>
-<span class="sd">            The returned model is built using this model_class and the keyword arguments kwargs, if any.</span>
-<span class="sd">            By default, the model is class is `Model`</span>
 <span class="sd">        kwargs: A dict of keyword-based arguments that are passed to the model contructor.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        This function requires CPLEX runtime, otherwise an exceotion is raised.</span>
 
 <span class="sd">    Example:</span>
 <span class="sd">        `m = read_model(&quot;c:/temp/foo.mps&quot;, model_name=&quot;docplex_foo&quot;, solver_agent=&quot;docloud&quot;, output_level=100)`</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        An instance of Model, or None if an exception is raised.</span>
+
+
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :class:`docplex.mp.model.Model`</span>
@@ -758,7 +853,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.21 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.22 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.cp.solver.solver &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.21 documentation</title>
+    <title>docplex.cp.solver.solver &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.22 documentation</title>
     <link rel="stylesheet" href="../../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     
@@ -32,7 +32,7 @@
         <li class="right" >
           <a href="../../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.21 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.22 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -119,18 +119,20 @@
 
 <span class="kn">import</span> <span class="nn">docplex.cp.config</span> <span class="k">as</span> <span class="nn">config</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.utils</span> <span class="k">as</span> <span class="nn">utils</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.cpo.cpo_compiler</span> <span class="k">import</span> <span class="n">CpoCompiler</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.solution</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.cpo.cpo_compiler</span> <span class="kn">import</span> <span class="n">CpoCompiler</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.solution</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.solution</span> <span class="k">as</span> <span class="nn">solution</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.solver.solver_listener</span> <span class="k">import</span> <span class="n">CpoSolverListener</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.solver.solver_listener</span> <span class="kn">import</span> <span class="n">CpoSolverListener</span>
 <span class="kn">import</span> <span class="nn">docplex.cp.solver.solver_listener</span> <span class="k">as</span> <span class="nn">listener</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.solver.cpo_callback</span> <span class="k">import</span> <span class="n">CpoCallback</span>
-<span class="kn">from</span> <span class="nn">docplex.cp.blackbox</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.solver.cpo_callback</span> <span class="kn">import</span> <span class="n">CpoCallback</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.blackbox</span> <span class="kn">import</span> <span class="o">*</span>
 
-<span class="kn">import</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">importlib</span><span class="o">,</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 
 
 <span class="c1">###############################################################################</span>
@@ -159,7 +161,7 @@
 <div class="viewcode-block" id="CpoSolverException"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolverException">[docs]</a><span class="k">class</span> <span class="nc">CpoSolverException</span><span class="p">(</span><span class="n">CpoException</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Exceptions raised for problems related to solver.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Create a new exception</span>
 <span class="sd">        Args:</span>
 <span class="sd">            msg: Error message</span>
@@ -177,24 +179,19 @@
                  <span class="s1">&#39;params&#39;</span><span class="p">,</span>           <span class="c1"># Solver parameters</span>
                  <span class="s1">&#39;context&#39;</span><span class="p">,</span>          <span class="c1"># Solve context</span>
                  <span class="s1">&#39;last_json_result&#39;</span><span class="p">,</span> <span class="c1"># String of the last received JSON result</span>
-                 <span class="s1">&#39;rename_map&#39;</span><span class="p">,</span>       <span class="c1"># Map of renamed variables. Key is new name, value is original name</span>
                  <span class="s1">&#39;version_info&#39;</span><span class="p">,</span>     <span class="c1"># Solver version information (dict)</span>
                  <span class="s1">&#39;process_infos&#39;</span><span class="p">,</span>    <span class="c1"># Processing information</span>
                  <span class="s1">&#39;log_output&#39;</span><span class="p">,</span>       <span class="c1"># Log output stream</span>
                  <span class="s1">&#39;log_print&#39;</span><span class="p">,</span>        <span class="c1"># Print log indicator</span>
                  <span class="s1">&#39;log_data&#39;</span><span class="p">,</span>         <span class="c1"># Log data buffer (list of strings)</span>
                  <span class="s1">&#39;log_enabled&#39;</span><span class="p">,</span>      <span class="c1"># Global log enabled indicator</span>
-                 <span class="s1">&#39;expr_map&#39;</span><span class="p">,</span>         <span class="c1"># Map of expressions to rebuild result</span>
-                 <span class="s1">&#39;blackbox_map&#39;</span><span class="p">,</span>     <span class="c1"># Set of blackbox functions used in the model</span>
-                 <span class="s1">&#39;model_init&#39;</span><span class="p">,</span>       <span class="c1"># Indicates whether model has been initialized in the solver</span>
                 <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Constructor</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            solver:   Parent solver, object of type CpoSolver</span>
-<span class="sd">            params:   Solving parameters, object of type CpoParameters</span>
 <span class="sd">            context:  Solver agent context</span>
 <span class="sd">        Raises:</span>
 <span class="sd">            CpoException if agent can not be created properly.</span>
@@ -202,14 +199,11 @@
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoSolverAgent</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="n">solver</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">get_model</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">params</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">params</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_json_result</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">rename_map</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">version_info</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span> <span class="o">=</span> <span class="n">CpoProcessInfos</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_init</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">process_infos</span>
 
         <span class="c1"># Initialize log</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_output</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">get_log_output</span><span class="p">()</span>
@@ -218,7 +212,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">log_enabled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_print</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
 
 
-    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># End solver</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
 
@@ -368,52 +362,36 @@
         <span class="c1">#self.params = None</span>
         <span class="c1">#self.context = None</span>
 
-
-    <span class="k">def</span> <span class="nf">_get_cpo_model_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Get the CPO model as a string, according to configuration.</span>
+    <span class="k">def</span> <span class="nf">_is_abort_search_supported</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if this agent supports an actual abort_search() instead of killing the solver</span>
 
 <span class="sd">        Return:</span>
-<span class="sd">            String containing the CPO model in CPO file format</span>
+<span class="sd">            True if this agent supports actual abort_search()</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Build string</span>
-        <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span>
-        <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-        <span class="n">cplr</span> <span class="o">=</span> <span class="n">CpoCompiler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">get_root</span><span class="p">())</span>
-        <span class="n">cpostr</span> <span class="o">=</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_as_string</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span> <span class="o">=</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_expr_map</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span> <span class="o">=</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_blackbox_map</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="p">[</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_COMPILE_TIME</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="p">[</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_DATA_SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cpostr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
 
-        <span class="c1"># Trace CPO model if required</span>
-        <span class="n">lout</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get_log_output</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">lout</span> <span class="ow">and</span> <span class="n">ctx</span><span class="o">.</span><span class="n">trace_cpo</span><span class="p">:</span>
-            <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Model &#39;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_name</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;&#39; in CPO format:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cpostr</span><span class="p">)</span>
-            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">write_information</span><span class="p">(</span><span class="n">lout</span><span class="p">)</span>
-            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">lout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_DUMP_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
-
-        <span class="c1"># Dump in dump directory if required</span>
-        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span><span class="p">:</span>
-            <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-            <span class="n">make_directories</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span><span class="p">)</span>
-            <span class="n">mname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">mname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">mname</span> <span class="o">=</span> <span class="s2">&quot;Anonymous&quot;</span>
+    <span class="k">def</span> <span class="nf">_log_received_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evt</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Log a received message with json data length depending on log level</span>
+<span class="sd">        Args:</span>
+<span class="sd">            evt:   Received event name</span>
+<span class="sd">            data:  JSON data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check enough log level</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">is_log_enabled</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="c1"># Check no data</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;Received: &quot;</span><span class="p">,</span> <span class="n">evt</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Log full data if log level 6</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">is_log_enabled</span><span class="p">(</span><span class="mi">6</span><span class="p">):</span>
+                <span class="c1"># Full version if log level 6</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s2">&quot;Received: &quot;</span><span class="p">,</span> <span class="n">evt</span><span class="p">,</span> <span class="s2">&quot;, data: &#39;&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Remove special characters introduced by Jupyter</span>
-                <span class="n">mname</span> <span class="o">=</span> <span class="n">mname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&lt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&gt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-            <span class="n">file</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">mname</span> <span class="o">+</span> <span class="s2">&quot;.cpo&quot;</span>
-            <span class="k">with</span> <span class="n">utils</span><span class="o">.</span><span class="n">open_utf8</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">cpostr</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_DUMP_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
-
-        <span class="c1"># Return</span>
-        <span class="k">return</span> <span class="n">cpostr</span>
+                <span class="c1"># Cut at cpInfos if any</span>
+                <span class="n">sx</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;&quot;cpInfo&quot; : {&#39;</span><span class="p">)</span>
+                <span class="n">ndata</span> <span class="o">=</span> <span class="n">data</span> <span class="k">if</span> <span class="n">sx</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">data</span><span class="p">[:</span><span class="n">sx</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;Received: &quot;</span><span class="p">,</span> <span class="n">evt</span><span class="p">,</span> <span class="s2">&quot;, data: &#39;&quot;</span><span class="p">,</span> <span class="n">ndata</span><span class="p">,</span> <span class="s2">&quot;...(skipped)...&#39;&quot;</span><span class="p">)</span>
 
 
     <span class="k">def</span> <span class="nf">_send_model_to_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cpostr</span><span class="p">):</span>
@@ -445,42 +423,48 @@
 
     <span class="k">def</span> <span class="nf">_init_model_in_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Send the model to the solver if not already done. &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_init</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">model_sent</span><span class="p">:</span>
             <span class="k">return</span>
 
         <span class="c1"># Get solver version for checking</span>
         <span class="n">sver</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">version_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SolverVersion&#39;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Add callback if needed.</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
-            <span class="c1"># Check solver version</span>
-            <span class="k">if</span> <span class="n">compare_natural</span><span class="p">(</span><span class="n">sver</span><span class="p">,</span> <span class="s2">&quot;12.10&quot;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">CpoSolverException</span><span class="p">(</span><span class="s2">&quot;This version of the CPO solver (</span><span class="si">{}</span><span class="s2">) does not support solver callbacks.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sver</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_add_callback_processing</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;CPO callback created.&quot;</span><span class="p">)</span>
-
         <span class="c1"># Get model string (to force identification of blackbox functions)</span>
-        <span class="n">mstr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cpo_model_string</span><span class="p">()</span>
+        <span class="n">mstr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">get_cpo_model_string</span><span class="p">()</span>
 
-        <span class="c1"># Register blackbox functions if any</span>
-        <span class="n">bbfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span>
-        <span class="k">if</span> <span class="n">bbfs</span><span class="p">:</span>
-            <span class="c1"># Check solver version</span>
-            <span class="c1"># if compare_natural(sver, &quot;20.10&quot;) &lt;= 0:</span>
-            <span class="c1">#     raise CpoSolverException(&quot;This version of the CPO solver ({}) does not support blackbox functions.&quot;.format(sver))</span>
-            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">bbf</span> <span class="ow">in</span> <span class="n">bbfs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="c1"># Check that bbf has an implementation</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">bbf</span><span class="o">.</span><span class="n">has_implementation</span><span class="p">():</span>
-                    <span class="k">raise</span> <span class="n">CpoSolverException</span><span class="p">(</span><span class="s2">&quot;Blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; has no implementation&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_register_blackbox_function</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">bbf</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Blackbox function(s) registered.&quot;</span><span class="p">)</span>
+        <span class="c1"># Register callback and blackbox functions if any and not already done</span>
+        <span class="c1"># Indicator is useful if the same model is solved and then refine conflict with the same CpoSolver</span>
+        <span class="c1"># as model is then sent twice (first normally, and secondly with all named constraints)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">callbacks_registered</span><span class="p">:</span>
+            <span class="c1"># Register callback</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+                <span class="c1"># Check solver version</span>
+                <span class="k">if</span> <span class="n">compare_natural</span><span class="p">(</span><span class="n">sver</span><span class="p">,</span> <span class="s2">&quot;12.10&quot;</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">CpoSolverException</span><span class="p">(</span>
+                        <span class="s2">&quot;This version of the CPO solver (</span><span class="si">{}</span><span class="s2">) does not support solver callbacks.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sver</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_add_callback_processing</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;CPO callback created.&quot;</span><span class="p">)</span>
+            <span class="c1"># Register blackbox functions</span>
+            <span class="n">bbfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">blackbox_map</span>
+            <span class="k">if</span> <span class="n">bbfs</span><span class="p">:</span>
+                <span class="c1"># Check solver version</span>
+                <span class="c1"># if compare_natural(sver, &quot;20.10&quot;) &lt;= 0:</span>
+                <span class="c1">#     raise CpoSolverException(&quot;This version of the CPO solver ({}) does not support blackbox functions.&quot;.format(sver))</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">bbf</span> <span class="ow">in</span> <span class="n">bbfs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="c1"># Check that bbf has an implementation</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">bbf</span><span class="o">.</span><span class="n">has_implementation</span><span class="p">():</span>
+                        <span class="k">raise</span> <span class="n">CpoSolverException</span><span class="p">(</span><span class="s2">&quot;Blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; has no implementation&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_register_blackbox_function</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">bbf</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Blackbox function(s) registered.&quot;</span><span class="p">)</span>
+            <span class="c1"># Set registration indicator</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">callbacks_registered</span> <span class="o">=</span> <span class="kc">True</span>
 
         <span class="c1"># Send model to solver</span>
         <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_send_model_to_solver</span><span class="p">(</span><span class="n">mstr</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_SUBMIT_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Model sent to solver.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">model_init</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">model_sent</span> <span class="o">=</span> <span class="kc">True</span>
 
 
     <span class="k">def</span> <span class="nf">_add_log_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
@@ -538,7 +522,7 @@
             <span class="n">jsol</span> <span class="o">=</span> <span class="n">parse_json_string</span><span class="p">(</span><span class="n">jsol</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">TOTAL_JSON_PARSE_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
             <span class="c1"># Build result structure</span>
-            <span class="n">res</span><span class="o">.</span><span class="n">_add_json_solution</span><span class="p">(</span><span class="n">jsol</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="p">)</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">_add_json_solution</span><span class="p">(</span><span class="n">jsol</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">expr_map</span><span class="p">)</span>
 
         <span class="c1"># Process Log</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -546,96 +530,6 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log_data</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">res</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">res</span>
-
-
-    <span class="k">def</span> <span class="nf">_get_blackbox_function_eval_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jdata</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Get the evaluation context of a blackbox function</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            jdata: JSON data containing function evaluation context</span>
-<span class="sd">        Returns:</span>
-<span class="sd">            tuple (blackbox function descriptor, evaluation arguments)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1">#print(&quot;Enter in _evaluate_blackbox_function: {}&quot;.format(jdata))</span>
-
-        <span class="c1"># Parse JSON data</span>
-        <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-        <span class="n">fcall</span> <span class="o">=</span> <span class="n">parse_json_string</span><span class="p">(</span><span class="n">jdata</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">TOTAL_JSON_PARSE_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
-
-        <span class="c1"># Retrieve blackbox descriptor from its name</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
-        <span class="n">bbf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="c1">#bbf = self.model._get_blackbox_function(name)</span>
-        <span class="k">if</span> <span class="n">bbf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Try to evaluate a blackbox function </span><span class="si">{}</span><span class="s2"> that does not exists&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bbf</span><span class="p">,</span> <span class="n">CpoBlackboxFunction</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Expression named &#39;</span><span class="si">{}</span><span class="s2">&#39; is not a blackbox function&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-
-        <span class="c1"># Build arguments values</span>
-        <span class="n">params</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;parameters&#39;</span><span class="p">,</span> <span class="p">())</span>
-        <span class="n">ptypes</span> <span class="o">=</span> <span class="n">bbf</span><span class="o">.</span><span class="n">get_arg_types</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ptypes</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
-           <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Blackbox function call to &#39;</span><span class="si">{}</span><span class="s2">&#39; contains a wrong number of parameters.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-        <span class="n">argvalues</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_arg_value</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ptypes</span><span class="p">,</span> <span class="n">params</span><span class="p">)]</span>
-
-        <span class="k">return</span> <span class="n">bbf</span><span class="p">,</span> <span class="n">argvalues</span>
-
-
-    <span class="k">def</span> <span class="nf">_build_arg_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tp</span><span class="p">,</span> <span class="n">vl</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Build blackbox function call argument value</span>
-<span class="sd">        Args:</span>
-<span class="sd">            tp: Parameter type</span>
-<span class="sd">            vl: Parameter JSON value</span>
-<span class="sd">        Returns:</span>
-<span class="sd">            Parameter value to be passed to evaluation</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
-        <span class="n">t</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Int</span><span class="p">,</span> <span class="n">Type_IntVar</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,):</span>
-            <span class="k">return</span> <span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Float</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,):</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntervalVar</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntArray</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_IntVarArray</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">,):</span>
-            <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_FloatArray</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">v</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_FloatExprArray</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntervalVarArray</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">[</span><span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_SequenceVar</span><span class="p">:</span>
-            <span class="c1"># Retrieve original variable</span>
-            <span class="n">sv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-            <span class="k">assert</span> <span class="n">sv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Sequence variable &#39;</span><span class="si">{}</span><span class="s2">&#39; not found in the model&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-            <span class="nb">vars</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">get_interval_variables</span><span class="p">()</span>
-            <span class="k">return</span> <span class="p">[</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_SequenceVarArray</span><span class="p">:</span>
-            <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">jsv</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
-                <span class="n">svn</span> <span class="o">=</span> <span class="n">jsv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
-                <span class="n">sv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">svn</span><span class="p">)</span>
-                <span class="k">assert</span> <span class="n">sv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Sequence variable &#39;</span><span class="si">{}</span><span class="s2">&#39; not found in the model&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">svn</span><span class="p">)</span>
-                <span class="nb">vars</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">get_interval_variables</span><span class="p">()</span>
-                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">jsv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)])</span>
-            <span class="k">return</span> <span class="n">res</span>
-
-        <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;INTERNAL ERROR: Unknown blackbox argument type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tp</span><span class="p">))</span>
 
 
     <span class="k">def</span> <span class="nf">_raise_not_supported</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -651,17 +545,26 @@
 <span class="sd">    It create the appropriate :class:`CpoSolverAgent` that actually implements solving functions, depending</span>
 <span class="sd">    on the value of the configuration parameter *context.solver.agent*.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">,</span>        <span class="c1"># Model to solve</span>
-                 <span class="s1">&#39;context&#39;</span><span class="p">,</span>      <span class="c1"># Solving context</span>
-                 <span class="s1">&#39;agent&#39;</span><span class="p">,</span>        <span class="c1"># Solver agent</span>
-                 <span class="s1">&#39;status&#39;</span><span class="p">,</span>       <span class="c1"># Current solver status</span>
-                 <span class="s1">&#39;last_result&#39;</span><span class="p">,</span>  <span class="c1"># Last returned solution</span>
-                 <span class="s1">&#39;listeners&#39;</span><span class="p">,</span>    <span class="c1"># List of solve listeners</span>
-                 <span class="s1">&#39;status_lock&#39;</span><span class="p">,</span>  <span class="c1"># Lock protecting status change</span>
-                 <span class="s1">&#39;callbacks&#39;</span><span class="p">,</span>    <span class="c1"># List of CPO solver callbacks</span>
-                <span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">,</span>           <span class="c1"># Model to solve</span>
+                 <span class="s1">&#39;context&#39;</span><span class="p">,</span>         <span class="c1"># Solving context</span>
+                 <span class="s1">&#39;cpostr&#39;</span><span class="p">,</span>          <span class="c1"># CPO model string</span>
+                 <span class="s1">&#39;expr_map&#39;</span><span class="p">,</span>        <span class="c1"># Map of expressions to rebuild result</span>
+                 <span class="s1">&#39;blackbox_map&#39;</span><span class="p">,</span>    <span class="c1"># Set of blackbox functions used in the model</span>
+                 <span class="s1">&#39;process_infos&#39;</span><span class="p">,</span>   <span class="c1"># Processing information</span>
+                 <span class="s1">&#39;agent&#39;</span><span class="p">,</span>           <span class="c1"># Solver agent</span>
+                 <span class="s1">&#39;status&#39;</span><span class="p">,</span>          <span class="c1"># Current solver status</span>
+                 <span class="s1">&#39;operation&#39;</span><span class="p">,</span>       <span class="c1"># Current running operation</span>
+                 <span class="s1">&#39;last_result&#39;</span><span class="p">,</span>     <span class="c1"># Last returned solution</span>
+                 <span class="s1">&#39;listeners&#39;</span><span class="p">,</span>       <span class="c1"># List of solve listeners</span>
+                 <span class="s1">&#39;status_lock&#39;</span><span class="p">,</span>     <span class="c1"># Lock protecting status change</span>
+                 <span class="s1">&#39;callbacks&#39;</span><span class="p">,</span>       <span class="c1"># List of CPO solver callbacks</span>
+                 <span class="s1">&#39;abort_supported&#39;</span><span class="p">,</span> <span class="c1"># Indicates that abort is supported by agent</span>
+                 <span class="s1">&#39;model_published&#39;</span><span class="p">,</span> <span class="c1"># Indicates if CPO model has been published</span>
+                 <span class="s1">&#39;model_sent&#39;</span><span class="p">,</span>      <span class="c1"># Indicates if CPO model has been sent to the solver</span>
+                 <span class="s1">&#39;callbacks_registered&#39;</span><span class="p">,</span>  <span class="c1"># Indicate if callbacks (CPO callback and blackboxes) have been registered</span>
+                 <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Constructor</span>
 
 <span class="sd">        All necessary solving parameters are taken from the solving context that is constructed from the following list</span>
@@ -695,14 +598,24 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">CpoSolver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span> <span class="o">=</span> <span class="n">CpoProcessInfos</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">STATUS_IDLE</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_published</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_sent</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_registered</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="c1"># Build effective context from args</span>
         <span class="n">context</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">_get_effective_context</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">merge_with_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
 
         <span class="c1"># If defined, limit the number of threads</span>
         <span class="n">mxt</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">max_threads</span>
@@ -719,6 +632,7 @@
 
         <span class="c1"># Determine appropriate solver agent</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_solver_agent</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">_is_abort_search_supported</span><span class="p">()</span>
 
         <span class="c1"># Add configured default listeners if any</span>
         <span class="c1"># Note: calling solver_created() is not required as it is done by add_listener().</span>
@@ -731,22 +645,22 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_add_listener_from_class</span><span class="p">(</span><span class="n">lstnrs</span><span class="p">)</span>
 
 
-    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;  Define solver as an iterator &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span>
 
 
-    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># End solver</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
 
 
-    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># For usage in with</span>
         <span class="k">return</span> <span class="bp">self</span>
 
 
-    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exception_type</span><span class="p">,</span> <span class="n">exception_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exception_type</span><span class="p">,</span> <span class="n">exception_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
         <span class="c1"># End solver</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
 
@@ -794,6 +708,15 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">version_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SolverVersion&quot;</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="CpoSolver.get_parameters"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.get_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the actual solver parameters, as modified by configuration or arguments.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Solver parameters, object of class :class:`~docplex.cp.parameters.CpoParameters`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">params</span></div>
+
+
 <div class="viewcode-block" id="CpoSolver.solve"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Solve the model</span>
 
@@ -815,6 +738,8 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            CpoException: (or derived) if error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="kc">None</span>
+
         <span class="c1"># Check solve with start/next</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">solve_with_search_next</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_with_search_next</span><span class="p">()</span>
@@ -823,8 +748,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_start_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_SOLVE</span><span class="p">)</span>
 
         <span class="c1"># Solve model</span>
-        <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_SOLVING</span><span class="p">)</span>
+        <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">msol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -839,17 +765,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Model &#39;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_name</span><span class="p">(),</span> <span class="s2">&quot;&#39; solved in &quot;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">stime</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&quot; sec.&quot;</span><span class="p">)</span>
         <span class="n">msol</span><span class="o">.</span><span class="n">process_infos</span><span class="p">[</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">SOLVE_TOTAL_TIME</span><span class="p">]</span> <span class="o">=</span> <span class="n">stime</span>
 
-        <span class="c1"># Set solve time in solution if not done</span>
-        <span class="k">if</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_solve_time</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">msol</span><span class="o">.</span><span class="n">_set_solve_time</span><span class="p">(</span><span class="n">stime</span><span class="p">)</span>
-
         <span class="c1"># Store last solution</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">msol</span>
 
         <span class="c1"># Notify listeners</span>
         <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
             <span class="n">lstnr</span><span class="o">.</span><span class="n">new_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msol</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_SOLVE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
 
         <span class="c1"># Return solution</span>
         <span class="k">return</span> <span class="n">msol</span></div>
@@ -861,32 +783,40 @@
 <span class="sd">        Return:</span>
 <span class="sd">            Last solve result</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Loop on all solutions</span>
-        <span class="n">last_sol</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Loop on all new solutions</span>
+        <span class="n">last_res</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># Search for next solution</span>
-            <span class="n">msol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_next</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_solve_status</span><span class="p">()</span> <span class="o">==</span> <span class="n">SOLVE_STATUS_JOB_ABORTED</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">last_sol</span> <span class="k">if</span> <span class="n">last_sol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
+            <span class="n">sres</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_next</span><span class="p">()</span>
+
+            <span class="c1"># Check old-style abort</span>
+            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">sres</span><span class="o">.</span><span class="n">get_solve_status</span><span class="p">()</span> <span class="o">==</span> <span class="n">SOLVE_STATUS_JOB_ABORTED</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">last_res</span> <span class="k">if</span> <span class="n">last_res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
 
             <span class="c1"># Check successful search</span>
-            <span class="k">if</span> <span class="n">msol</span><span class="p">:</span>
-                <span class="n">last_sol</span> <span class="o">=</span> <span class="n">msol</span>
-                <span class="k">if</span> <span class="n">msol</span><span class="o">.</span><span class="n">is_solution_optimal</span><span class="p">():</span>
-                    <span class="k">break</span>
+            <span class="k">if</span> <span class="n">sres</span><span class="o">.</span><span class="n">is_new_solution</span><span class="p">():</span>
+                <span class="c1"># Store solution as currently best one to be returned</span>
+                <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">break</span>
 
         <span class="c1"># Process end of search</span>
-        <span class="c1"># print(&quot;msol: {}, is_sol: {}, isoptimal: {}&quot;.format(msol,  msol.is_solution(), msol.is_solution_optimal()))</span>
-        <span class="c1"># print(&quot;last_sol: {}&quot;.format(last_sol))</span>
-        <span class="k">if</span> <span class="n">last_sol</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">last_sol</span> <span class="o">=</span> <span class="n">msol</span>
+        <span class="c1">#print(&quot;msol: {}, is_sol: {}, isoptimal: {}&quot;.format(msol,  msol.is_solution(), msol.is_solution_optimal()))</span>
+        <span class="c1">#print(&quot;last_sol: {}&quot;.format(last_sol))</span>
+        <span class="k">if</span> <span class="n">sres</span><span class="o">.</span><span class="n">is_solution_optimal</span><span class="p">():</span>
+            <span class="c1"># Force optimal solution to be new even if already given</span>
+            <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
+            <span class="n">last_res</span><span class="o">.</span><span class="n">new_solution</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="n">sres</span><span class="o">.</span><span class="n">get_stop_cause</span><span class="p">()</span> <span class="o">==</span> <span class="n">STOP_CAUSE_ABORT</span><span class="p">:</span>
+            <span class="c1"># Force last solution to be last one to get the abor status</span>
+            <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
+        <span class="k">elif</span> <span class="n">last_res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Update last solution with last solver infos</span>
-            <span class="n">last_sol</span><span class="o">.</span><span class="n">solver_infos</span> <span class="o">=</span> <span class="n">msol</span><span class="o">.</span><span class="n">solver_infos</span>
+            <span class="n">last_res</span><span class="o">.</span><span class="n">solver_infos</span> <span class="o">=</span> <span class="n">sres</span><span class="o">.</span><span class="n">solver_infos</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">end_search</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">last_sol</span></div>
+        <span class="k">return</span> <span class="n">last_res</span></div>
 
 
 <div class="viewcode-block" id="CpoSolver.search_next"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.search_next">[docs]</a>    <span class="k">def</span> <span class="nf">search_next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -910,9 +840,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Initiate search if needed</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">STATUS_IDLE</span><span class="p">:</span>
-            <span class="c1"># Notify listeners about start of search</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">start_search</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_WAITING</span><span class="p">)</span>
+            <span class="c1"># Notify listeners about start of search</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_start_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_SOLVE</span><span class="p">)</span>
 
         <span class="c1"># Check if status is aborted in the mean time (may be caused by listener)</span>
@@ -925,7 +856,7 @@
         <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_RUNNING</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">msol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">search_next</span><span class="p">()</span>
+            <span class="n">sres</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">search_next</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="c1"># Check if aborted in the mean time</span>
@@ -934,23 +865,26 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">log_exceptions</span><span class="p">:</span>
                 <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
             <span class="k">raise</span> <span class="n">CpoSolverException</span><span class="p">(</span><span class="s2">&quot;Exception caught from CP solver: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_WAITING</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span> <span class="ow">and</span> <span class="n">sres</span><span class="o">.</span><span class="n">get_search_status</span><span class="p">()</span> <span class="o">==</span> <span class="n">SEARCH_STATUS_STOPPED</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_WAITING</span><span class="p">)</span>
         <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Model &#39;&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_name</span><span class="p">(),</span> <span class="s2">&quot;&#39; next solution in &quot;</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">stime</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="s2">&quot; sec.&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Set solve time in solution if not done</span>
-        <span class="k">if</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_solve_time</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">msol</span><span class="o">.</span><span class="n">_set_solve_time</span><span class="p">(</span><span class="n">stime</span><span class="p">)</span>
+        <span class="c1"># Special case for old solvers where last optimal solution is empty</span>
+        <span class="k">if</span> <span class="n">sres</span><span class="o">.</span><span class="n">is_solution_optimal</span> <span class="ow">and</span> <span class="p">(</span><span class="n">sres</span><span class="o">.</span><span class="n">solution</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sres</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">is_empty</span><span class="p">())</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">sres</span><span class="o">.</span><span class="n">solution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span><span class="o">.</span><span class="n">solution</span>
 
         <span class="c1"># Store last solution</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">msol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">sres</span>
 
         <span class="c1"># Notify listeners</span>
         <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
-            <span class="n">lstnr</span><span class="o">.</span><span class="n">new_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msol</span><span class="p">)</span>
+            <span class="n">lstnr</span><span class="o">.</span><span class="n">new_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sres</span><span class="p">)</span>
 
         <span class="c1"># Return solution</span>
-        <span class="k">return</span> <span class="n">msol</span></div>
+        <span class="k">return</span> <span class="n">sres</span></div>
 
 
 <div class="viewcode-block" id="CpoSolver.end_search"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.end_search">[docs]</a>    <span class="k">def</span> <span class="nf">end_search</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -964,13 +898,16 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            CpoNotSupportedException: if method not available in the solver agent.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">,</span> <span class="n">STATUS_RELEASED</span><span class="p">,</span> <span class="n">STATUS_ABORTED</span><span class="p">):</span>
-           <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_WAITING</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="n">STATUS_RELEASED</span><span class="p">,</span> <span class="n">STATUS_ABORTED</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">STATUS_IDLE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_WAITING</span><span class="p">)</span>
         <span class="n">msol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">end_search</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">msol</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_SOLVE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">msol</span></div>
 
 
@@ -1016,7 +953,8 @@
         <span class="n">namecstrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">name_all_constraints</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">namecstrs</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">name_all_constraints</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">model_init</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">model_sent</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="c1"># Refine conflict</span>
         <span class="n">msol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">refine_conflict</span><span class="p">()</span>
@@ -1030,7 +968,7 @@
 
         <span class="c1"># End refine conflict</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_REFINE_CONFLICT</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
 
         <span class="k">return</span> <span class="n">msol</span></div>
 
@@ -1057,11 +995,20 @@
 <span class="sd">            CpoNotSupportedException: method not available in configured solver agent.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_PROPAGATING</span><span class="p">)</span>
+
+        <span class="c1"># Notify listeners</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_start_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_PROPAGATE</span><span class="p">)</span>
+
+        <span class="c1"># Propagate model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_PROPAGATING</span><span class="p">)</span>
         <span class="n">psol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">propagate</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_PROPAGATE</span><span class="p">)</span>
+
+        <span class="c1"># Notify listeners</span>
+        <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
+            <span class="n">lstnr</span><span class="o">.</span><span class="n">new_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">psol</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
+
         <span class="k">return</span> <span class="n">psol</span></div>
 
 
@@ -1089,7 +1036,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_start_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_RUN_SEEDS</span><span class="p">)</span>
         <span class="n">rsol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">run_seeds</span><span class="p">(</span><span class="n">nbrun</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">(</span><span class="n">listener</span><span class="o">.</span><span class="n">OPERATION_RUN_SEEDS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">rsol</span></div>
 
 
@@ -1139,36 +1086,17 @@
         <span class="k">return</span> <span class="n">msol</span></div>
 
 
-<div class="viewcode-block" id="CpoSolver.get_last_solution"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.get_last_solution">[docs]</a>    <span class="k">def</span> <span class="nf">get_last_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Get the last result returned by this solver.</span>
-
-<span class="sd">        DEPRECATED. Use get_last_result instead.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Solve result, object of class :class:`~docplex.cp.solution.CpoSolveResult`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span></div>
-
-
-<div class="viewcode-block" id="CpoSolver.get_last_result"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.get_last_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_last_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Get the last result returned by this solver.</span>
-
-<span class="sd">        Calling this method can be useful to determine, for example, if the last solution returned</span>
-<span class="sd">        by a sequence of start_search() and search_next(), or by a solution iterator, is optimal.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Solve result, object of class :class:`~docplex.cp.solution.CpoSolveResult`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span></div>
-
-
     <span class="k">def</span> <span class="nf">abort_search</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Abort current search if any.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_ABORTED</span><span class="p">)</span>
-        <span class="n">agt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">if</span> <span class="n">agt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">agt</span><span class="o">.</span><span class="n">abort_search</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Abort search is implemented, just call it.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">abort_search</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Abort current search</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_ABORTED</span><span class="p">)</span>
+            <span class="n">agt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">agt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">agt</span><span class="o">.</span><span class="n">abort_search</span><span class="p">()</span>
 
 
     <span class="k">def</span> <span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1198,7 +1126,7 @@
         <span class="k">raise</span> <span class="ne">StopIteration</span><span class="p">()</span>
 
 
-    <span class="k">def</span> <span class="nf">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># &quot;&quot;&quot; Get the next available solution (same as next() for compatibility with Python 3)</span>
         <span class="c1">#</span>
         <span class="c1"># This function is available only with local CPO solver with release number greater or equal to 12.7.0.</span>
@@ -1207,6 +1135,29 @@
         <span class="c1">#     Next solve result, object of class :class:`~docplex.cp.solution.CpoSolveResult`.</span>
         <span class="c1"># &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="CpoSolver.get_last_solution"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.get_last_solution">[docs]</a>    <span class="k">def</span> <span class="nf">get_last_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the last result returned by this solver.</span>
+
+<span class="sd">        DEPRECATED. Use get_last_result instead.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Solve result, object of class :class:`~docplex.cp.solution.CpoSolveResult`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span></div>
+
+
+<div class="viewcode-block" id="CpoSolver.get_last_result"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.get_last_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_last_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the last result returned by this solver.</span>
+
+<span class="sd">        Calling this method can be useful to determine, for example, if the last solution returned</span>
+<span class="sd">        by a sequence of start_search() and search_next(), or by a solution iterator, is optimal.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Solve result, object of class :class:`~docplex.cp.solution.CpoSolveResult`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span></div>
 
 
 <div class="viewcode-block" id="CpoSolver.add_listener"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.add_listener">[docs]</a>    <span class="k">def</span> <span class="nf">add_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lstnr</span><span class="p">):</span>
@@ -1336,18 +1287,18 @@
 <span class="sd">        Args:</span>
 <span class="sd">            op:  Operation that is started</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="n">op</span>
         <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
             <span class="n">lstnr</span><span class="o">.</span><span class="n">start_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span>
 
 
-    <span class="k">def</span> <span class="nf">_notify_listeners_end_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Call all listeners with operation end</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            op:  Operation that is ended</span>
+    <span class="k">def</span> <span class="nf">_notify_listeners_end_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Call all listeners with last operation end</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">operation</span>
         <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
             <span class="n">lstnr</span><span class="o">.</span><span class="n">end_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="kc">None</span>
 
 
     <span class="k">def</span> <span class="nf">_check_status_aborted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1359,24 +1310,31 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">STATUS_ABORTED</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">STATUS_IDLE</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_RELEASED</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_solution_aborted</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_result_aborted</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
             <span class="n">lstnr</span><span class="o">.</span><span class="n">new_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listeners</span><span class="p">:</span>
-            <span class="n">lstnr</span><span class="o">.</span><span class="n">end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
         <span class="k">return</span> <span class="kc">True</span>
 
 
-    <span class="k">def</span> <span class="nf">_create_solution_aborted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Create an empty solution with aborted status</span>
+    <span class="k">def</span> <span class="nf">_create_result_aborted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Create a solve result with aborted status</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="n">CpoSolveResult</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
-        <span class="n">res</span><span class="o">.</span><span class="n">solve_status</span> <span class="o">=</span> <span class="n">SOLVE_STATUS_UNKNOWN</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span><span class="o">.</span><span class="n">get_solve_status</span><span class="p">()</span>
+        <span class="c1"># Clone last result if any</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">CpoSolveResult</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">solve_status</span> <span class="o">=</span> <span class="n">SOLVE_STATUS_UNKNOWN</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_result</span><span class="p">)</span>
         <span class="n">res</span><span class="o">.</span><span class="n">fail_status</span> <span class="o">=</span> <span class="n">FAIL_STATUS_ABORT</span>
         <span class="n">res</span><span class="o">.</span><span class="n">search_status</span> <span class="o">=</span> <span class="n">SEARCH_STATUS_STOPPED</span>
         <span class="n">res</span><span class="o">.</span><span class="n">stop_cause</span> <span class="o">=</span> <span class="n">STOP_CAUSE_ABORT</span>
-        <span class="n">res</span><span class="o">.</span><span class="n">is_a_solution</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">new_solution</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="n">res</span>
 
 
@@ -1455,8 +1413,175 @@
             <span class="k">raise</span> <span class="n">CpoSolverException</span><span class="p">(</span><span class="s2">&quot;Solver agent class &#39;</span><span class="si">{}</span><span class="s2">&#39; should extend CpoSolverAgent.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cpath</span><span class="p">))</span>
 
         <span class="c1"># Create agent instance</span>
-        <span class="n">agent</span> <span class="o">=</span> <span class="n">sclass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sctx</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">sctx</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">agent</span></div>
+        <span class="n">agent</span> <span class="o">=</span> <span class="n">sclass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sctx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">agent</span>
+
+
+    <span class="k">def</span> <span class="nf">_build_cpo_model_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build the CPO model string and store data required to retrieve model elements</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">cplr</span> <span class="o">=</span> <span class="n">CpoCompiler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span> <span class="o">=</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_as_string</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span> <span class="o">=</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_expr_map</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span> <span class="o">=</span> <span class="n">cplr</span><span class="o">.</span><span class="n">get_blackbox_map</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="p">[</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_COMPILE_TIME</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="p">[</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_DATA_SIZE</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_publish_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Publish the CPO model on console and in file if required by configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if already published</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_published</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Trace CPO model if required</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span>
+        <span class="n">lout</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get_log_output</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">lout</span> <span class="ow">and</span> <span class="n">ctx</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">trace_cpo</span><span class="p">:</span>
+            <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Model &#39;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_name</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;&#39; in CPO format:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span><span class="p">)</span>
+            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">write_information</span><span class="p">(</span><span class="n">lout</span><span class="p">)</span>
+            <span class="n">lout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_DUMP_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
+
+        <span class="c1"># Dump in dump directory if required</span>
+        <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span><span class="p">:</span>
+            <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">make_directories</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span><span class="p">)</span>
+            <span class="n">mname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">mname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">mname</span> <span class="o">=</span> <span class="s2">&quot;Anonymous&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Remove special characters introduced by Jupyter</span>
+                <span class="n">mname</span> <span class="o">=</span> <span class="n">mname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&lt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&gt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dump_directory</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">mname</span> <span class="o">+</span> <span class="s2">&quot;.cpo&quot;</span>
+            <span class="k">with</span> <span class="n">utils</span><span class="o">.</span><span class="n">open_utf8</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">MODEL_DUMP_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
+
+        <span class="c1"># Set published indicator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_published</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<div class="viewcode-block" id="CpoSolver.get_cpo_model_string"><a class="viewcode-back" href="../../../../docplex.cp.solver.solver.py.html#docplex.cp.solver.solver.CpoSolver.get_cpo_model_string">[docs]</a>    <span class="k">def</span> <span class="nf">get_cpo_model_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the CPO model as a string, as it is sent to the solver.</span>
+
+<span class="sd">        Result string is the exact string that is sent to solver, including all variations caused by configuration</span>
+<span class="sd">        or changes made when creating the solver.</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            String containing the CPO model in CPO file format</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Build string</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_build_cpo_model_string</span><span class="p">()</span>
+
+        <span class="c1"># Publish model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_publish_model</span><span class="p">()</span>
+
+        <span class="c1"># Return</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpostr</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_blackbox_function_eval_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jdata</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the evaluation context of a blackbox function</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            jdata: JSON data containing function evaluation context</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple (blackbox function descriptor, argument values, bound values)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#print(&quot;Enter in _evaluate_blackbox_function: {}&quot;.format(jdata))</span>
+
+        <span class="c1"># Parse JSON data</span>
+        <span class="n">stime</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">fcall</span> <span class="o">=</span> <span class="n">parse_json_string</span><span class="p">(</span><span class="n">jdata</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_infos</span><span class="o">.</span><span class="n">incr</span><span class="p">(</span><span class="n">CpoProcessInfos</span><span class="o">.</span><span class="n">TOTAL_JSON_PARSE_TIME</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">stime</span><span class="p">)</span>
+
+        <span class="c1"># Retrieve blackbox descriptor from its name</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+        <span class="n">bbf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="c1">#bbf = self.model._get_blackbox_function(name)</span>
+        <span class="k">if</span> <span class="n">bbf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Try to evaluate a blackbox function </span><span class="si">{}</span><span class="s2"> that does not exists&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bbf</span><span class="p">,</span> <span class="n">CpoBlackboxFunction</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Expression named &#39;</span><span class="si">{}</span><span class="s2">&#39; is not a blackbox function&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="c1"># Build arguments values</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;parameters&#39;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="n">ptypes</span> <span class="o">=</span> <span class="n">bbf</span><span class="o">.</span><span class="n">get_arg_types</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ptypes</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+           <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Blackbox function call to &#39;</span><span class="si">{}</span><span class="s2">&#39; contains a wrong number of parameters.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="n">argvalues</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_arg_value</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ptypes</span><span class="p">,</span> <span class="n">params</span><span class="p">)]</span>
+
+        <span class="c1"># Build bound values</span>
+        <span class="n">bnds</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;returnValuesBounds&#39;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bnds</span><span class="p">)</span> <span class="o">!=</span> <span class="n">bbf</span><span class="o">.</span><span class="n">dimension</span><span class="p">:</span>
+           <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Blackbox function call to &#39;</span><span class="si">{}</span><span class="s2">&#39; contains a wrong number of bounds.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="n">bndsvalues</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bnds</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">bbf</span><span class="p">,</span> <span class="n">argvalues</span><span class="p">,</span> <span class="n">bndsvalues</span>
+
+
+    <span class="k">def</span> <span class="nf">_build_arg_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tp</span><span class="p">,</span> <span class="n">vl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build blackbox function call argument value</span>
+<span class="sd">        Args:</span>
+<span class="sd">            tp: Parameter type</span>
+<span class="sd">            vl: Parameter JSON value</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Parameter value to be passed to evaluation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Int</span><span class="p">,</span> <span class="n">Type_IntVar</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,):</span>
+            <span class="k">return</span> <span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Float</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,):</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntervalVar</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntArray</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_IntVarArray</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">,):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_FloatArray</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">v</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_FloatExprArray</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntervalVarArray</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_SequenceVar</span><span class="p">:</span>
+            <span class="c1"># Retrieve original variable</span>
+            <span class="n">sv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">sv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Sequence variable &#39;</span><span class="si">{}</span><span class="s2">&#39; not found in the model&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="nb">vars</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">get_interval_variables</span><span class="p">()</span>
+            <span class="k">return</span> <span class="p">[</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_SequenceVarArray</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">jsv</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+                <span class="n">svn</span> <span class="o">=</span> <span class="n">jsv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+                <span class="n">sv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">svn</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="n">sv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Sequence variable &#39;</span><span class="si">{}</span><span class="s2">&#39; not found in the model&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">svn</span><span class="p">)</span>
+                <span class="nb">vars</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">get_interval_variables</span><span class="p">()</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">jsv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)])</span>
+            <span class="k">return</span> <span class="n">res</span>
+
+        <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;INTERNAL ERROR: Unknown blackbox argument type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tp</span><span class="p">))</span></div>
 
 
 <span class="c1">###############################################################################</span>
@@ -1486,7 +1611,7 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        Solver information dictionary, or empty dictionary if not available.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">docplex.cp.model</span> <span class="k">import</span> <span class="n">CpoModel</span>
+    <span class="kn">from</span> <span class="nn">docplex.cp.model</span> <span class="kn">import</span> <span class="n">CpoModel</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">CpoSolver</span><span class="p">(</span><span class="n">CpoModel</span><span class="p">())</span> <span class="k">as</span> <span class="n">slvr</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">slvr</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">version_info</span>
@@ -1583,7 +1708,7 @@
         <li class="right" >
           <a href="../../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.21 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.22 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>

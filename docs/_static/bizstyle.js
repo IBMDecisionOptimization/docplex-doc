@@ -36,6 +36,6 @@ $(window).resize(function(){
         $("li.nav-item-0 a").text("Top");
     }
     else {
-        $("li.nav-item-0 a").text("IBM® Decision Optimization CPLEX® Modeling for Python (DOcplex) V2.21 documentation");
+        $("li.nav-item-0 a").text("IBM® Decision Optimization CPLEX® Modeling for Python (DOcplex) V2.22 documentation");
     }
 });
