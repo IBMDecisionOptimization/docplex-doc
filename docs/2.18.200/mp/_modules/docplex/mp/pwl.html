@@ -1,0 +1,965 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.mp.pwl &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.pwl</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">is_iterable</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="k">import</span> <span class="n">ModelingObjectBase</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">DOcplexException</span><span class="p">,</span> <span class="n">is_number</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="k">import</span> <span class="n">izip</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.sttck</span> <span class="k">import</span> <span class="n">StaticTypeChecker</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+
+
+<div class="viewcode-block" id="PwlFunction"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction">[docs]</a><span class="k">class</span> <span class="nc">PwlFunction</span><span class="p">(</span><span class="n">ModelingObjectBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class models piecewise linear (PWL) functions. This class is not intended to be instantiated:</span>
+<span class="sd">    piecewise linear functions are defined by invoking :func:`docplex.mp.model.Model.piecewise`,</span>
+<span class="sd">    or :func:`docplex.mp.model.Model.piecewise_as_slopes`.</span>
+
+<span class="sd">    Piecewise-linear functions are important in many applications.</span>
+<span class="sd">    They are often specified either:</span>
+
+<span class="sd">    * by giving a set of slopes, a set of breakpoints at which the slopes change, and the value of the functions at</span>
+<span class="sd">      a given point, or</span>
+<span class="sd">    * by giving an ordered list of (x,y) points that are linearly connected, along with the slope before the first</span>
+<span class="sd">      point and the slope after the last point.</span>
+
+<span class="sd">    Note that a piecewise-linear function may be discontinuous.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">caller</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">StaticTypeChecker</span><span class="o">.</span><span class="n">typecheck_num_nan_inf</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">caller</span><span class="p">)</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">check_list_pair_breaksxy</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;argument &#39;breaksxy&#39; expects iterable, </span><span class="si">{0!r}</span><span class="s2"> was passed&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="c1"># Encapsulate tuple argument into a list: this allows defining a PWL with a tuple if there is only</span>
+            <span class="c1">#  one element in its definition</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;argument &#39;breaksxy&#39; must be a non-empty list of (x, y) tuples.&quot;</span><span class="p">)</span>
+        <span class="n">prev_pair</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">pprev_pair</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;invalid tuple in &#39;breaksxy&#39;: </span><span class="si">{0!s}</span><span class="s2">. Each tuple must have 2 items.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pair</span><span class="p">))</span>
+                <span class="n">PwlFunction</span><span class="o">.</span><span class="n">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">PwlFunction</span><span class="o">.</span><span class="n">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;invalid item in &#39;breaksxy&#39;: </span><span class="si">{0!s}</span><span class="s2">. Each item must be a (x, y) tuple.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pair</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">prev_pair</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;X coordinate in: </span><span class="si">{0!s}</span><span class="s2"> cannot be smaller than previous break abscisse: </span><span class="si">{1!s}</span><span class="s2">.&quot;</span><span class="o">.</span>
+                                 <span class="nb">format</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="n">prev_pair</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">pprev_pair</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">pprev_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span>
+                        <span class="s2">&quot;invalid break: </span><span class="si">{0!s}</span><span class="s2">. There cannot be more than 2 consecutive breaks with same abscisse.&quot;</span><span class="o">.</span>
+                            <span class="nb">format</span><span class="p">(</span><span class="n">pair</span><span class="p">))</span>
+            <span class="n">pprev_pair</span> <span class="o">=</span> <span class="n">prev_pair</span>
+            <span class="n">prev_pair</span> <span class="o">=</span> <span class="n">pair</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">check_number_pair</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;argument &#39;anchor&#39; must be defined&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;invalid tuple for &#39;anchor&#39;: </span><span class="si">{0!s}</span><span class="s2">. Anchor argument must have 2 items.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+            <span class="n">PwlFunction</span><span class="o">.</span><span class="n">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">PwlFunction</span><span class="o">.</span><span class="n">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;invalid value for &#39;anchor&#39;: </span><span class="si">{0!s}</span><span class="s2">. Anchor argument must be a (x, y) tuple.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">check_list_pair_slope_breakx</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">anchor</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;argument &#39;slopebreaksx&#39; must be defined&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_iterable</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;not an iterable: </span><span class="si">{0!s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="c1"># Encapsulate tuple argument into a list: this allows defining a PWL with a tuple if there is only</span>
+            <span class="c1">#  one element in its definition</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+        <span class="n">prev_pair</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">pprev_pair</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;invalid tuple in &#39;slopebreaksx&#39;: </span><span class="si">{0!s}</span><span class="s2">. Each tuple must have 2 items.&quot;</span><span class="o">.</span>
+                                 <span class="nb">format</span><span class="p">(</span><span class="n">pair</span><span class="p">))</span>
+                <span class="n">PwlFunction</span><span class="o">.</span><span class="n">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">PwlFunction</span><span class="o">.</span><span class="n">check_number</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;invalid item in &#39;slopebreaksx&#39;: </span><span class="si">{0!s}</span><span class="s2">. Each item must be a (x, y) tuple.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pair</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">prev_pair</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;X coordinate in: </span><span class="si">{0!s}</span><span class="s2"> cannot be smaller than previous break abscisse: </span><span class="si">{1!s}</span><span class="s2">.&quot;</span><span class="o">.</span>
+                                 <span class="nb">format</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="n">prev_pair</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">pprev_pair</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">pprev_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span>
+                        <span class="s2">&quot;invalid break: </span><span class="si">{0!s}</span><span class="s2">. There cannot be more than 2 consecutive breaks with same abscisse.&quot;</span><span class="o">.</span>
+                            <span class="nb">format</span><span class="p">(</span><span class="n">pair</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">prev_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;anchor </span><span class="si">{0!s}</span><span class="s2"> cannot be defined at discontinuity point: </span><span class="si">{1!s}</span><span class="s2">&quot;</span><span class="o">.</span>
+                                 <span class="nb">format</span><span class="p">(</span><span class="n">anchor</span><span class="p">,</span> <span class="n">pair</span><span class="p">))</span>
+            <span class="n">pprev_pair</span> <span class="o">=</span> <span class="n">prev_pair</span>
+            <span class="n">prev_pair</span> <span class="o">=</span> <span class="n">pair</span>
+
+    <span class="k">class</span> <span class="nc">_PwlAsBreaks</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When using this class, the piecewise linear function is specified by:</span>
+<span class="sd">         - Breakpoints defined as a list of coordinate pairs `(x[i], y[i])` defining the segments of the PWL function.</span>
+<span class="sd">         - Before the first segment of the PWL function there is a half-line; its slope is specified by `preslope`.</span>
+<span class="sd">         - After the last segment of the the PWL function there is a half-line; its slope is specified by `postslope`.</span>
+<span class="sd">        Two consecutive breakpoints may have the same x-coordinate; in such cases there is a discontinuity in the</span>
+<span class="sd">        PWL function.  Three consecutive breakpoints may not have the same x-coordinate.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preslope</span><span class="p">,</span> <span class="n">breaksxy</span><span class="p">,</span> <span class="n">postslope</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_preslope</span> <span class="o">=</span> <span class="n">preslope</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_breaksxy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reformulate_breaksxy</span><span class="p">(</span><span class="n">breaksxy</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_postslope</span> <span class="o">=</span> <span class="n">postslope</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">preslope</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_preslope</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">breaksxy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_breaksxy</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">postslope</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_postslope</span>
+
+        <span class="k">def</span> <span class="nf">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">breaksxy_copy</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="n">breaksxy_copy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_reformulate_breaksxy</span><span class="p">(</span><span class="n">breaksxy</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">breaksxy</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">breaksxy</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[</span><span class="n">breaksxy</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">breaksxy</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_remove_useless_intermediate_breaks</span><span class="p">(</span><span class="n">preslope</span><span class="p">,</span> <span class="n">breaksxy</span><span class="p">,</span> <span class="n">postslope</span><span class="p">):</span>
+            <span class="n">result_breaksxy</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">current_slope</span> <span class="o">=</span> <span class="n">preslope</span>
+            <span class="n">prev_break</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="n">breaksxy</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">prev_break</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">prev_break</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="c1"># Check discontinuity</span>
+                        <span class="k">if</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">prev_break</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prev_break</span><span class="p">)</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">br</span><span class="p">)</span>
+                            <span class="n">current_slope</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">prev_break</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">prev_break</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="k">if</span> <span class="n">current_slope</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">current_slope</span> <span class="o">!=</span> <span class="n">slope</span><span class="p">:</span>
+                            <span class="c1"># Add prev_break in list</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prev_break</span><span class="p">)</span>
+                        <span class="n">current_slope</span> <span class="o">=</span> <span class="n">slope</span>
+                <span class="n">prev_break</span> <span class="o">=</span> <span class="n">br</span>
+            <span class="c1"># Handle last break</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">result_breaksxy</span><span class="p">:</span>
+                <span class="c1"># Set result breaks = first break</span>
+                <span class="n">result_breaksxy</span> <span class="o">=</span> <span class="n">breaksxy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">current_slope</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">current_slope</span> <span class="o">!=</span> <span class="n">postslope</span><span class="p">:</span>
+                <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prev_break</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">preslope</span><span class="p">,</span> <span class="n">result_breaksxy</span><span class="p">,</span> <span class="n">postslope</span>
+
+        <span class="k">def</span> <span class="nf">_get_break_at_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">index</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">index</span>
+            <span class="n">break_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">break_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">[</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">break_2</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="c1"># Discontinuity</span>
+                    <span class="k">return</span> <span class="n">break_1</span><span class="p">,</span> <span class="n">break_2</span><span class="p">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">return</span> <span class="n">break_1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">index</span>
+
+        <span class="k">def</span> <span class="nf">_get_y_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_coord</span><span class="p">,</span> <span class="n">prev_break_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            :param x_coord:</span>
+<span class="sd">            :param prev_break_index: this parameter is mandatory if a breakxy tuple does exist before x_coord. Otherwise</span>
+<span class="sd">                an exception is raised.</span>
+<span class="sd">            :return:</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">prev_break_index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">break_1</span><span class="p">,</span> <span class="n">break_2</span><span class="p">,</span> <span class="n">last_ind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_break_at_index</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">x_coord</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid arguments passed to PwlAsBreaks._get_y_value()&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">x_coord</span><span class="p">:</span>
+                    <span class="n">y_coord_1</span> <span class="o">=</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">y_coord_2</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">break_2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">break_2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">return</span> <span class="n">y_coord_1</span><span class="p">,</span> <span class="n">y_coord_2</span><span class="p">,</span> <span class="n">last_ind</span>
+                <span class="n">y_coord_1</span> <span class="o">=</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">preslope</span> <span class="o">*</span> <span class="p">(</span><span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_coord</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">y_coord_1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="n">break_1</span><span class="p">,</span> <span class="n">break_2</span><span class="p">,</span> <span class="n">last_ind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_break_at_index</span><span class="p">(</span><span class="n">prev_break_index</span><span class="p">)</span>
+            <span class="n">next_break_1</span><span class="p">,</span> <span class="n">next_break_2</span><span class="p">,</span> <span class="n">next_last_ind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_break_at_index</span><span class="p">(</span><span class="n">last_ind</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">next_break_1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># x-coord is after last break</span>
+                <span class="n">last_break</span> <span class="o">=</span> <span class="n">break_1</span> <span class="k">if</span> <span class="n">break_2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">break_2</span>
+                <span class="n">y_coord_1</span> <span class="o">=</span> <span class="n">last_break</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span> <span class="o">*</span> <span class="p">(</span><span class="n">x_coord</span> <span class="o">-</span> <span class="n">last_break</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">return</span> <span class="n">y_coord_1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">last_ind</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">x_coord</span> <span class="o">==</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="c1"># Here, one must have: x_coord &gt; break_1[0]</span>
+                    <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid arguments passed to PwlAsBreaks._get_y_value()&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">x_coord</span> <span class="o">==</span> <span class="n">next_break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">y_coord_1</span> <span class="o">=</span> <span class="n">next_break_1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">y_coord_2</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">next_break_2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">next_break_2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">return</span> <span class="n">y_coord_1</span><span class="p">,</span> <span class="n">y_coord_2</span><span class="p">,</span> <span class="n">next_last_ind</span>
+                <span class="n">y_coord_prev</span> <span class="o">=</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">break_2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">break_2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">y_coord_next</span> <span class="o">=</span> <span class="n">next_break_1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_coord_next</span> <span class="o">-</span> <span class="n">y_coord_prev</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">next_break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">y_coord_1</span> <span class="o">=</span> <span class="n">y_coord_prev</span> <span class="o">+</span> <span class="n">slope</span> <span class="o">*</span> <span class="p">(</span><span class="n">x_coord</span> <span class="o">-</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">return</span> <span class="n">y_coord_1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">last_ind</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_val</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot; Evaluates the breaks-based PWL function at the point whose x-coordinate is `x_val`.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                x_val: The x value for which we want to compute the value of the function.</span>
+
+<span class="sd">            Returns:</span>
+<span class="sd">                The value of the PWL function at point `x_val`</span>
+<span class="sd">                A DOcplexException exception is raised when evaluating at a discontinuity of the PWL function.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">prev_break_index</span><span class="p">,</span> <span class="n">index</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">):</span>
+                <span class="n">break_1</span><span class="p">,</span> <span class="n">break_2</span><span class="p">,</span> <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_break_at_index</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">break_1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid PWL definition: no break point is defined&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">x_val</span><span class="p">:</span>
+                    <span class="n">prev_break_index</span> <span class="o">=</span> <span class="n">index</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">break_1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">x_val</span> <span class="ow">and</span> <span class="n">break_2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Cannot evaluate PWL at a discontinuity&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+                <span class="n">index</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">y_val</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_y_value</span><span class="p">(</span><span class="n">x_val</span><span class="p">,</span> <span class="n">prev_break_index</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">y_val</span>
+
+        <span class="k">def</span> <span class="nf">_get_all_breaks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_x_coord</span><span class="p">):</span>
+            <span class="n">all_breaks</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">prev_break_ind</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">for</span> <span class="n">x_coord</span> <span class="ow">in</span> <span class="n">all_x_coord</span><span class="p">:</span>
+                <span class="n">y_coord_1</span><span class="p">,</span> <span class="n">y_coord_2</span><span class="p">,</span> <span class="n">prev_break_ind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_y_value</span><span class="p">(</span><span class="n">x_coord</span><span class="p">,</span> <span class="n">prev_break_ind</span><span class="p">)</span>
+                <span class="n">all_breaks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x_coord</span><span class="p">,</span> <span class="n">y_coord_1</span><span class="p">)</span> <span class="k">if</span> <span class="n">y_coord_2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span>
+                                  <span class="p">[(</span><span class="n">x_coord</span><span class="p">,</span> <span class="n">y_coord_1</span><span class="p">),</span> <span class="p">(</span><span class="n">x_coord</span><span class="p">,</span> <span class="n">y_coord_2</span><span class="p">)])</span>
+            <span class="k">return</span> <span class="n">all_breaks</span>
+
+        <span class="k">def</span> <span class="nf">get_nb_intervals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">nb_discontinuities</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">prev_br</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">prev_br</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">prev_br</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">nb_discontinuities</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">prev_br</span> <span class="o">=</span> <span class="n">br</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">)</span> <span class="o">-</span> <span class="n">nb_discontinuities</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">):</span>
+                <span class="n">all_x_coord</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">})</span>
+                <span class="n">all_breaks_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_all_breaks</span><span class="p">(</span><span class="n">all_x_coord</span><span class="p">)</span>
+                <span class="n">all_breaks_right</span> <span class="o">=</span> <span class="n">arg</span><span class="o">.</span><span class="n">_get_all_breaks</span><span class="p">(</span><span class="n">all_x_coord</span><span class="p">)</span>
+                <span class="n">result_breaksxy</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="c1"># Both lists have same size, with same x-coord for breaks ==&gt; perform the addition on each break</span>
+                <span class="k">for</span> <span class="n">br_l</span><span class="p">,</span> <span class="n">br_r</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">all_breaks_left</span><span class="p">,</span> <span class="n">all_breaks_right</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">br_l</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">br_r</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                        <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">br_l</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                            <span class="c1"># br_r is a list containing 2 tuple pairs</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">br_r</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                            <span class="c1"># br_l is a list containing 2 tuple pairs</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># br_l and br_r are two lists, each containing 2 tuple pairs</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                            <span class="n">result_breaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">br_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">br_l</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">br_r</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                <span class="n">result_preslope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preslope</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">preslope</span>
+                <span class="n">result_postslope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">postslope</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_remove_useless_intermediate_breaks</span><span class="p">(</span>
+                    <span class="n">result_preslope</span><span class="p">,</span> <span class="n">result_breaksxy</span><span class="p">,</span> <span class="n">result_postslope</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="p">[(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span> <span class="o">+</span> <span class="n">arg</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="p">[(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_remove_useless_intermediate_breaks</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">preslope</span> <span class="o">*</span> <span class="n">arg</span><span class="p">,</span> <span class="p">[(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span> <span class="o">*</span> <span class="n">arg</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">translate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="p">[(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">arg</span><span class="p">,</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for argument: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;(</span><span class="si">{0}</span><span class="s1">, </span><span class="si">{1}</span><span class="s1">, </span><span class="si">{2}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">repr_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;preslope=</span><span class="si">{0}</span><span class="s1">,breaksxy=</span><span class="si">{1}</span><span class="s1">,postslope=</span><span class="si">{2}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">_PwlAsSlopes</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When using this class, the piecewise linear function is specified by:</span>
+<span class="sd">         - a list of tuple pairs `(slope[i], breakx[i])` of slopes and x-coordinates defining the slope of the piecewise</span>
+<span class="sd">           function between the previous breakpoint (or minus infinity if there is none) and the breakpoint with</span>
+<span class="sd">           x-coordinate `breakx[i]`,</span>
+<span class="sd">         - the slope after the last specified breakpoint, and</span>
+<span class="sd">         - the coordinates of the &#39;anchor point&#39;. The purpose of the anchor point is to ground the piecewise-linear</span>
+<span class="sd">           function specified by the list of slopes and breakpoints.</span>
+<span class="sd">        Note that:</span>
+<span class="sd">         - The `breakx[i]` values must be increasing. If two consecutive `breakx` values have the same value, a</span>
+<span class="sd">           discontinuity is defined and the value associated with the second argument is considered to be a &quot;step&quot;.</span>
+<span class="sd">         - The list of tuple pairs `(slope[i], breakx[i])` may be empty.</span>
+<span class="sd">         - The default value for the anchor point is the origin (point with coordinates (0, 0)).</span>
+<span class="sd">         - If the piecewise linear function defines some discontinuities, the anchor must not reside at one of</span>
+<span class="sd">           these discontinuities, since the function would not be uniquely defined.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slopebreaksx</span><span class="p">,</span> <span class="n">lastslope</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slopebreaksx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reformulate_slopebreaksx</span><span class="p">(</span><span class="n">slopebreaksx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lastslope</span> <span class="o">=</span> <span class="n">lastslope</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_anchor</span> <span class="o">=</span> <span class="n">anchor</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">slopebreaksx</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slopebreaksx</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">lastslope</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lastslope</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">anchor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_anchor</span>
+
+        <span class="k">def</span> <span class="nf">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">slopebreaksx_copy</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">)</span>
+            <span class="n">anchor_copy</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">(</span><span class="n">slopebreaksx_copy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span> <span class="n">anchor_copy</span><span class="p">)</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_reformulate_slopebreaksx</span><span class="p">(</span><span class="n">slopebreaksx</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slopebreaksx</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">slopebreaksx</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">[</span><span class="n">slopebreaksx</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">slopebreaksx</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_compute_breaksxy_after</span><span class="p">(</span><span class="n">slope_breaks</span><span class="p">,</span> <span class="n">anchor</span><span class="p">):</span>
+            <span class="n">breaks_xy</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span> <span class="o">=</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">slope</span><span class="p">,</span> <span class="n">break_x</span><span class="p">)</span> <span class="ow">in</span> <span class="n">slope_breaks</span><span class="p">:</span>
+                <span class="n">delta_x</span> <span class="o">=</span> <span class="n">break_x</span> <span class="o">-</span> <span class="n">start_x</span>
+                <span class="n">start_x</span> <span class="o">=</span> <span class="n">break_x</span>
+                <span class="k">if</span> <span class="n">delta_x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">start_y</span> <span class="o">=</span> <span class="n">start_y</span> <span class="o">+</span> <span class="n">slope</span> <span class="o">*</span> <span class="n">delta_x</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Discontinuity: slope is considered to be a &quot;step&quot;</span>
+                    <span class="n">start_y</span> <span class="o">+=</span> <span class="n">slope</span>
+                <span class="n">breaks_xy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">breaks_xy</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_compute_breaksxy_before</span><span class="p">(</span><span class="n">start_slope</span><span class="p">,</span> <span class="n">slope_breaks</span><span class="p">,</span> <span class="n">anchor</span><span class="p">):</span>
+            <span class="n">breaks_xy</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span> <span class="o">=</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">last_slope</span> <span class="o">=</span> <span class="n">start_slope</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">slope</span><span class="p">,</span> <span class="n">break_x</span><span class="p">)</span> <span class="ow">in</span> <span class="n">slope_breaks</span><span class="p">:</span>
+                <span class="n">delta_x</span> <span class="o">=</span> <span class="n">break_x</span> <span class="o">-</span> <span class="n">start_x</span>
+                <span class="n">start_x</span> <span class="o">=</span> <span class="n">break_x</span>
+                <span class="k">if</span> <span class="n">delta_x</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">break_x</span><span class="p">:</span>
+                    <span class="n">start_y</span> <span class="o">=</span> <span class="n">start_y</span> <span class="o">+</span> <span class="n">last_slope</span> <span class="o">*</span> <span class="n">delta_x</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Discontinuity: slope is considered to be a &quot;step&quot;</span>
+                    <span class="n">start_y</span> <span class="o">-=</span> <span class="n">last_slope</span>
+                <span class="n">last_slope</span> <span class="o">=</span> <span class="n">slope</span>
+                <span class="n">breaks_xy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">start_x</span><span class="p">,</span> <span class="n">start_y</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">breaks_xy</span><span class="p">,</span> <span class="n">last_slope</span>
+
+        <span class="k">def</span> <span class="nf">convert_to_pwl_as_breaks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">breaks_before</span> <span class="o">=</span> <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="n">breaks_after</span> <span class="o">=</span> <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="c1"># Compute y value at each break point</span>
+            <span class="n">anchor_slope</span> <span class="o">=</span> <span class="n">breaks_after</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">breaks_after</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span>
+            <span class="n">breaks_before</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+            <span class="n">breaks_xy_before</span><span class="p">,</span> <span class="n">preslope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_breaksxy_before</span><span class="p">(</span><span class="n">anchor_slope</span><span class="p">,</span> <span class="n">breaks_before</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">)</span>
+            <span class="n">breaks_xy_before</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+            <span class="n">breaks_xy_after</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_breaksxy_after</span><span class="p">(</span><span class="n">breaks_after</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">)</span>
+            <span class="c1"># Now, we can build the PWL as breaks</span>
+            <span class="n">breaksxy</span> <span class="o">=</span> <span class="n">breaks_xy_before</span> <span class="o">+</span> <span class="n">breaks_xy_after</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">breaksxy</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span><span class="n">preslope</span><span class="p">,</span> <span class="n">breaksxy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># No breakpoint is defined</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">_get_safe_xy_anchor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Return an anchor point that is on or after (if last break corresponds to a discontinuity) the largest</span>
+<span class="sd">            x-coord corresponding to a break or the anchor.</span>
+<span class="sd">            :return:</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">breaks_after</span> <span class="o">=</span> <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="n">breaks_xy_after</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_breaksxy_after</span><span class="p">(</span><span class="n">breaks_after</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">breaks_xy_after</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Check if last break corresponds to a discontinuity</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">breaks_xy_after</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">breaks_xy_after</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">breaks_xy_after</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="c1"># Returns point with x-coord = last_x_coord + 1</span>
+                    <span class="k">return</span> <span class="n">breaks_xy_after</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">breaks_xy_after</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span>
+                <span class="k">return</span> <span class="n">breaks_xy_after</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span>
+
+        <span class="nd">@staticmethod</span>
+        <span class="k">def</span> <span class="nf">_remove_useless_intermediate_slopes</span><span class="p">(</span><span class="n">slopebreaksx</span><span class="p">,</span> <span class="n">lastslope</span><span class="p">,</span> <span class="n">anchor</span><span class="p">):</span>
+            <span class="n">result_slopebreaksx</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">prev_sbr</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">sbr</span> <span class="ow">in</span> <span class="n">slopebreaksx</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">prev_sbr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">sbr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">prev_sbr</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="n">result_slopebreaksx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prev_sbr</span><span class="p">)</span>
+                <span class="n">prev_sbr</span> <span class="o">=</span> <span class="n">sbr</span>
+            <span class="k">if</span> <span class="n">prev_sbr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">prev_sbr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">lastslope</span><span class="p">:</span>
+                <span class="n">result_slopebreaksx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prev_sbr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result_slopebreaksx</span><span class="p">,</span> <span class="n">lastslope</span><span class="p">,</span> <span class="n">anchor</span>
+
+        <span class="k">def</span> <span class="nf">_get_all_slopebreaks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_x_coord</span><span class="p">):</span>
+            <span class="n">all_slopebreaks</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">iter_slopebreakx</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">)</span>
+            <span class="n">current_slopebreakx</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_slopebreakx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">x_coord</span> <span class="ow">in</span> <span class="n">all_x_coord</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">current_slopebreakx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">all_slopebreaks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span> <span class="n">x_coord</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">while</span> <span class="n">current_slopebreakx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">x_coord</span> <span class="o">&gt;</span> <span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">prev_slopebreakx</span> <span class="o">=</span> <span class="n">current_slopebreakx</span>
+                        <span class="n">current_slopebreakx</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_slopebreakx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">current_slopebreakx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">prev_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                            <span class="c1"># Case of a discontinuity ==&gt; update last item in result list to a list containing 2 tuples</span>
+                            <span class="n">all_slopebreaks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">prev_slopebreakx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">prev_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                                   <span class="p">(</span><span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+                    <span class="k">if</span> <span class="n">current_slopebreakx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">all_slopebreaks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span> <span class="n">x_coord</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">all_slopebreaks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x_coord</span><span class="p">))</span>
+            <span class="c1"># Handle case where last break is a discontinuity</span>
+            <span class="n">prev_slopebreakx</span> <span class="o">=</span> <span class="n">current_slopebreakx</span>
+            <span class="n">current_slopebreakx</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iter_slopebreakx</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">current_slopebreakx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Case of a discontinuity ==&gt; update last item in result list to a list containing 2 tuples</span>
+                <span class="n">all_slopebreaks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">prev_slopebreakx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">prev_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                       <span class="p">(</span><span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">current_slopebreakx</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+            <span class="k">return</span> <span class="n">all_slopebreaks</span>
+
+        <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">):</span>
+                <span class="n">all_x_coord</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">sbr</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">sbr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">})</span>
+                <span class="n">all_slopebreaks_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_all_slopebreaks</span><span class="p">(</span><span class="n">all_x_coord</span><span class="p">)</span>
+                <span class="n">all_slopebreaks_right</span> <span class="o">=</span> <span class="n">arg</span><span class="o">.</span><span class="n">_get_all_slopebreaks</span><span class="p">(</span><span class="n">all_x_coord</span><span class="p">)</span>
+                <span class="n">result_slopebreaksxy</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="c1"># Both lists have same size, with same x-coord for slopebreaks</span>
+                <span class="c1">#   ==&gt; perform the addition of slopes on each break</span>
+                <span class="k">for</span> <span class="n">sbr_l</span><span class="p">,</span> <span class="n">sbr_r</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">all_slopebreaks_left</span><span class="p">,</span> <span class="n">all_slopebreaks_right</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sbr_l</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sbr_r</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                        <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sbr_l</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                            <span class="c1"># sbr_r is a list containing 2 tuple pairs</span>
+                            <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                            <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_r</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sbr_r</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                            <span class="c1"># sbr_l is a list containing 2 tuple pairs</span>
+                            <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                            <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_l</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># sbr_l and sbr_r are two lists, each containing 2 tuple pairs</span>
+                            <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                            <span class="n">result_slopebreaksxy</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sbr_l</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">sbr_r</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">sbr_l</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                <span class="n">result_lastslope</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">lastslope</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">arg</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">result_anchor</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Compute a new anchor based on the last x-coord in the slopebreakx list + anchor point</span>
+                    <span class="n">anchor_l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_safe_xy_anchor</span><span class="p">()</span>
+                    <span class="n">anchor_r</span> <span class="o">=</span> <span class="n">arg</span><span class="o">.</span><span class="n">_get_safe_xy_anchor</span><span class="p">()</span>
+                    <span class="n">delta</span> <span class="o">=</span> <span class="n">anchor_r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">anchor_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">anchor_l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">anchor_r</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="n">result_anchor</span> <span class="o">=</span> <span class="p">(</span><span class="n">anchor_r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">anchor_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">anchor_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">delta</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">result_anchor</span> <span class="o">=</span> <span class="p">(</span><span class="n">anchor_l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">anchor_l</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">anchor_r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">delta</span> <span class="o">*</span> <span class="n">arg</span><span class="o">.</span><span class="n">lastslope</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_remove_useless_intermediate_slopes</span><span class="p">(</span>
+                    <span class="n">result_slopebreaksxy</span><span class="p">,</span> <span class="n">result_lastslope</span><span class="p">,</span> <span class="n">result_anchor</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">),</span>
+                                                <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">arg</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span> <span class="o">+</span> <span class="n">arg</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">),</span>
+                                                <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">arg</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_remove_useless_intermediate_slopes</span><span class="p">(</span>
+                    <span class="p">[(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">arg</span><span class="p">,</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">],</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span> <span class="o">*</span> <span class="n">arg</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">arg</span><span class="p">)))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">translate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">(</span>
+                    <span class="p">[(</span><span class="n">br</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">br</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">br</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopebreaksx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastslope</span><span class="p">,</span>
+                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">arg</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for argument: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;{&#39;</span> <span class="o">+</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="nb">repr</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; -&gt; &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">break_x</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;;&#39;</span> <span class="k">for</span> <span class="p">(</span><span class="n">slope</span><span class="p">,</span> <span class="n">break_x</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slopebreaksx</span><span class="p">)</span> <span class="o">+</span> \
+                   <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lastslope</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;}(&#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s1">&#39;, &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span>
+
+    <span class="c1"># _name_generator = _AutomaticSymbolGenerator(pattern=&quot;pwl&quot;, offset=1)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">pwl_def</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">ModelingObjectBase</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="n">pwl_def</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def_as_breaks</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="n">pwl_def</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pwl_def</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">):</span>
+            <span class="c1"># Use the same data structure as input for internal representation (do not duplicate)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def_as_breaks</span> <span class="o">=</span> <span class="n">pwl_def</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">):</span>
+            <span class="n">pwl_def_as_breaks</span> <span class="o">=</span> <span class="n">pwl_def</span><span class="o">.</span><span class="n">convert_to_pwl_as_breaks</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_as_breaks</span><span class="p">(</span><span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">preslope</span><span class="p">,</span> <span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">breaksxy</span><span class="p">,</span>
+                                    <span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">postslope</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Invalid definition for Piecewise Linear Function: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pwl_def</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_set_pwl_as_breaks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preslope</span><span class="p">,</span> <span class="n">breaksxy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">postslope</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Internal format to represent a piecewise linear function is based on the Cplex representation&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def_as_breaks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">(</span><span class="n">preslope</span><span class="p">,</span> <span class="n">breaksxy</span><span class="p">,</span> <span class="n">postslope</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_model</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="n">pwl_def_copy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">target_model</span><span class="o">.</span><span class="n">_piecewise</span><span class="p">(</span><span class="n">pwl_def_copy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_name</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pwl_def</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pwl_def_as_breaks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def_as_breaks</span>
+
+    <span class="c1"># __call__ builds an expression equal to the piecewise linear value of its argument, based</span>
+    <span class="c1"># on the definition of the PWL function.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Args:</span>
+    <span class="c1">#     e: Accepts any object that can be transformed into an expression:</span>
+    <span class="c1">#         decision variables, expressions, or numbers.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Returns:</span>
+    <span class="c1">#     An expression that can be used in arithmetic operators and constraints.</span>
+    <span class="c1">#</span>
+    <span class="c1"># Note:</span>
+    <span class="c1">#     Building the expression generates one auxiliary decision variable.</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_checker</span><span class="o">.</span><span class="n">typecheck_operand</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">caller</span><span class="o">=</span><span class="s2">&quot;Model.pwl&quot;</span><span class="p">,</span> <span class="n">accept_numbers</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_add_pwl_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;docplex.mp.pwl.PwlFunction(</span><span class="si">{0}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">repr_string</span><span class="p">())</span>
+
+<div class="viewcode-block" id="PwlFunction.clone"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a copy of the PWL function on the same model.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The copy of the PWL function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;Cannot modify a PWL function&#39;</span><span class="p">)</span>
+        <span class="c1"># self.add(e)</span>
+        <span class="c1"># return self</span>
+
+    <span class="k">def</span> <span class="nf">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">cloned</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PwlFunction.add"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds an expression to self.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method does not create a new PWL function but modifies the `self` instance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arg: The expression to be added. Can be a PWL function or a number.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The modified self.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">))</span> <span class="ow">or</span> \
+                    <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">)</span> <span class="ow">and</span>
+                         <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">pwl_def</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use Breaks representation</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span> <span class="o">+</span> <span class="n">arg</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span> <span class="o">+</span> <span class="n">arg</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">minus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">e</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;Cannot modify a PWL function&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">minus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">cloned</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PwlFunction.subtract"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.subtract">[docs]</a>    <span class="k">def</span> <span class="nf">subtract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Subtracts an expression from this PWL function.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method does not create a new function but modifies the `self` instance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arg: The expression to be subtracted. Can be either a PWL function, or a number.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The modified self.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsBreaks</span><span class="p">))</span> <span class="ow">or</span> \
+                    <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">)</span> <span class="ow">and</span>
+                         <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">pwl_def</span><span class="p">,</span> <span class="n">PwlFunction</span><span class="o">.</span><span class="n">_PwlAsSlopes</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span> <span class="o">-</span> <span class="n">arg</span><span class="o">.</span><span class="n">pwl_def</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use Breaks representation</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span> <span class="o">-</span> <span class="n">arg</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span> <span class="o">-</span> <span class="n">arg</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;Cannot modify a PWL function&#39;</span><span class="p">)</span>
+        <span class="c1"># return self.multiply(e)</span>
+
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotient</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># for py3</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotient</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__itruediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># for py3</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;Cannot modify a PWL function&#39;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__idiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s1">&#39;Cannot modify a PWL function&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rtruediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># for py3</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;PWL function </span><span class="si">{0!s}</span><span class="s2"> cannot be used as denominator of </span><span class="si">{1!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__rdiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;PWL function </span><span class="si">{0!s}</span><span class="s2"> cannot be used as denominator of </span><span class="si">{1!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">quotient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">cloned</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cloned</span>
+
+<div class="viewcode-block" id="PwlFunction.divide"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.divide">[docs]</a>    <span class="k">def</span> <span class="nf">divide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Divides this PWL function by a number.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method does not create a new function but modifies the `self` instance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arg: The number that is used to divide `self`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The modified `self`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_typecheck_as_denominator</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">numerator</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">inverse</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">inverse</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="n">cloned</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">cloned</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PwlFunction.multiply"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.multiply">[docs]</a>    <span class="k">def</span> <span class="nf">multiply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Multiplies this PWL function by a number.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method does not create a new function but modifies the `self` instance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arg: The number that is used to multiply `self`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The modified `self`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span> <span class="o">*</span> <span class="n">arg</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_pwl_definition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for right hand side operand: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="PwlFunction.translate"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.translate">[docs]</a>    <span class="k">def</span> <span class="nf">translate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Translate this PWL function by a number.</span>
+<span class="sd">        This method creates a new PWL function instance for which all breakpoints have been moved</span>
+<span class="sd">        along the horizontal axis by the amount specified by `arg`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arg: The number that is used to translate all breakpoints.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The translated PWL function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">PwlFunction</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Invalid type for argument: </span><span class="si">{0!s}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="PwlFunction.evaluate"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.evaluate">[docs]</a>    <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Evaluates the PWL function at the point whose x-coordinate is `x_val`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x_val: The x value for which we want to compute the value of the function.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The value of the PWL function at point `x_val`.</span>
+<span class="sd">            A DOcplexException exception is raised when evaluating at a discontinuity of the PWL function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def_as_breaks</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">x_val</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PwlFunction.plot"><a class="viewcode-back" href="../../../docplex.mp.pwl.html#docplex.mp.pwl.PwlFunction.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method displays the piecewise linear function using the matplotlib package, if found.</span>
+
+<span class="sd">        :param lx: The value to show the `preslope` (must be before the first breakpoint x value).</span>
+<span class="sd">        :param rx: The value to show the `postslope` (must be after the last breakpoint x value).</span>
+<span class="sd">        :param k: Scaling factor to calculate default values for `rx` and/or `lx` if these arguments are not provided,</span>
+<span class="sd">                based on mean interval length between the `x` values of breakpoints.</span>
+<span class="sd">        :param kwargs: additional arguments to be passed to matplotlib plot() function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s1">&#39;matplotlib is required for plot()&#39;</span><span class="p">)</span>
+        <span class="n">bks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">breaksxy</span>
+        <span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">bk</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">bk</span> <span class="ow">in</span> <span class="n">bks</span><span class="p">]</span>
+        <span class="n">ys</span> <span class="o">=</span> <span class="p">[</span><span class="n">bk</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">bk</span> <span class="ow">in</span> <span class="n">bks</span><span class="p">]</span>
+        <span class="c1"># compute mean delta_x</span>
+        <span class="n">first_x</span> <span class="o">=</span> <span class="n">xs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">last_x</span> <span class="o">=</span> <span class="n">xs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">nb_intervals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pwl_def_as_breaks</span><span class="o">.</span><span class="n">get_nb_intervals</span><span class="p">()</span>
+        <span class="c1"># k times the mean interval length is used for left/right extra points</span>
+        <span class="n">kdx_m</span> <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="n">last_x</span> <span class="o">-</span> <span class="n">first_x</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">nb_intervals</span><span class="p">)</span> <span class="k">if</span> <span class="n">nb_intervals</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">lx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lx</span> <span class="o">=</span> <span class="n">first_x</span> <span class="o">-</span> <span class="n">kdx_m</span>
+        <span class="n">ly</span> <span class="o">=</span> <span class="n">ys</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">preslope</span> <span class="o">*</span> <span class="p">(</span><span class="n">first_x</span> <span class="o">-</span> <span class="n">lx</span><span class="p">)</span>
+        <span class="n">xs</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">lx</span><span class="p">)</span>
+        <span class="n">ys</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ly</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">rx</span> <span class="o">&lt;=</span> <span class="n">last_x</span><span class="p">:</span>
+            <span class="n">rx</span> <span class="o">=</span> <span class="n">last_x</span> <span class="o">+</span> <span class="n">kdx_m</span>
+        <span class="n">ry</span> <span class="o">=</span> <span class="n">ys</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pwl_def_as_breaks</span><span class="o">.</span><span class="n">postslope</span> <span class="o">*</span> <span class="p">(</span><span class="n">rx</span> <span class="o">-</span> <span class="n">last_x</span><span class="p">)</span>
+        <span class="n">xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rx</span><span class="p">)</span>
+        <span class="n">ys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ry</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plt</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;pwl: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>

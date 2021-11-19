@@ -24,7 +24,14 @@ This library is numpy friendly.
 
 ## Get the documentation and examples
 
-* [Documentation](http://ibmdecisionoptimization.github.io/docplex-doc/)
+* [Latest documentation](http://ibmdecisionoptimization.github.io/docplex-doc/)
+* Documentation archives:
+   * [2.22.213](http://ibmdecisionoptimization.github.io/docplex-doc/2.22.213)
+   * [2.21.207](http://ibmdecisionoptimization.github.io/docplex-doc/2.21.207)
+   * [2.20.204](http://ibmdecisionoptimization.github.io/docplex-doc/2.20.204)
+   * [2.19.202](http://ibmdecisionoptimization.github.io/docplex-doc/2.19.202)
+   * [2.18.200](http://ibmdecisionoptimization.github.io/docplex-doc/2.18.200)
+   * [2.16.195](http://ibmdecisionoptimization.github.io/docplex-doc/2.16.195)
 * [Examples](https://github.com/IBMDecisionOptimization/docplex-examples)
 
 ## Get your IBM&reg; ILOG CPLEX Optimization Studio edition

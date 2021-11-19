@@ -1,0 +1,522 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>The Warehouse Problem &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">The Warehouse Problem</a><ul>
+<li><a class="reference internal" href="#input-data">Input Data</a></li>
+<li><a class="reference internal" href="#business-decisions">Business Decisions</a></li>
+<li><a class="reference internal" href="#business-constraints">Business Constraints</a></li>
+<li><a class="reference internal" href="#business-objective">Business Objective</a></li>
+<li><a class="reference internal" href="#the-math-model">The math model</a></li>
+<li><a class="reference internal" href="#solving-with-docplex">Solving with DOcplex</a></li>
+<li><a class="reference internal" href="#the-model">The model</a><ul>
+<li><a class="reference internal" href="#defining-decision-variables">Defining decision variables</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#defining-constraints">Defining constraints</a></li>
+<li><a class="reference internal" href="#defining-the-objective">Defining the Objective</a></li>
+<li><a class="reference internal" href="#solving-the-model">Solving the model</a></li>
+<li><a class="reference internal" href="#displaying-results">Displaying results</a></li>
+<li><a class="reference internal" href="#exploring-the-pareto-frontier">Exploring the Pareto frontier</a><ul>
+<li><a class="reference internal" href="#pareto-diagram">Pareto Diagram</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-warehouse-problem">
+<h1>The Warehouse Problem<a class="headerlink" href="#the-warehouse-problem" title="Permalink to this headline">&para;</a></h1>
+<p>The Warehouse Problem is a well-know optimization case found in many
+textbooks. The problem consists, given a set of candidate warehouse
+<em>locations</em> and a set of <em>stores</em> to decide which warehouse to open and
+which warehouse will server which store.</p>
+<div class="section" id="input-data">
+<h2>Input Data<a class="headerlink" href="#input-data" title="Permalink to this headline">&para;</a></h2>
+<p>Data is provided as follows:</p>
+<ul class="simple">
+<li>For each warehouse, we require a tuple (name, capacity, fixed-cost),
+where <em>name</em> is the unique name of the warehouse, <em>capacity</em> is the
+maximum number of stores it can supply and <em>fixed_cost</em> is the cost
+incurred by opening the warehouse.</li>
+<li>For each couple (warehouse, store) a <em>supply_cost</em> which estimates
+the cost of supplying this store by this warehouse.</li>
+</ul>
+<p>A compact way of representing the data is a Python <em>dictionary</em>: for
+each warehouse tuple, list all supply costs for all stores.</p>
+</div>
+<div class="section" id="business-decisions">
+<h2>Business Decisions<a class="headerlink" href="#business-decisions" title="Permalink to this headline">&para;</a></h2>
+<p>The problem consists in deciding which warehouse will be open and for
+each store, by which warehouse it will be supplied.</p>
+</div>
+<div class="section" id="business-constraints">
+<h2>Business Constraints<a class="headerlink" href="#business-constraints" title="Permalink to this headline">&para;</a></h2>
+<p>Decisions must satisfy the following (simplified) business constraints:</p>
+<ol class="arabic simple">
+<li>Unicity: each store is supplied by one unique warehouse</li>
+<li>A store can only be supplied by an <em>open</em> warehouse</li>
+<li>Capacity: the number of stores supplied by a warehouse must be less
+than its capacity</li>
+</ol>
+</div>
+<div class="section" id="business-objective">
+<h2>Business Objective<a class="headerlink" href="#business-objective" title="Permalink to this headline">&para;</a></h2>
+<p>The goal is to minimize the total cost incurred by the decisions, which
+is made of two costs:</p>
+<ul class="simple">
+<li>The <em>Total Opening Cost</em> is the sum of opening costs ranging over all
+open warehouses.</li>
+<li>The <em>Total Supply Cost</em> is the sum of supply costs for all the chosen
+(warehouse, store) pairs</li>
+</ul>
+<p>To begin with, let&#8217;s define a small warehouse dataset:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">WAREHOUSES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="s1">&#39;Bonn&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">):</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">74</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">93</span><span class="p">,</span> <span class="mi">47</span><span class="p">],</span>
+    <span class="p">(</span><span class="s1">&#39;Bordeaux&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">35</span><span class="p">):</span> <span class="p">[</span><span class="mi">24</span><span class="p">,</span> <span class="mi">27</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">65</span><span class="p">],</span>
+    <span class="p">(</span><span class="s1">&#39;London&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">32</span><span class="p">):</span> <span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">82</span><span class="p">,</span> <span class="mi">71</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">55</span><span class="p">],</span>
+    <span class="p">(</span><span class="s1">&#39;Paris&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">37</span><span class="p">):</span> <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">83</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">69</span><span class="p">,</span> <span class="mi">83</span><span class="p">,</span> <span class="mi">67</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">43</span><span class="p">,</span> <span class="mi">85</span><span class="p">,</span> <span class="mi">71</span><span class="p">],</span>
+    <span class="p">(</span><span class="s1">&#39;Rome&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">25</span><span class="p">):</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">74</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">61</span><span class="p">,</span> <span class="mi">54</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">95</span><span class="p">],</span>
+    <span class="p">(</span><span class="s1">&#39;Brussels&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">28</span><span class="p">):</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">74</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">61</span><span class="p">,</span> <span class="mi">34</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">95</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">WAREHOUSES</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;#candidate warehouses=</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">WAREHOUSES</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;#stores to supply=</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">WAREHOUSES</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]))</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{(</span><span class="s1">&#39;London&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">32</span><span class="p">):</span> <span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">82</span><span class="p">,</span> <span class="mi">71</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">55</span><span class="p">],</span> <span class="p">(</span><span class="s1">&#39;Bordeaux&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">35</span><span class="p">):</span> <span class="p">[</span><span class="mi">24</span><span class="p">,</span> <span class="mi">27</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mi">55</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">65</span><span class="p">],</span> <span class="p">(</span><span class="s1">&#39;Paris&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">37</span><span class="p">):</span> <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">83</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">69</span><span class="p">,</span> <span class="mi">83</span><span class="p">,</span> <span class="mi">67</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">43</span><span class="p">,</span> <span class="mi">85</span><span class="p">,</span> <span class="mi">71</span><span class="p">],</span> <span class="p">(</span><span class="s1">&#39;Bonn&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">):</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">74</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">93</span><span class="p">,</span> <span class="mi">47</span><span class="p">],</span> <span class="p">(</span><span class="s1">&#39;Brussels&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">28</span><span class="p">):</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">74</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">61</span><span class="p">,</span> <span class="mi">34</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">95</span><span class="p">],</span> <span class="p">(</span><span class="s1">&#39;Rome&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">25</span><span class="p">):</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">74</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="mi">61</span><span class="p">,</span> <span class="mi">54</span><span class="p">,</span> <span class="mi">59</span><span class="p">,</span> <span class="mi">56</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">46</span><span class="p">,</span> <span class="mi">95</span><span class="p">]}</span>
+<span class="c1">#candidate warehouses=6</span>
+<span class="c1">#stores to supply=10</span>
+</pre></div>
+</div>
+<p>Each key in the dictionary is a tuple with three fields: the name (a
+string), the capacity (a positive integer) and the fixed cost (also
+positive). Each value is a list of length 10 (the number of stores to
+supply). the k^th element of the list being the supply cost from the
+warehouse to the k^th store. For example,</p>
+<ul class="simple">
+<li>London warehouse can supply at most two stores</li>
+<li>London warehouse has an opening cost of 30</li>
+<li>The cost incurred by supplying the first store from London is 11</li>
+</ul>
+</div>
+<div class="section" id="the-math-model">
+<h2>The math model<a class="headerlink" href="#the-math-model" title="Permalink to this headline">&para;</a></h2>
+</div>
+<div class="section" id="solving-with-docplex">
+<h2>Solving with DOcplex<a class="headerlink" href="#solving-with-docplex" title="Permalink to this headline">&para;</a></h2>
+<p>Now let&#8217;s solve this problem with DOcplex. First, we define named tuples
+to store information relative to warehouses and stores in a clear and
+convenient manner.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+
+<span class="k">class</span> <span class="nc">TWareHouse</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;TWarehouse1&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;capacity&quot;</span><span class="p">,</span> <span class="s2">&quot;fixed_cost&quot;</span><span class="p">])):</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span>
+
+<span class="k">class</span> <span class="nc">TStore</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;TStore1&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">])):</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;store_</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span>
+</pre></div>
+</div>
+<p>Second, we compute the set of warehouse and store tuples. The use of
+<em>itervalues</em> from the <em>six</em> module is a technicality to ensure
+portability across Python 2 and Python3. We chose to model stores by an
+integer range from 1 to nb_stores for convenience.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">itervalues</span>
+
+<span class="n">nb_stores</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">WAREHOUSES</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">itervalues</span><span class="p">(</span><span class="n">WAREHOUSES</span><span class="p">)))</span>
+<span class="n">warehouses</span> <span class="o">=</span> <span class="p">[</span><span class="n">TWareHouse</span><span class="p">(</span><span class="o">*</span><span class="n">wrow</span><span class="p">)</span> <span class="k">for</span> <span class="n">wrow</span> <span class="ow">in</span> <span class="n">WAREHOUSES</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+<span class="c1"># we&#39;ll use the warehouses dictionary as a two-entry dictionary</span>
+<span class="n">supply_costs</span> <span class="o">=</span> <span class="n">WAREHOUSES</span>
+<span class="c1"># we count stores from 1 to NSTORES included for convenience</span>
+<span class="n">stores</span> <span class="o">=</span> <span class="p">[</span><span class="n">TStore</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nb_stores</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-model">
+<h2>The model<a class="headerlink" href="#the-model" title="Permalink to this headline">&para;</a></h2>
+<p>First we need one instance of model to store our modeling artefacts</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span>try:
+    import docplex.mp
+except:
+    !pip install docplex
+</pre></div>
+</div>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">docplex.mp.environment</span> <span class="k">import</span> <span class="n">Environment</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="n">env</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">system</span> <span class="ow">is</span><span class="p">:</span> <span class="n">Windows</span> <span class="mi">64</span><span class="n">bit</span>
+<span class="o">*</span> <span class="n">Python</span> <span class="ow">is</span> <span class="n">present</span><span class="p">,</span> <span class="n">version</span> <span class="ow">is</span> <span class="mf">2.7</span><span class="o">.</span><span class="mi">11</span>
+<span class="o">*</span> <span class="n">docplex</span> <span class="ow">is</span> <span class="n">present</span><span class="p">,</span> <span class="n">version</span> <span class="ow">is</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">113</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="k">import</span> <span class="n">Model</span>
+<span class="n">warehouse_model</span> <span class="o">=</span> <span class="n">Model</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="defining-decision-variables">
+<h3>Defining decision variables<a class="headerlink" href="#defining-decision-variables" title="Permalink to this headline">&para;</a></h3>
+<p>In DOcplex, decision variables are related to objects of the business
+model. In our case, we have two decisions to make: which warehouse is
+open and, for each store, from which warehouse is it supplied.</p>
+<p>First, we create one binary (yes/no) decision variable for each
+warehouse: the variable will be equal to 1 if and only if the warehouse
+is open. We use the <strong>binary_var_dict</strong> method of the model object to
+create a dictionary from warehouses to variables. The first argument
+states that keys of the dictionary will be our warehouse objects; the
+second argument is a a simple string *&#8217;open&#8217;, that is used to generate
+names for variables, by suffixing &#8216;open&#8217; with the string representation
+of warehouse objects (in other terms the output of the <strong>str()</strong> Python
+function. This is the reason why we redefined the method <strong>**str**</strong>
+method of class TWarehouse in the beginning.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">open_vars</span> <span class="o">=</span> <span class="n">warehouse_model</span><span class="o">.</span><span class="n">binary_var_dict</span><span class="p">(</span><span class="n">keys</span><span class="o">=</span><span class="n">warehouses</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;open&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Second, we define one binary variable for each <strong>pair</strong> or (warehouse,
+store). This is done using the method <strong>binary_var_matrix</strong>; in this
+case keys to variables are all (warehouse, store) pairs.</p>
+<p>The naming scheme applies to both components of pairs,for example the
+variable deciding whether the London warehouse supplies store 1 will be
+named supply_London_store_1.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">supply_vars</span> <span class="o">=</span> <span class="n">warehouse_model</span><span class="o">.</span><span class="n">binary_var_matrix</span><span class="p">(</span><span class="n">warehouses</span><span class="p">,</span> <span class="n">stores</span><span class="p">,</span> <span class="s1">&#39;supply&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At this step, we can check how many variables we have defined. as we
+have 5 warehouses and 10 stores, we expect to have defined 5*10 + 5 =
+55 variables.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">warehouse_model</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">docplex_model1</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">66</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">66</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">0</span>
+ <span class="o">-</span>   <span class="n">LE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">EQ</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">GE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">RNG</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+</pre></div>
+</div>
+<p>As expected, we have not defined any constraints yet.</p>
+</div>
+</div>
+<div class="section" id="defining-constraints">
+<h2>Defining constraints<a class="headerlink" href="#defining-constraints" title="Permalink to this headline">&para;</a></h2>
+<p>The first constraint states that each store is supplied by exactly one
+warehouse. In other terms, the sum of supply variables for a given
+store, ranging over all warehouses, must be equal to 1. Printing model
+information, we check that this code defines 10 constraints</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stores</span><span class="p">:</span>
+    <span class="n">warehouse_model</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">warehouse_model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">supply_vars</span><span class="p">[</span><span class="n">w</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">warehouse_model</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">docplex_model1</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">66</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">66</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">10</span>
+ <span class="o">-</span>   <span class="n">LE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">EQ</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">GE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">RNG</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+</pre></div>
+</div>
+<p>The second constraints states that a store can be supplied only by an
+open warehouse. To model this, we use a little trick of logic,
+converting this logical implication (w supplies s) =&gt; w is open into an
+inequality between binary variables, as in:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stores</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span><span class="p">:</span>
+        <span class="n">warehouse_model</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">supply_vars</span><span class="p">[</span><span class="n">w</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">open_vars</span><span class="p">[</span><span class="n">w</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>whenever a supply var from warehouse <strong>w</strong> equals one, its open variable
+will also be equal to one. Conversely, when the open variable is zero,
+all supply variable for this warehouse will be zero. This constraint
+does not prevent having an open warehouse supplying no stores. Though
+this could be taken care of by adding an extra constraint, this is not
+necessary as such cases will be automatically eliminated by searching
+for the minimal cost (see the objective section).</p>
+<p>The third constraint states the capacity limitation on each warehouse.
+Note the overloading of the logical operator <strong>&lt;=</strong> to express the
+constraint.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span><span class="p">:</span>
+    <span class="n">warehouse_model</span><span class="o">.</span><span class="n">add_constraint</span><span class="p">(</span><span class="n">warehouse_model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">supply_vars</span><span class="p">[</span><span class="n">w</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stores</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">w</span><span class="o">.</span><span class="n">capacity</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At this point we can summarize the variables and constraint we have
+defined in the model.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">warehouse_model</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">docplex_model1</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">66</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">66</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">76</span>
+ <span class="o">-</span>   <span class="n">LE</span><span class="o">=</span><span class="mi">66</span><span class="p">,</span> <span class="n">EQ</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">GE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">RNG</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="defining-the-objective">
+<h2>Defining the Objective<a class="headerlink" href="#defining-the-objective" title="Permalink to this headline">&para;</a></h2>
+<p>The objective is to minimize the total costs. There are two costs:</p>
+<ul class="simple">
+<li>the opening cost which is incurred each time a warehouse is open</li>
+<li>the supply cost which is incurred by the assignments of warehouses to
+stores</li>
+</ul>
+<p>We define two linear expressions to model these two costs and state that
+our objective is to minimize the sum.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total_opening_cost</span> <span class="o">=</span> <span class="n">warehouse_model</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">open_vars</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="o">*</span> <span class="n">w</span><span class="o">.</span><span class="n">fixed_cost</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span><span class="p">)</span>
+<span class="n">total_opening_cost</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Total Opening Cost&quot;</span>
+
+<span class="k">def</span> <span class="nf">_get_supply_cost</span><span class="p">(</span><span class="n">warehouse</span><span class="p">,</span> <span class="n">store</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; A nested function to return the supply costs from a warehouse and a store&#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">supply_costs</span><span class="p">[</span><span class="n">warehouse</span><span class="p">][</span><span class="n">store</span><span class="o">.</span><span class="n">id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+<span class="n">total_supply_cost</span> <span class="o">=</span> <span class="n">warehouse_model</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">supply_vars</span><span class="p">[</span><span class="n">w</span><span class="p">,</span><span class="n">s</span><span class="p">]</span> <span class="o">*</span> <span class="n">_get_supply_cost</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stores</span><span class="p">])</span>
+<span class="n">total_supply_cost</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Total Supply Cost&quot;</span>
+
+<span class="n">warehouse_model</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">total_opening_cost</span> <span class="o">+</span> <span class="n">total_supply_cost</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The model is now complete and we can solve it and get the final optimal
+objective</p>
+</div>
+<div class="section" id="solving-the-model">
+<h2>Solving the model<a class="headerlink" href="#solving-the-model" title="Permalink to this headline">&para;</a></h2>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ok</span> <span class="o">=</span> <span class="n">warehouse_model</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+<span class="k">assert</span> <span class="n">ok</span>
+<span class="n">obj</span> <span class="o">=</span> <span class="n">warehouse_model</span><span class="o">.</span><span class="n">objective_value</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;optimal objective is </span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">optimal</span> <span class="n">objective</span> <span class="ow">is</span> <span class="mi">433</span>
+</pre></div>
+</div>
+<p>But there&#8217;s more: we can precise the value of those two costs, by
+evaluating the value of the two expressions. Here we see that the
+opening cost is 140 and the supply cost is 293.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">opening_cost_obj</span> <span class="o">=</span> <span class="n">total_opening_cost</span><span class="o">.</span><span class="n">solution_value</span>
+<span class="n">supply_cost_obj</span> <span class="o">=</span> <span class="n">total_supply_cost</span><span class="o">.</span><span class="n">solution_value</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;total opening cost=</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">opening_cost_obj</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;total supply cost=</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">supply_cost_obj</span><span class="p">)</span>
+
+<span class="c1"># store results for later on...</span>
+<span class="n">results</span><span class="o">=</span><span class="p">[]</span>
+<span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">opening_cost_obj</span><span class="p">,</span> <span class="n">supply_cost_obj</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">total</span> <span class="n">opening</span> <span class="n">cost</span><span class="o">=</span><span class="mi">140</span>
+<span class="n">total</span> <span class="n">supply</span> <span class="n">cost</span><span class="o">=</span><span class="mi">293</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="displaying-results">
+<h2>Displaying results<a class="headerlink" href="#displaying-results" title="Permalink to this headline">&para;</a></h2>
+<p>We can leverage the graphic toolkit <strong>maptplotlib</strong> to display the
+results. First, let&#8217;s draw a pie chart of opening cost vs. supply costs
+to clearly see the respective impact of both costs.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">has_matplotlib</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+
+<span class="k">def</span> <span class="nf">display_costs</span><span class="p">(</span><span class="n">costs</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">colors</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">has_matplotlib</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">pie</span><span class="p">(</span><span class="n">costs</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">autopct</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%1.1f%%</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;warning: no display&quot;</span><span class="p">)</span>
+
+<span class="n">display_costs</span><span class="p">(</span><span class="n">costs</span><span class="o">=</span><span class="p">[</span><span class="n">opening_cost_obj</span><span class="p">,</span> <span class="n">supply_cost_obj</span><span class="p">],</span>
+              <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Opening Costs&quot;</span><span class="p">,</span> <span class="s2">&quot;Supply Costs&quot;</span><span class="p">],</span>
+              <span class="n">colors</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;gold&quot;</span><span class="p">,</span> <span class="s2">&quot;lightBlue&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<img alt="_images/warehouse_38_0.png" src="_images/warehouse_38_0.png" />
+<p>We can also display the breakdown of supply costs per warehouse. First,
+compute the sum of supply cost values for each warehouse: we need to sum
+the actual supply cost from w to s for those pairs (w, s) whose variable
+is true (here we test the value to be &gt;=0.9, testing equality to 1 would
+not be robust because of numerical precision issues)</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">supply_cost_by_warehouse</span> <span class="o">=</span> <span class="p">[</span> <span class="nb">sum</span><span class="p">(</span><span class="n">_get_supply_cost</span><span class="p">(</span><span class="n">w</span><span class="p">,</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stores</span> <span class="k">if</span> <span class="n">supply_vars</span><span class="p">[</span><span class="n">w</span><span class="p">,</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span> <span class="o">&gt;=</span> <span class="mf">0.9</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span><span class="p">]</span>
+<span class="n">wh_labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">warehouses</span><span class="p">]</span>
+<span class="n">display_costs</span><span class="p">(</span><span class="n">supply_cost_by_warehouse</span><span class="p">,</span> <span class="n">wh_labels</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/warehouse_40_0.png" src="_images/warehouse_40_0.png" />
+</div>
+<div class="section" id="exploring-the-pareto-frontier">
+<h2>Exploring the Pareto frontier<a class="headerlink" href="#exploring-the-pareto-frontier" title="Permalink to this headline">&para;</a></h2>
+<p>remember we solved the model by minimizing the <strong>sum</strong> of the two costs,
+getting an optimal solution with total cost of 383, with opening costs =
+120 and supply costs = 263.</p>
+<p>In some cases, it might be interesting to wonder what is the absolute
+minimum of any of these two costs: what if we&#8217;d like to minimize opening
+costs <strong>first</strong>, and <strong>then</strong> the supply cost (of course keeping the
+best opeing cost we obtained in first phase.</p>
+<p>This is very easy to achieve with DOcplex, using the
+&#8220;solve_lexicographic&#8221; method on the model. This method takes two
+arguments: the first one is a list of expressions, the second one a list
+of <strong>senses</strong> (Minimize or Maximize), the default being to Minimize each
+expression.</p>
+<p>In this section we will explore hat happens when we minimize opening
+costs <strong>then</strong> supply costs and conversely when we minimize supply costs
+and <strong>then</strong> opening costs.</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">opening_first_then_supply</span> <span class="o">=</span> <span class="p">[</span> <span class="n">total_opening_cost</span><span class="p">,</span> <span class="n">total_supply_cost</span><span class="p">]</span>
+<span class="n">warehouse_model</span><span class="o">.</span><span class="n">solve_lexicographic</span><span class="p">(</span><span class="n">goals</span><span class="o">=</span><span class="n">opening_first_then_supply</span><span class="p">)</span>
+
+<span class="n">opening1</span> <span class="o">=</span> <span class="n">total_opening_cost</span><span class="o">.</span><span class="n">solution_value</span>
+<span class="n">supply1</span> <span class="o">=</span> <span class="n">total_supply_cost</span><span class="o">.</span><span class="n">solution_value</span>
+<span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">opening1</span><span class="p">,</span> <span class="n">supply1</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">lexicographic</span> <span class="n">ok</span><span class="p">,</span> <span class="c1">#passes=2, results=[120, 352]</span>
+   <span class="o">-</span> <span class="n">Total</span> <span class="n">Opening</span> <span class="n">Cost</span> <span class="o">=</span><span class="mf">120.000</span>
+   <span class="o">-</span> <span class="n">Total</span> <span class="n">Supply</span> <span class="n">Cost</span> <span class="o">=</span><span class="mf">352.000</span>
+</pre></div>
+</div>
+<p>From this we can see that the model has successfully solved twice and
+that the absolute minimum of opening cost is 120, and for this value,
+the minimum supply cost is 263. Remember that in our first attempt we
+minimized the combined sum and obtained (120,263, but now we know 120 is
+the best we can achieve. The supply cost is now 352 , for a total
+combined cost of 472 which is indeed greater than the value of 433 we
+found when optimizing the combined sum.</p>
+<p>Now let&#8217;s do the reverse: minimize supply cost and then opening cost.
+What if the goal of minimizing total supply cost supersedes the second
+goal of optimizing total opening cost? The code is straightforward:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">supply_first_then_opening</span> <span class="o">=</span> <span class="p">[</span> <span class="n">total_supply_cost</span><span class="p">,</span> <span class="n">total_opening_cost</span><span class="p">]</span>
+<span class="n">warehouse_model</span><span class="o">.</span><span class="n">solve_lexicographic</span><span class="p">(</span><span class="n">goals</span><span class="o">=</span><span class="n">supply_first_then_opening</span><span class="p">)</span>
+<span class="n">opening2</span> <span class="o">=</span> <span class="n">total_opening_cost</span><span class="o">.</span><span class="n">solution_value</span>
+<span class="n">supply2</span> <span class="o">=</span> <span class="n">total_supply_cost</span><span class="o">.</span><span class="n">solution_value</span>
+
+<span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">opening2</span><span class="p">,</span> <span class="n">supply2</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">*</span> <span class="n">lexicographic</span> <span class="n">ok</span><span class="p">,</span> <span class="c1">#passes=2, results=[288, 152]</span>
+   <span class="o">-</span> <span class="n">Total</span> <span class="n">Supply</span> <span class="n">Cost</span> <span class="o">=</span><span class="mf">288.000</span>
+   <span class="o">-</span> <span class="n">Total</span> <span class="n">Opening</span> <span class="n">Cost</span> <span class="o">=</span><span class="mf">152.000</span>
+</pre></div>
+</div>
+<p>Here, we obtain (152, 288), supply costs is down from 352 to 288 but
+opening cost raises from 120 to 150. We can check that the combined sum
+is 288+152 = 440, which is grater than the optimal of 433 we found at
+the beginning.</p>
+<div class="section" id="pareto-diagram">
+<h3>Pareto Diagram<a class="headerlink" href="#pareto-diagram" title="Permalink to this headline">&para;</a></h3>
+<p>We can plot these three points on a (opening, supply) plane:</p>
+<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">display_pareto</span><span class="p">(</span><span class="n">res</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">env</span><span class="o">.</span><span class="n">has_matplotlib</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Opening Costs&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Supply Costs&#39;</span><span class="p">)</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]</span>
+        <span class="n">markers</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="s1">&#39;&lt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">]</span>
+        <span class="n">nb_res</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+        <span class="n">pts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">res</span><span class="p">):</span>
+            <span class="n">opening</span><span class="p">,</span> <span class="n">supply</span> <span class="o">=</span> <span class="n">r</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">opening</span><span class="p">,</span> <span class="n">supply</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="mi">3</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">50</span><span class="o">+</span><span class="mi">10</span><span class="o">*</span><span class="n">i</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="n">markers</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="mi">3</span><span class="p">])</span>
+            <span class="n">pts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span>
+               <span class="p">(</span><span class="s1">&#39;Sum&#39;</span><span class="p">,</span> <span class="s1">&#39;Opening_first&#39;</span><span class="p">,</span> <span class="s1">&#39;Supply_first&#39;</span><span class="p">),</span>
+               <span class="n">scatterpoints</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+               <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">,</span>
+               <span class="n">ncol</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+               <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: no display&quot;</span><span class="p">)</span>
+
+<span class="n">display_pareto</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/warehouse_47_0.png" src="_images/warehouse_47_0.png" />
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>

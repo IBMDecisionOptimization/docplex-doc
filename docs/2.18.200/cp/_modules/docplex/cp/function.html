@@ -1,0 +1,661 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.cp.function &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.cp.function</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Author: Philippe LABORIE, IBM Analytics, France Lab, Gentilly</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the objects representing CP Optimizer function expressions,</span>
+<span class="sd">Stepwise and Piecewise Linear functions:</span>
+
+<span class="sd">In particular, it defines the following classes:</span>
+
+<span class="sd"> * :class:`CpoFunction`: the root class of all function expressions,</span>
+<span class="sd"> * :class:`CpoSegmentedFunction`: for functions represented as a list of segments,</span>
+<span class="sd"> * :class:`CpoStepFunction`: for functions represented as a list of steps.</span>
+
+
+<span class="sd">Detailed description</span>
+<span class="sd">--------------------</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.catalog</span> <span class="k">import</span> <span class="n">Type_SegmentedFunction</span><span class="p">,</span> <span class="n">Type_StepFunction</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="k">import</span> <span class="n">CpoExpr</span><span class="p">,</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">bisect</span>
+
+
+<div class="viewcode-block" id="CpoFunction"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction">[docs]</a><span class="k">class</span> <span class="nc">CpoFunction</span><span class="p">(</span><span class="n">CpoExpr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Root class for step and segmented functions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_s0&#39;</span><span class="p">,</span>  <span class="c1"># Initial slope of the function</span>
+                 <span class="s1">&#39;_v0&#39;</span><span class="p">,</span>  <span class="c1"># Initial value of the function</span>
+                 <span class="s1">&#39;_x&#39;</span><span class="p">,</span>   <span class="c1"># Abscissas</span>
+                 <span class="s1">&#39;_v&#39;</span><span class="p">,</span>   <span class="c1"># Values</span>
+                 <span class="s1">&#39;_s&#39;</span><span class="p">,</span>   <span class="c1"># Slopes</span>
+                 <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typ</span><span class="p">,</span> <span class="n">s0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">v0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            typ: Function type.</span>
+<span class="sd">            s0:  Initial slope of the function.</span>
+<span class="sd">            v0:  Initial value of the function.</span>
+<span class="sd">            x:   Abscissas (assumed to be sorted and all different).</span>
+<span class="sd">            v:   Values.</span>
+<span class="sd">            s:   Slopes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoFunction</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">typ</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">v0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">=</span> <span class="n">v0</span>
+        <span class="k">if</span> <span class="n">s0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Test type is segmented function when some slope is specified</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="n">s0</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">typ</span> <span class="o">==</span> <span class="n">Type_SegmentedFunction</span><span class="p">),</span> <span class="s2">&quot;Slopes are only supported for segmented functions&quot;</span>
+            <span class="c1"># Test there exists at least one abscissa</span>
+            <span class="k">assert</span> <span class="n">s0</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span> <span class="s2">&quot;No abscissa for initial slope&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">=</span> <span class="n">s0</span>
+        <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Test abscissa integrality</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">is_int</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span> <span class="k">for</span> <span class="n">elt</span> <span class="ow">in</span> <span class="n">x</span><span class="p">),</span> <span class="s2">&quot;Abscissa value is not an integer&quot;</span>
+            <span class="c1"># Test abscissa list is strictly increasing</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)),</span> <span class="s2">&quot;Abscissa values are not strictly increasing&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Test value integrality in case of step function</span>
+            <span class="k">if</span> <span class="n">typ</span> <span class="o">==</span> <span class="n">Type_StepFunction</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">is_int</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span> <span class="k">for</span> <span class="n">elt</span> <span class="ow">in</span> <span class="n">v</span><span class="p">),</span> <span class="s2">&quot;Value is not an integer&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">)</span> <span class="o">==</span> <span class="n">l</span><span class="p">,</span> <span class="s2">&quot;Lists x and v must have the same length&quot;</span>
+        <span class="k">if</span> <span class="n">s</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Test type is segmented function when some slope is specified</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="n">v</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">s</span><span class="p">)</span> <span class="ow">or</span> <span class="n">typ</span> <span class="o">==</span> <span class="n">Type_SegmentedFunction</span><span class="p">,</span> <span class="s2">&quot;Slopes are only supported for segmented functions&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">)</span> <span class="o">==</span> <span class="n">l</span><span class="p">,</span> <span class="s2">&quot;Lists x and s must have the same length&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_get_expr_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the string representing this expression, name excluded. &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;Function(...)&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">v0</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">s0</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">v</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">s</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_step_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">Type_StepFunction</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_segmented_function</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">Type_SegmentedFunction</span>
+
+<div class="viewcode-block" id="CpoFunction.get_value"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.get_value">[docs]</a>    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Gets the value of the function.</span>
+
+<span class="sd">        Gets the value of the function for an abscissa `t`.</span>
+<span class="sd">        Complexity is in `O(log n)` for a function with `n` segments.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            t (int or float): Abscissa value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Value of the function for abscissa `t`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">l</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Constant step function</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span>
+        <span class="k">if</span> <span class="n">t</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="c1"># Abscissa t is on initial step</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span>
+        <span class="c1"># Abscissa is on another step</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">t</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="CpoFunction.copy"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates and returns a copy of the function. &quot;&quot;&quot;</span>
+        <span class="n">xcopy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[:]</span>
+        <span class="n">vcopy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[:]</span>
+        <span class="n">scopy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[:]</span>
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tp</span> <span class="o">=</span> <span class="nb">type</span>
+        <span class="k">return</span> <span class="n">CpoFunction</span><span class="p">(</span><span class="n">tp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span><span class="p">,</span> <span class="n">xcopy</span><span class="p">,</span> <span class="n">vcopy</span><span class="p">,</span> <span class="n">scopy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CpoFunction.set_slope"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.set_slope">[docs]</a>    <span class="k">def</span> <span class="nf">set_slope</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the value of the invoking function over an interval.</span>
+
+<span class="sd">        Sets the value of the invoking function on interval `[x1,x2)` to be equal</span>
+<span class="sd">        to equal to `f(x) = v1 + s * (x-x1)`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x1 (int): Start of the interval.</span>
+<span class="sd">            x2 (int): End of the interval.</span>
+<span class="sd">            v1 (int or float): Function value at `x1`.</span>
+<span class="sd">            s (int or float): Function slope on interval `[x1,x2)`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">s</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_step_function</span><span class="p">,</span> <span class="s2">&quot;Function not allowed on CpoStepFunction&quot;</span>
+        <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="s2">&quot;Interval [x1,x2) must be integer&quot;</span>
+        <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;=</span> <span class="n">x1</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">l</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Constant step function of value self._v0</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">s</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">v1</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;</span> <span class="n">INTERVAL_MAX</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">x1</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">==</span> <span class="n">s</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+</span> <span class="n">s</span> <span class="o">*</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="n">v1</span><span class="p">:</span>
+                <span class="c1"># No change on initial segment</span>
+                <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="c1"># Completely inside initial segment</span>
+                    <span class="k">return</span>
+                <span class="c1"># Make initial segment longer</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">s</span> <span class="o">*</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">i2</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">i2</span><span class="p">:</span>
+                    <span class="c1"># Remove segments 0..i2-1 and shift arrays</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[:</span><span class="n">i2</span><span class="p">]</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[:</span><span class="n">i2</span><span class="p">]</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[:</span><span class="n">i2</span><span class="p">]</span>
+                <span class="c1"># Adjust beginning of first segment</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x2</span>
+                <span class="k">return</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Adjust value of initial segment</span>
+                <span class="n">v0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span>
+                <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">*</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="c1"># Add new segment</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">v1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;</span> <span class="n">x0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">v0</span> <span class="o">+</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">)</span>
+                    <span class="k">return</span>
+                <span class="k">elif</span> <span class="n">x0</span> <span class="o">&lt;=</span> <span class="n">x2</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">set_slope</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span> <span class="o">+</span> <span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+                    <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># x1 &gt;= self._x[0]:</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">i2</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">==</span> <span class="n">s</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">+</span> <span class="n">s</span> <span class="o">*</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">])</span> <span class="o">==</span> <span class="n">v1</span><span class="p">:</span>
+                <span class="c1"># Same as current segment</span>
+                <span class="k">if</span> <span class="n">i1</span> <span class="o">==</span> <span class="n">i2</span><span class="p">:</span>
+                    <span class="k">return</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">set_slope</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">xcurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+                <span class="n">vcurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+                <span class="n">scurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">x1</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">v1</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+                    <span class="n">i1</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">i2</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="n">x1</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">=</span> <span class="n">v1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+                <span class="k">if</span> <span class="n">i1</span> <span class="o">==</span> <span class="n">i2</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">vcurr</span> <span class="o">+</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="n">xcurr</span><span class="p">)</span> <span class="o">*</span> <span class="n">scurr</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">scurr</span><span class="p">)</span>
+                    <span class="k">return</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Adjust beginning of first segment</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i2</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">=</span> <span class="n">x2</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">i2</span><span class="p">]</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">i2</span><span class="p">]</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">i2</span><span class="p">]</span>
+                    <span class="k">return</span></div>
+
+<div class="viewcode-block" id="CpoFunction.add_slope"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.add_slope">[docs]</a>    <span class="k">def</span> <span class="nf">add_slope</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds a piecewise linear step on an interval.</span>
+
+<span class="sd">        Adds a piecewise linear step `f(x) = v1 + s * (x-x1)` to the invoking</span>
+<span class="sd">        function on interval `[x1,x2)`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x1 (int): Start of the interval.</span>
+<span class="sd">            x2 (int): End of the interval.</span>
+<span class="sd">            v1 (int or float): Added value at `x1`.</span>
+<span class="sd">            s (int or float): Added function slope on interval `[x1,x2)`;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">v1</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">s</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">assert</span> <span class="n">s</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_step_function</span><span class="p">,</span> <span class="s2">&quot;Function not allowed on CpoStepFunction&quot;</span>
+        <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_int</span><span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="s2">&quot;Interval [x1,x2) must be integer&quot;</span>
+        <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;=</span> <span class="n">x1</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">l</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Constant step function of value self._v0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+</span> <span class="n">v1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;</span> <span class="n">INTERVAL_MAX</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_v0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">x1</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="c1"># Adjust value of initial segment</span>
+            <span class="n">v0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span>
+            <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">*</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="c1"># Add new segment</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+</span> <span class="n">v1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;</span> <span class="n">x0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">v0</span> <span class="o">+</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="k">elif</span> <span class="n">x0</span> <span class="o">&lt;=</span> <span class="n">x2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v1</span> <span class="o">+</span> <span class="p">(</span><span class="n">x0</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+                <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># x1 &gt;= self._x[0]:</span>
+            <span class="n">i1</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">i2</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect_right</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">xcurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+            <span class="n">vcurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+            <span class="n">scurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">x1</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">vcurr</span> <span class="o">+</span> <span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">])</span> <span class="o">*</span> <span class="n">scurr</span> <span class="o">+</span> <span class="n">v1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">scurr</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span>
+                <span class="n">i1</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">i2</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">x1</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">=</span> <span class="n">vcurr</span> <span class="o">+</span> <span class="n">v1</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i1</span><span class="p">]</span> <span class="o">=</span> <span class="n">scurr</span> <span class="o">+</span> <span class="n">s</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i2</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">v1</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">s</span>
+            <span class="k">if</span> <span class="n">i1</span> <span class="o">==</span> <span class="n">i2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">vcurr</span> <span class="o">+</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="n">xcurr</span><span class="p">)</span> <span class="o">*</span> <span class="n">scurr</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">scurr</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="k">elif</span> <span class="n">x2</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i2</span><span class="p">]:</span>
+                <span class="c1"># Adjust beginning of first segment</span>
+                <span class="n">xcurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span>
+                <span class="n">vcurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span>
+                <span class="n">scurr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">+</span> <span class="n">v1</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">s</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">vcurr</span> <span class="o">+</span> <span class="p">(</span><span class="n">x2</span> <span class="o">-</span> <span class="n">xcurr</span><span class="p">)</span> <span class="o">*</span> <span class="n">scurr</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">i2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">scurr</span><span class="p">)</span>
+                <span class="k">return</span></div>
+
+    <span class="k">def</span> <span class="nf">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">ov0</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_v0</span>
+        <span class="n">os0</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_s0</span>
+        <span class="n">ol</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ol</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># &#39;other&#39; is a constant function of value ov0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">ov0</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">ov0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ox0</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">ox0</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">ov0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">+=</span> <span class="n">os0</span>
+            <span class="k">elif</span> <span class="n">ox0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">=</span> <span class="p">(</span><span class="n">ox0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ox0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">ov0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">+=</span> <span class="n">os0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># self._x[0] &lt; ox0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">+=</span> <span class="n">os0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">ov0</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">ox0</span><span class="p">)</span> <span class="o">*</span> <span class="n">os0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ox0</span><span class="p">,</span> <span class="n">ov0</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">ox0</span><span class="p">)</span> <span class="o">*</span> <span class="n">os0</span><span class="p">,</span> <span class="n">os0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="c1"># This could be optimized to avoid calling add_slope</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">INTERVAL_MAX</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">other</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">ol</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">_add_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">+=</span> <span class="n">k</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">_mul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_s0</span> <span class="o">*=</span> <span class="n">k</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_v0</span> <span class="o">*=</span> <span class="n">k</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_x</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="n">k</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_segmented_function</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">is_segmented_function</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_segmented_function</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">other</span><span class="o">.</span><span class="n">is_segmented_function</span><span class="p">)</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="o">-</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_segmented_function</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">Type_SegmentedFunction</span><span class="p">)</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__add__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CpoFunction</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_segmented_function</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">Type_SegmentedFunction</span><span class="p">)</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">_add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">or</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_add_number</span><span class="p">(</span><span class="o">-</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">_mul</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__mul__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CpoFunction.set_value"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.set_value">[docs]</a>    <span class="k">def</span> <span class="nf">set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the value of the function over an interval.</span>
+
+<span class="sd">        Sets the value of the invoking function to be constant and equal to `v`</span>
+<span class="sd">        on the interval `[x1,x2)`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x1 (int): Start of the interval.</span>
+<span class="sd">            x2 (int): End of the interval.</span>
+<span class="sd">            v (int or float): Function value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_slope</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CpoFunction.add_value"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoFunction.add_value">[docs]</a>    <span class="k">def</span> <span class="nf">add_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Adds a constant to the value of the function over an interval.</span>
+
+<span class="sd">        Adds constant value `v` to the value of the invoking function</span>
+<span class="sd">        on the interval `[x1,x2)`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x1 (int): Start of the interval.</span>
+<span class="sd">            x2 (int): End of the interval.</span>
+<span class="sd">            v (int or float): Added value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_slope</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="CpoSegmentedFunction"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoSegmentedFunction">[docs]</a><span class="k">class</span> <span class="nc">CpoSegmentedFunction</span><span class="p">(</span><span class="n">CpoFunction</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Class representing a segmented function.</span>
+
+<span class="sd">    In CP Optimizer, piecewise linear functions are typically used in modeling a known function of time,</span>
+<span class="sd">    for instance the cost that is incurred for completing an activity after a known date.</span>
+
+<span class="sd">    A segmented function is a piecewise linear function defined on an interval [xmin, xmax)</span>
+<span class="sd">    which is partitioned into segments such that over each segment, the function is linear.</span>
+
+<span class="sd">    When two consecutive segments of the function are colinear, these segments are merged so that the function</span>
+<span class="sd">    is always represented with the minimal number of segments.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">segment0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">segments</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            segment0 (tuple): Initial segment of the function (slope, vright).</span>
+<span class="sd">            segments (list): Segments of the function represented as a list of</span>
+<span class="sd">                tuples (xleft, vleft, slope).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">s0</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">v0</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">segment0</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">s0</span> <span class="o">=</span> <span class="n">segment0</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">v0</span> <span class="o">=</span> <span class="n">segment0</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">segments</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">:</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoSegmentedFunction</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">Type_SegmentedFunction</span><span class="p">,</span> <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span> <span class="n">v0</span><span class="o">=</span><span class="n">v0</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CpoSegmentedFunction.get_segment_list"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoSegmentedFunction.get_segment_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_segment_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the list of segments of the function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">segments</span> <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">s0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v0</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)):</span>
+            <span class="n">segments</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">segments</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build a string representing this function. &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="s2">&quot;SegmentedFunction(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_segment_list</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">+</span> <span class="n">res</span>
+        <span class="k">return</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="CpoStepFunction"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoStepFunction">[docs]</a><span class="k">class</span> <span class="nc">CpoStepFunction</span><span class="p">(</span><span class="n">CpoFunction</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Class representing a step function.</span>
+
+<span class="sd">    In CP Optimizer, stepwise functions are typically used to model the efficiency of a resource over time.</span>
+
+<span class="sd">    A stepwise function is a special case of piecewise linear function where all slopes are equal to 0 and the</span>
+<span class="sd">    domain and image of the function are integer.</span>
+
+<span class="sd">    When two consecutive steps of the function have the same value, these steps are merged so that the function</span>
+<span class="sd">    is always represented with the minimal number of steps.</span>
+
+<span class="sd">    The function steps are expressed as a list of couples (x, val) specifying that the value of the function is *val*</span>
+<span class="sd">    after *x*, up to the next step.</span>
+<span class="sd">    By default, the value of the function is zero up to the first step.</span>
+<span class="sd">    To change this default value, the first step should be (INTERVAL_MIN, value).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Step function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            steps: (Optional) Function steps, expressed as a list of couples (x, val).</span>
+<span class="sd">            name:  (Optional) Function name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">steps</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">CpoStepFunction</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">Type_StepFunction</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">steps</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">INTERVAL_MIN</span><span class="p">:</span>
+                <span class="n">v0</span> <span class="o">=</span> <span class="n">steps</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">v0</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">steps</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">steps</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">CpoStepFunction</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">typ</span><span class="o">=</span><span class="n">Type_StepFunction</span><span class="p">,</span> <span class="n">s0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">v0</span><span class="o">=</span><span class="n">v0</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CpoStepFunction.get_step_list"><a class="viewcode-back" href="../../../docplex.cp.function.py.html#docplex.cp.function.CpoStepFunction.get_step_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_step_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the list of steps of the function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">v0</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v0</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)):</span>
+            <span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">steps</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build a string representing this function. &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="s2">&quot;StepFunction(&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_step_list</span><span class="p">())</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">+</span> <span class="n">res</span>
+        <span class="k">return</span> <span class="n">res</span></div>
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>

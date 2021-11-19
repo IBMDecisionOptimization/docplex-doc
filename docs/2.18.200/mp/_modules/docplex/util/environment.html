@@ -1,0 +1,1259 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.util.environment &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.util.environment</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Representation of the DOcplex solving environment.</span>
+
+<span class="sd">This module handles the various elements that allow an</span>
+<span class="sd">optimization program to run independently from the solving environment.</span>
+<span class="sd">This environment may be:</span>
+
+<span class="sd"> * on premise, using a local version of CPLEX Optimization Studio to solve MP problems, or</span>
+<span class="sd"> * on DOcplexcloud, with the Python program running inside the Python Worker.</span>
+<span class="sd"> * on Decision Optimization in Watson Machine Learning.</span>
+
+<span class="sd">As much as possible, the adaptation to the solving environment is</span>
+<span class="sd">automatic. The functions that are presented here are useful for handling</span>
+<span class="sd">very specific use cases.</span>
+
+<span class="sd">The following code is a program that sums its input (``sum.py``)::</span>
+
+<span class="sd">    import json</span>
+<span class="sd">    import docplex.util.environment as environment</span>
+
+<span class="sd">    sum = 0</span>
+<span class="sd">    # open program input named &quot;data.txt&quot; and sum the contents</span>
+<span class="sd">    with environment.get_input_stream(&quot;data.txt&quot;) as input:</span>
+<span class="sd">        for i in input.read().split():</span>
+<span class="sd">            sum += int(i)</span>
+<span class="sd">    # write the result as a simple json in program output &quot;solution.json&quot;</span>
+<span class="sd">    with environment.get_output_stream(&quot;solution.json&quot;) as output:</span>
+<span class="sd">        output.write(json.dumps({&#39;result&#39;: sum}))</span>
+
+<span class="sd">Let&#39;s put some data in a ``data.txt`` file::</span>
+
+<span class="sd">    4 7 8</span>
+<span class="sd">    19</span>
+
+<span class="sd">When you run ``sum.py`` with a Python interpreter, it opens the ``data.txt`` file and sums all of the integers</span>
+<span class="sd">in that file. The result is saved as a JSON fragment in file ``solution.json``::</span>
+
+<span class="sd">    $ python sum.py</span>
+<span class="sd">    $ more solution.json</span>
+<span class="sd">    {&quot;result&quot;: 38}</span>
+
+<span class="sd">To submit the program to the DOcplexcloud service, we write a ``submit.py`` program that uses</span>
+<span class="sd">the `DOcplexcloud Python API &lt;https://developer.ibm.com/docloud/documentation/docloud/python-api/&gt;`_</span>
+<span class="sd">to create and submit a job. That job has two attachments:</span>
+
+<span class="sd">- ``sum.py``, the program to execute and</span>
+<span class="sd">- ``data.txt``, the data expected by ``sum.py``.</span>
+
+<span class="sd">After the solve is completed, the result of the program is downloaded and saved as ``solution.json``::</span>
+
+<span class="sd">    from docloud.job import JobClient</span>
+
+<span class="sd">    url = &quot;ENTER_YOUR_URL_HERE&quot;</span>
+<span class="sd">    key = &quot;ENTER_YOUR_KEY_HERE&quot;</span>
+<span class="sd">    client = JobClient(url, key)</span>
+<span class="sd">    client.execute(input=[&quot;sum.py&quot;, &quot;data.txt&quot;], output=&quot;solution.json&quot;)</span>
+
+<span class="sd">Then you run ``submit.py``::</span>
+
+<span class="sd">    $ python submit.py</span>
+<span class="sd">    $ more solution.json</span>
+<span class="sd">    {&quot;result&quot;: 38}</span>
+
+<span class="sd">Environment representation can be accessed with different ways:</span>
+
+<span class="sd">    * direct object method calls, after retrieving an instance using</span>
+<span class="sd">      :meth:`docplex.util.environment.get_environment` and using methods of</span>
+<span class="sd">      :class:`docplex.util.environment.Environment`.</span>
+<span class="sd">    * using the function in package `docplex.util.environment`. They will call</span>
+<span class="sd">       the corresponding methods of Environment in the platform</span>
+<span class="sd">       `default_environment`:</span>
+
+<span class="sd">           * :meth:`docplex.util.environment.get_input_stream`</span>
+<span class="sd">           * :meth:`docplex.util.environment.get_output_stream`</span>
+<span class="sd">           * :meth:`docplex.util.environment.read_df`</span>
+<span class="sd">           * :meth:`docplex.util.environment.write_df`</span>
+<span class="sd">           * :meth:`docplex.util.environment.get_available_core_count`</span>
+<span class="sd">           * :meth:`docplex.util.environment.get_parameter`</span>
+<span class="sd">           * :meth:`docplex.util.environment.update_solve_details`</span>
+<span class="sd">           * :meth:`docplex.util.environment.add_abort_callback`</span>
+<span class="sd">           * :meth:`docplex.util.environment.remove_abort_callback`</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">string</span> <span class="k">import</span> <span class="n">maketrans</span><span class="p">,</span> <span class="n">translate</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">maketrans</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span>
+    <span class="n">translate</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">translate</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pandas</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">pandas</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">iteritems</span>
+
+<span class="kn">from</span> <span class="nn">docplex.util.logging_utils</span> <span class="k">import</span> <span class="n">LoggerToFile</span><span class="p">,</span> <span class="n">LoggerToDocloud</span>
+<span class="kn">from</span> <span class="nn">docplex.util.csv_utils</span> <span class="k">import</span> <span class="n">write_table_as_csv</span>
+
+<span class="n">in_ws_nb</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">if</span> <span class="n">in_ws_nb</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">in_notebook</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;ipykernel&#39;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">)</span>
+    <span class="n">dsx_home_set</span> <span class="o">=</span> <span class="s1">&#39;dsxuser&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;HOME&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+    <span class="n">has_hw_spec</span> <span class="o">=</span> <span class="s1">&#39;RUNTIME_HARDWARE_SPEC&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span>
+    <span class="n">rt_region_set</span> <span class="o">=</span> <span class="s1">&#39;RUNTIME_ENV_REGION&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span>
+    
+    <span class="n">in_ws_nb</span> <span class="o">=</span> <span class="n">in_notebook</span> <span class="ow">and</span> <span class="n">dsx_home_set</span> <span class="ow">and</span> <span class="n">has_hw_spec</span> <span class="ow">and</span> <span class="n">rt_region_set</span>
+
+
+<span class="n">log_level_mapping</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;OFF&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="s1">&#39;SEVERE&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span>
+                     <span class="s1">&#39;WARNING&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
+                     <span class="s1">&#39;INFO&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+                     <span class="s1">&#39;CONFIG&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+                     <span class="s1">&#39;FINE&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                     <span class="s1">&#39;FINER&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                     <span class="s1">&#39;FINEST&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+                     <span class="s1">&#39;ALL&#39;</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="NotAvailableError"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.NotAvailableError">[docs]</a><span class="k">class</span> <span class="nc">NotAvailableError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; The exception raised when a feature is not available</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="default_solution_storage_handler"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.default_solution_storage_handler">[docs]</a><span class="k">def</span> <span class="nf">default_solution_storage_handler</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; The default solution storage handler.</span>
+
+<span class="sd">    The storage handler is a function which first argument is the</span>
+<span class="sd">    :class:`~Environment` on which a solution should be saved. The `solution`</span>
+<span class="sd">    is a dict containing all the data for an optimization solution.</span>
+
+<span class="sd">    The storage handler is responsible for storing the solution in the</span>
+<span class="sd">    environment.</span>
+
+<span class="sd">    For each (key, value) pairs of the solution, the default solution storage</span>
+<span class="sd">    handler does the following depending of the type of `value`, in the</span>
+<span class="sd">    following order:</span>
+
+<span class="sd">        * If `value` is a `pandas.DataFrame`, then the data frame is saved</span>
+<span class="sd">          as an output with the specified `name`. Note that `name` must include</span>
+<span class="sd">          an extension file for the serialization. See</span>
+<span class="sd">          :meth:`Environment.write_df` for supported formats.</span>
+<span class="sd">        * If `value` is a `bytes`, it is saved as binary data with `name`.</span>
+<span class="sd">        * The `value` is saved as an output with the `name`, after it has been</span>
+<span class="sd">          converted to JSON.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        env: The :class:`~Environment`</span>
+<span class="sd">        solution: a dict containing the solution.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">solution</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">pandas</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.csv&#39;</span> <span class="o">%</span> <span class="n">name</span>  <span class="c1"># defaults to csv if no format specified</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">write_df</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">env</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+                <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># try jsonify</span>
+            <span class="k">with</span> <span class="n">env</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span></div>
+
+<span class="c1"># The global output lock</span>
+<span class="n">global_output_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="SolveDetailsFilter"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.SolveDetailsFilter">[docs]</a><span class="k">class</span> <span class="nc">SolveDetailsFilter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Default solve detail filter class.</span>
+
+<span class="sd">    This default class filters details so that there are no more than 1 solve</span>
+<span class="sd">    details per second.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_accept_time</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="n">interval</span>
+
+<div class="viewcode-block" id="SolveDetailsFilter.filter"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.SolveDetailsFilter.filter">[docs]</a>    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Filters the details.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the details are to be published.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">ret_val</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_accept_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="p">):</span>
+            <span class="n">ret_val</span> <span class="o">=</span> <span class="n">details</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_accept_time</span> <span class="o">=</span> <span class="n">now</span>
+        <span class="k">return</span> <span class="n">ret_val</span></div></div>
+
+
+<div class="viewcode-block" id="Environment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment">[docs]</a><span class="k">class</span> <span class="nc">Environment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Methods for interacting with the execution environment.</span>
+
+<span class="sd">    Internally, the ``docplex`` package provides the appropriate implementation</span>
+<span class="sd">    according to the actual execution environment.</span>
+<span class="sd">    The correct instance of this class is returned by the method</span>
+<span class="sd">    :meth:`docplex.util.environment.get_environment` that is provided in this</span>
+<span class="sd">    module.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        abort_callbacks: A list of callbacks that are called when the script is</span>
+<span class="sd">            run on DOcplexcloud and a job abort operation is requested. You</span>
+<span class="sd">            add your own callback using::</span>
+
+<span class="sd">                env.abort_callbacks += [your_cb]</span>
+
+<span class="sd">            or::</span>
+
+<span class="sd">                env.abort_callbacks.append(your_cb)</span>
+
+<span class="sd">            You remove a callback using::</span>
+
+<span class="sd">                env.abort_callbacks.remove(your_cb)</span>
+
+<span class="sd">        solution_storage_handler: A function called when a solution is to be</span>
+<span class="sd">            stored. The storage handler is a function which first argument is</span>
+<span class="sd">            the :class:`~Environment` on which a solution should be saved. The</span>
+<span class="sd">            `solution` is a dict containing all the data for an optimization</span>
+<span class="sd">            solution. The default is :meth:`~default_solution_storage_handler`.</span>
+<span class="sd">        record_history_fields: Fields which history is to be kept</span>
+<span class="sd">        record_history_size: maximum number of records in history</span>
+<span class="sd">        record_interval: min time between to history records</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_lock</span> <span class="o">=</span> <span class="n">global_output_lock</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solution_storage_handler</span> <span class="o">=</span> <span class="n">default_solution_storage_handler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># stores the latest published details</span>
+        <span class="c1"># private behaviour for now: allows to filter details</span>
+        <span class="c1"># the SolveDetailsFilter.filter() method returns true if the details</span>
+        <span class="c1"># are to be kept</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">details_filter</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># self.record_history_fields = [&#39;PROGRESS_CURRENT_OBJECTIVE&#39;]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># maps name -&gt; deque</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># we keep the last here so that we can publish at end of solve</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_history_time_decimals</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># number of decimals for time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_history_size</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_min_time</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recorded_solve_details_count</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># number of solve details that have been sent to recording</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">autoreset</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_reset_record_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">autoreset</span> <span class="ow">or</span> <span class="n">force</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">recorded_solve_details_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">get_record_history_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">,</span>
+                                               <span class="s1">&#39;PROGRESS_CURRENT_OBJECTIVE&#39;</span><span class="p">,</span>
+                                               <span class="s1">&#39;PROGRESS_GAP&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># the default out of dods is to not record any history</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span>
+
+    <span class="k">def</span> <span class="nf">set_record_history_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_history_fields</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="c1"># let record_history_fields be a property that is lazy initialized</span>
+    <span class="c1"># this gives the opportunity to set is_dods before record history fields are needed</span>
+    <span class="n">record_history_fields</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_record_history_fields</span><span class="p">,</span> <span class="n">set_record_history_fields</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment.store_solution"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.store_solution">[docs]</a>    <span class="k">def</span> <span class="nf">store_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Stores the specified solution.</span>
+
+<span class="sd">        This method guarantees that the solution is fully saved if the model</span>
+<span class="sd">        is running on DOcplexcloud python worker and an abort of the job is</span>
+<span class="sd">        triggered.</span>
+
+<span class="sd">        For each (key, value) pairs of the solution, the default solution</span>
+<span class="sd">        storage handler does the following depending of the type of `value`, in</span>
+<span class="sd">        the following order:</span>
+
+<span class="sd">        * If `value` is a `pandas.DataFrame`, then the data frame is saved</span>
+<span class="sd">          as an output with the specified `name`. Note that `name` must include</span>
+<span class="sd">          an extension file for the serialization. See</span>
+<span class="sd">          :meth:`Environment.write_df` for supported formats.</span>
+<span class="sd">        * If `value` is a `bytes`, it is saved as binary data with `name`.</span>
+<span class="sd">        * The `value` is saved as an output with the `name`, after it has been</span>
+<span class="sd">          converted to JSON.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            solution: a dict containing the solution.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solution_storage_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.get_input_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_input_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Get an input of the program as a stream (file-like object).</span>
+
+<span class="sd">        An input of the program is a file that is available in the working directory.</span>
+
+<span class="sd">        When run on DOcplexcloud, all input attachments are copied to the working directory before</span>
+<span class="sd">        the program is run. ``get_input_stream`` lets you open the input attachments of the job.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the input object.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A file object to read the input from.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Environment.read_df"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.read_df">[docs]</a>    <span class="k">def</span> <span class="nf">read_df</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Reads an input of the program as a ``pandas.DataFrame``.</span>
+
+<span class="sd">        ``pandas`` must be installed.</span>
+
+<span class="sd">        ``name`` is the name of the input object, as a filename. If a reader</span>
+<span class="sd">        is not user provided, the reader used depends on the filename extension.</span>
+
+<span class="sd">        The default reader used depending on extension are:</span>
+
+<span class="sd">            * ``.csv``: ``pandas.read_csv()``</span>
+<span class="sd">            * ``.msg``: ``pandas.read_msgpack()``</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: The name of the input object</span>
+<span class="sd">            reader: an optional reader function</span>
+<span class="sd">            **kwargs: additional parameters passed to the reader</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            NotAvailableError: raises this error when ``pandas`` is not</span>
+<span class="sd">                available.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">pandas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">NotAvailableError</span><span class="p">(</span><span class="s1">&#39;read_df() is only available if pandas is installed&#39;</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">default_kwargs</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">reader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">default_readers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;.csv&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">pandas</span><span class="o">.</span><span class="n">read_csv</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}),</span>
+                               <span class="s1">&#39;.msg&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">pandas</span><span class="o">.</span><span class="n">read_msgpack</span><span class="p">,</span> <span class="kc">None</span><span class="p">)}</span>
+            <span class="n">reader</span><span class="p">,</span> <span class="n">default_kwargs</span> <span class="o">=</span> <span class="n">default_readers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;no default reader defined for files with extension: </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ext</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">ost</span><span class="p">:</span>
+            <span class="c1"># allow</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">default_kwargs</span><span class="p">:</span>
+                <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">default_kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">reader</span><span class="p">(</span><span class="n">ost</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.write_df"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.write_df">[docs]</a>    <span class="k">def</span> <span class="nf">write_df</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">writer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Write a ``pandas.DataFrame`` as an output of the program.</span>
+
+<span class="sd">        ``pandas`` must be installed.</span>
+
+<span class="sd">        ``name`` is the name of the input object, as a filename. If a writer</span>
+<span class="sd">        is not user provided, the writer used depends on the filename extension.</span>
+
+<span class="sd">        This currently only supports csv output.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: The name of the input object</span>
+<span class="sd">            writer: an optional writer function</span>
+<span class="sd">            **kwargs: additional parameters passed to the writer</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            NotAvailableError: raises this error when ``pandas`` is not</span>
+<span class="sd">                available.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">pandas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">NotAvailableError</span><span class="p">(</span><span class="s1">&#39;write_df() is only available if pandas is installed&#39;</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">writer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">default_writers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;.csv&#39;</span><span class="p">:</span> <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">}</span>
+                <span class="n">writer</span> <span class="o">=</span> <span class="n">default_writers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">NotAvailableError</span><span class="p">(</span><span class="s1">&#39;Could not write writer function for extension: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ext</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">writer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;no default writer defined for files with extension: </span><span class="se">\&#39;</span><span class="si">%s</span><span class="se">\&#39;</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ext</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">as</span> <span class="n">ost</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">ost</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">writer</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ost</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">writer</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf8&#39;</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Environment.set_output_attachment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.set_output_attachment">[docs]</a>    <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Attach the file which filename is specified as an output of the</span>
+<span class="sd">        program.</span>
+
+<span class="sd">        The file is recorded as being part of the program output.</span>
+<span class="sd">        This method can be called multiple times if the program contains</span>
+<span class="sd">        multiple output objects.</span>
+
+<span class="sd">        When run on premise, ``filename`` is copied to the the working</span>
+<span class="sd">        directory (if not already there) under the name ``name``.</span>
+
+<span class="sd">        When run on DOcplexcloud, the file is attached as output attachment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the output object.</span>
+<span class="sd">            filename: The name of the file to attach.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Environment.get_output_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_output_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Get a file-like object to write the output of the program.</span>
+
+<span class="sd">        The file is recorded as being part of the program output.</span>
+<span class="sd">        This method can be called multiple times if the program contains</span>
+<span class="sd">        multiple output objects.</span>
+
+<span class="sd">        When run on premise, the output of the program is written as files in</span>
+<span class="sd">        the working directory. When run on DOcplexcloud, the files are attached</span>
+<span class="sd">        as output attachments.</span>
+
+<span class="sd">        The stream is opened in binary mode, and will accept 8 bits data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the output object.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A file object to write the output to.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Environment.get_available_core_count"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_available_core_count">[docs]</a>    <span class="k">def</span> <span class="nf">get_available_core_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Returns the number of cores available for processing if the environment</span>
+<span class="sd">        sets a limit.</span>
+
+<span class="sd">        This number is used in the solving engine as the number of threads.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The available number of cores or ``None`` if the environment does not</span>
+<span class="sd">            limit the number of cores.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Environment.get_parameters"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Returns a dict containing all parameters of the program.</span>
+
+<span class="sd">        On DOcplexcloud, this method returns the job parameters.</span>
+<span class="sd">        On local solver, this method returns ``os.environ``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The job parameters</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Environment.get_parameter"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_parameter">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Returns a parameter of the program.</span>
+
+<span class="sd">        On DOcplexcloud, this method returns the job parameter whose name is specified.</span>
+<span class="sd">        On local solver, this method returns the environment variable whose name is specified.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: The name of the parameter.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            The parameter whose name is specified or None if the parameter does</span>
+<span class="sd">            not exists.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">notify_start_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_details</span><span class="p">,</span> <span class="n">engine_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># ===============================================================================</span>
+        <span class="c1">#         &#39;&#39;&#39;Notify the solving environment that a solve is starting.</span>
+        <span class="c1">#</span>
+        <span class="c1">#         If ``context.solver.auto_publish.solve_details`` is set, the underlying solver will automatically</span>
+        <span class="c1">#         send details. If you want to craft and send your own solve details, you can use the following</span>
+        <span class="c1">#         keys (non exhaustive list):</span>
+        <span class="c1">#</span>
+        <span class="c1">#             - MODEL_DETAIL_TYPE : Model type</span>
+        <span class="c1">#             - MODEL_DETAIL_CONTINUOUS_VARS : Number of continuous variables</span>
+        <span class="c1">#             - MODEL_DETAIL_INTEGER_VARS : Number of integer variables</span>
+        <span class="c1">#             - MODEL_DETAIL_BOOLEAN_VARS : Number of boolean variables</span>
+        <span class="c1">#             - MODEL_DETAIL_INTERVAL_VARS : Number of interval variables</span>
+        <span class="c1">#             - MODEL_DETAIL_SEQUENCE_VARS : Number of sequence variables</span>
+        <span class="c1">#             - MODEL_DETAIL_NON_ZEROS : Number of non zero variables</span>
+        <span class="c1">#             - MODEL_DETAIL_CONSTRAINTS : Number of constraints</span>
+        <span class="c1">#             - MODEL_DETAIL_LINEAR_CONSTRAINTS : Number of linear constraints</span>
+        <span class="c1">#             - MODEL_DETAIL_QUADRATIC_CONSTRAINTS : Number of quadratic constraints</span>
+        <span class="c1">#</span>
+        <span class="c1">#         Args:</span>
+        <span class="c1">#             solve_details: A ``dict`` with solve details as key/value pairs</span>
+        <span class="c1">#         See:</span>
+        <span class="c1">#             :attr:`.Context.solver.auto_publish.solve_details`</span>
+        <span class="c1">#         &#39;&#39;&#39;</span>
+        <span class="c1"># ===============================================================================</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset_record_history</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Environment.update_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.update_solve_details">[docs]</a>    <span class="k">def</span> <span class="nf">update_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Update the solve details.</span>
+
+<span class="sd">        You use this method to send solve details to the DOcplexcloud service.</span>
+<span class="sd">        If ``context.solver.auto_publish`` is set, the underlying</span>
+<span class="sd">        solver will automatically update solve details once the solve has</span>
+<span class="sd">        finished.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            details: A ``dict`` with solve details as key/value pairs.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># publish details</span>
+        <span class="n">to_publish</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_solve_details_dict</span><span class="p">:</span>
+            <span class="n">previous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span>
+            <span class="n">to_publish</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">details</span><span class="p">:</span>
+                <span class="n">to_publish</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">previous</span><span class="p">)</span>
+                <span class="n">to_publish</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span> <span class="o">=</span> <span class="n">to_publish</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">to_publish</span> <span class="o">=</span> <span class="n">details</span>
+        <span class="c1"># process history</span>
+        <span class="n">to_publish</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_in_history</span><span class="p">(</span><span class="n">to_publish</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">details_filter</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">details_filter</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">details</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">to_publish</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># just store the details for later use</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span> <span class="o">=</span> <span class="n">to_publish</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">to_publish</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">record_in_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recorded_solve_details_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history_fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">details</span><span class="p">:</span>
+                <span class="n">current_ts</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history_time_decimals</span><span class="p">)</span>
+                <span class="n">current_history_element</span> <span class="o">=</span> <span class="p">[</span><span class="n">current_ts</span><span class="p">,</span> <span class="n">details</span><span class="p">[</span><span class="n">f</span><span class="p">]]</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">deque</span><span class="p">([],</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history_size</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">l</span>
+                <span class="n">last_ts</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="k">else</span> <span class="o">-</span><span class="mi">9999</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">current_ts</span> <span class="o">-</span> <span class="n">last_ts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_min_time</span><span class="p">:</span>
+                    <span class="n">l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_history_element</span><span class="p">)</span>
+                    <span class="n">details</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.history&#39;</span> <span class="o">%</span> <span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>  <span class="c1"># make new copy</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_history_element</span>
+        <span class="k">return</span> <span class="n">details</span>
+    
+    <span class="k">def</span> <span class="nf">prepare_last_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">details</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_solve_details</span><span class="p">)</span>
+        <span class="n">any_added</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">the_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_history</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">do_append</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">the_list</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">last_date_history</span> <span class="o">=</span> <span class="n">the_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">last_date</span> <span class="o">=</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">do_append</span> <span class="o">=</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">last_date</span> <span class="o">-</span> <span class="n">last_date_history</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">do_append</span><span class="p">:</span>
+                <span class="n">the_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                <span class="n">any_added</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">details</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.history&#39;</span> <span class="o">%</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">the_list</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">details</span> <span class="k">if</span> <span class="n">any_added</span> <span class="k">else</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="Environment.publish_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.publish_solve_details">[docs]</a>    <span class="k">def</span> <span class="nf">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Actually publish the solve specified details.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The published details</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">pass</span></div>
+
+    <span class="k">def</span> <span class="nf">notify_end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">solve_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># ===============================================================================</span>
+        <span class="c1">#         &#39;&#39;&#39;Notify the solving environment that the solve as ended.</span>
+        <span class="c1">#</span>
+        <span class="c1">#         The ``status`` can be a docloud.status.JobSolveStatus enum or an integer.</span>
+        <span class="c1">#</span>
+        <span class="c1">#         When ``status`` is an integer, it is converted with the following conversion table:</span>
+        <span class="c1">#</span>
+        <span class="c1">#             0 - UNKNOWN: The algorithm has no information about the solution.</span>
+        <span class="c1">#             1 - FEASIBLE_SOLUTION: The algorithm found a feasible solution.</span>
+        <span class="c1">#             2 - OPTIMAL_SOLUTION: The algorithm found an optimal solution.</span>
+        <span class="c1">#             3 - INFEASIBLE_SOLUTION: The algorithm proved that the model is infeasible.</span>
+        <span class="c1">#             4 - UNBOUNDED_SOLUTION: The algorithm proved the model unbounded.</span>
+        <span class="c1">#             5 - INFEASIBLE_OR_UNBOUNDED_SOLUTION: The model is infeasible or unbounded.</span>
+        <span class="c1">#</span>
+        <span class="c1">#         Args:</span>
+        <span class="c1">#             status: The solve status</span>
+        <span class="c1">#             solve_time: The solve time</span>
+        <span class="c1">#         &#39;&#39;&#39;</span>
+        <span class="c1"># ===============================================================================</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unpublished_details</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">recorded_solve_details_count</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_history_record</span><span class="p">:</span>
+            <span class="n">last_details</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_last_history</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">last_details</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">last_details</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment.set_stop_callback"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.set_stop_callback">[docs]</a>    <span class="k">def</span> <span class="nf">set_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Sets a callback that is called when the script is run on</span>
+<span class="sd">        DOcplexcloud and a job abort operation is requested.</span>
+
+<span class="sd">        You can also use the ``stop_callback`` property to set the callback.</span>
+
+<span class="sd">        Deprecated since 2.4 - Use self.abort_callbacks += [cb] instead&#39;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cb: The callback function</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;set_stop_callback() is deprecated since 2.4 - Use Environment.abort_callbacks.append(cb) instead&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.get_stop_callback"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_stop_callback">[docs]</a>    <span class="k">def</span> <span class="nf">get_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns the stop callback that is called when the script is run on</span>
+<span class="sd">        DOcplexcloud and a job abort operation is requested.</span>
+
+<span class="sd">        You can also use the ``stop_callback`` property to get the callback.</span>
+
+<span class="sd">        Deprecated since 2.4 - Use the abort_callbacks property instead&#39;)</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;get_stop_callback() is deprecated since 2.4 - Use the abort_callbacks property instead&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="n">stop_callback</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_stop_callback</span><span class="p">,</span> <span class="n">set_stop_callback</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment.get_engine_log_level"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_engine_log_level">[docs]</a>    <span class="k">def</span> <span class="nf">get_engine_log_level</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns the engine log level as set by job parameter oaas.engineLogLevel.</span>
+
+<span class="sd">        oaas.engineLogLevel values are: OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST, ALL</span>
+
+<span class="sd">        The mapping to logging levels in python are:</span>
+
+<span class="sd">           * OFF: None</span>
+<span class="sd">           * SEVERE: logging.ERROR</span>
+<span class="sd">           * WARNING: logging.WARNING</span>
+<span class="sd">           * INFO, CONFIG: logging.INFO</span>
+<span class="sd">           * FINE, FINER, FINEST: logging.DEBUG</span>
+<span class="sd">           * ALL: logging.DEBUG</span>
+
+
+<span class="sd">        All other values are considered invalid values and will return None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The logging level or None if not set (off)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">oaas_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_parameter</span><span class="p">(</span><span class="s1">&#39;oaas.engineLogLevel&#39;</span><span class="p">)</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">log_level_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">oaas_level</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">oaas_level</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">log_level</span></div>
+
+<div class="viewcode-block" id="Environment.is_debug_mode"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.is_debug_mode">[docs]</a>    <span class="k">def</span> <span class="nf">is_debug_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns true if the engine should run in debug mode.</span>
+
+<span class="sd">        This is equivalent to ``env.get_engine_log_level() &lt;= logging.DEBUG``</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">lvl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_engine_log_level</span><span class="p">()</span>
+        <span class="c1"># logging.NOTSET is zero so will return false</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_engine_log_level</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span> <span class="k">if</span> <span class="n">lvl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Environment.is_dods"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.is_dods">[docs]</a>    <span class="k">def</span> <span class="nf">is_dods</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns true if this environment in running in DODS.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;IS_DODS&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span></div>
+
+<div class="viewcode-block" id="Environment.get_logger"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.Environment.get_logger">[docs]</a>    <span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns a ``docplex.util.logging.DocplexLogger`` that can be use</span>
+<span class="sd">        for logging purposes.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="kc">None</span></div></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment">[docs]</a><span class="k">class</span> <span class="nc">AbstractLocalEnvironment</span><span class="p">(</span><span class="n">Environment</span><span class="p">):</span>
+    <span class="c1"># The environment solving environment using all local input and outputs.</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AbstractLocalEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># init number of cores. Default is no limits (engines will use</span>
+        <span class="c1"># number of cores reported by system).</span>
+        <span class="c1"># On Watson studio runtimes, the system reports the total number</span>
+        <span class="c1"># of physical cores but not the number of cores available to the</span>
+        <span class="c1"># runtime. The number of cores available to the runtime are</span>
+        <span class="c1"># specified in an environment variable instead.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_available_cores</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">RUNTIME_HARDWARE_SPEC</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;RUNTIME_HARDWARE_SPEC&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">RUNTIME_HARDWARE_SPEC</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">spec</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">RUNTIME_HARDWARE_SPEC</span><span class="p">)</span>
+                <span class="n">num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_cpu&#39;</span><span class="p">))</span> <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;num_cpu&#39;</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_available_cores</span> <span class="o">=</span> <span class="n">num</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.get_input_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.get_input_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.get_output_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.get_output_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.get_parameter"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.get_parameter">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.get_parameters"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.get_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.set_output_attachment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.set_output_attachment">[docs]</a>    <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="c1"># check that name leads to a file in cwd</span>
+        <span class="n">attachment_abs_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">attachment_abs_path</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Illegal attachment name&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span> <span class="o">!=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">():</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>  <span class="c1"># copy to current</span></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.get_logger"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.get_logger">[docs]</a>    <span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>  <span class="c1"># lazy init</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">LoggerToFile</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span></div>
+
+<div class="viewcode-block" id="AbstractLocalEnvironment.get_available_core_count"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.AbstractLocalEnvironment.get_available_core_count">[docs]</a>    <span class="k">def</span> <span class="nf">get_available_core_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_available_cores</span></div></div>
+
+<div class="viewcode-block" id="LocalEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.LocalEnvironment">[docs]</a><span class="k">class</span> <span class="nc">LocalEnvironment</span><span class="p">(</span><span class="n">AbstractLocalEnvironment</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">LocalEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
+
+<span class="kn">from</span> <span class="nn">.ws.util</span> <span class="k">import</span> <span class="n">START_SOLVE_EVENT</span><span class="p">,</span> <span class="n">END_SOLVE_EVENT</span><span class="p">,</span> <span class="n">Tracker</span>
+
+<div class="viewcode-block" id="WSNotebookEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WSNotebookEnvironment">[docs]</a><span class="k">class</span> <span class="nc">WSNotebookEnvironment</span><span class="p">(</span><span class="n">AbstractLocalEnvironment</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracker</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WSNotebookEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>  <span class="c1"># generate random uuid for each session</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_type</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># set in start solve</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracker</span> <span class="o">=</span> <span class="n">tracker</span> <span class="k">if</span> <span class="n">tracker</span> <span class="k">else</span> <span class="n">Tracker</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">notify_start_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_details</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WSNotebookEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="n">solve_details</span><span class="p">)</span>
+        <span class="c1"># Prepare data for WS</span>
+        <span class="n">detail_type</span> <span class="o">=</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_TYPE&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">model_type</span> <span class="o">=</span> <span class="s2">&quot;cpo&quot;</span> <span class="k">if</span> <span class="n">detail_type</span> <span class="ow">and</span> <span class="n">detail_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CPO&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;cplex&quot;</span>
+        <span class="n">num_constraints</span> <span class="o">=</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_CONSTRAINTS&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">num_variables</span> <span class="o">=</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_CONTINUOUS_VARS&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> \
+            <span class="o">+</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_INTEGER_VARS&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> \
+            <span class="o">+</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_BOOLEAN_VARS&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> \
+            <span class="o">+</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_INTERVAL_VARS&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> \
+            <span class="o">+</span> <span class="n">solve_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;MODEL_DETAIL_SEQUENCE_VARS&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">model_statistics</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;numConstraints&#39;</span><span class="p">:</span> <span class="n">num_constraints</span><span class="p">,</span>
+                            <span class="s1">&#39;numVariables&#39;</span><span class="p">:</span> <span class="n">num_variables</span><span class="p">}</span>
+        <span class="n">cplex_edition</span> <span class="o">=</span> <span class="n">_get_cplex_edition</span><span class="p">()</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;modelType&#39;</span><span class="p">:</span> <span class="n">model_type</span><span class="p">,</span>
+                   <span class="s1">&#39;modelSize&#39;</span><span class="p">:</span> <span class="n">model_statistics</span><span class="p">,</span>
+                   <span class="s1">&#39;solveId&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_id</span><span class="p">,</span>
+                   <span class="s1">&#39;edition&#39;</span><span class="p">:</span> <span class="n">cplex_edition</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_type</span> <span class="o">=</span> <span class="n">model_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracker</span><span class="o">.</span><span class="n">notify_ws</span><span class="p">(</span><span class="n">START_SOLVE_EVENT</span><span class="p">,</span> <span class="n">details</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        
+    <span class="k">def</span> <span class="nf">notify_end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">solve_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WSNotebookEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">solve_time</span><span class="o">=</span><span class="n">solve_time</span><span class="p">)</span>
+        <span class="c1"># do the watson studio things</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="ow">and</span> <span class="n">solve_time</span> <span class="o">==</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">solve_time</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span><span class="p">)</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;solveTime&#39;</span><span class="p">:</span> <span class="n">solve_time</span><span class="p">,</span>
+                   <span class="s1">&#39;modelType&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_type</span><span class="p">,</span>
+                   <span class="s1">&#39;solveId&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_id</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracker</span><span class="o">.</span><span class="n">notify_ws</span><span class="p">(</span><span class="n">END_SOLVE_EVENT</span><span class="p">,</span> <span class="n">details</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<span class="k">class</span> <span class="nc">OutputFileWrapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="c1"># Wraps a file object so that on __exit__() and on close(), the wrapped file is closed and</span>
+    <span class="c1"># the output attachments are actually set in the worker</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">solve_hook</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="n">file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span> <span class="o">=</span> <span class="n">solve_hook</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attachment_name</span> <span class="o">=</span> <span class="n">attachment_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">closed</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;close&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">my_close</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># actually close the output then set attachment</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">set_output_attachments</span><span class="p">({</span><span class="bp">self</span><span class="o">.</span><span class="n">attachment_name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="p">})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">closed</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<span class="k">def</span> <span class="nf">worker_env_stop_callback</span><span class="p">(</span><span class="n">env</span><span class="p">):</span>
+    <span class="c1"># wait for the output lock to be released to make sure that the latest</span>
+    <span class="c1"># solution store operation has ended.</span>
+    <span class="k">with</span> <span class="n">env</span><span class="o">.</span><span class="n">output_lock</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="c1"># call all abort callbacks</span>
+    <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">env</span><span class="o">.</span><span class="n">abort_callbacks</span><span class="p">:</span>
+        <span class="n">cb</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="WorkerEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment">[docs]</a><span class="k">class</span> <span class="nc">WorkerEnvironment</span><span class="p">(</span><span class="n">Environment</span><span class="p">):</span>
+    <span class="c1"># The solving environment when we run in the DOcplexCloud worker.</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_hook</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span> <span class="o">=</span> <span class="n">solve_hook</span>
+        <span class="k">if</span> <span class="n">solve_hook</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">stop_callback</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">worker_env_stop_callback</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_available_core_count"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_available_core_count">[docs]</a>    <span class="k">def</span> <span class="nf">get_available_core_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">get_available_core_count</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_input_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_input_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="c1"># inputs are in the current working directory</span>
+        <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_output_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_output_stream">[docs]</a>    <span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="c1"># open the output in a place we know we can write</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w+b&quot;</span><span class="p">,</span> <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">OutputFileWrapper</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.set_output_attachment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.set_output_attachment">[docs]</a>    <span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">set_output_attachments</span><span class="p">({</span><span class="n">name</span><span class="p">:</span> <span class="n">filename</span><span class="p">})</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_parameter"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_parameter">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">get_parameter_value</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_parameters"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">):</span>
+        <span class="c1"># This is a typo in _DockerSolveHook, this should be &quot;parameters&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">parameter</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.publish_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.publish_solve_details">[docs]</a>    <span class="k">def</span> <span class="nf">publish_solve_details</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">details</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">publish_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span>
+        <span class="c1"># if on dods, we want to publish stats.csv if any</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_dods</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_publish_stats_csv</span><span class="p">(</span><span class="n">details</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_publish_stats_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats</span><span class="p">):</span>
+        <span class="c1"># generate the stats.csv file with the specified stats</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;stats.csv&#39;</span><span class="p">]</span>
+        <span class="n">stats_table</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">stats</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;STAT.&quot;</span><span class="p">):</span>
+                <span class="n">stats_table</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]])</span>
+        <span class="k">if</span> <span class="n">stats_table</span><span class="p">:</span>
+            <span class="n">field_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Value&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                <span class="n">write_table_as_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats_table</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">field_names</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">notify_start_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solve_details</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="n">solve_details</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">notify_start_solve</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># model</span>
+                                           <span class="n">solve_details</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">notify_end_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">solve_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WorkerEnvironment</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">docplex.util.status</span> <span class="k">import</span> <span class="n">JobSolveStatus</span>
+            <span class="n">engine_status</span> <span class="o">=</span> <span class="n">JobSolveStatus</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="k">if</span> <span class="n">status</span> <span class="k">else</span> <span class="n">JobSolveStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">notify_end_solve</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># model, unused</span>
+                                             <span class="kc">None</span><span class="p">,</span>  <span class="c1"># has_solution, unused</span>
+                                             <span class="n">engine_status</span><span class="p">,</span>
+                                             <span class="kc">None</span><span class="p">,</span>  <span class="c1"># reported_obj, unused</span>
+                                             <span class="kc">None</span><span class="p">,</span>  <span class="c1"># var_value_dict, unused</span>
+                                             <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;This should have been called only when in a worker environment&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="WorkerEnvironment.set_stop_callback"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.set_stop_callback">[docs]</a>    <span class="k">def</span> <span class="nf">set_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;set_stop_callback() is deprecated since 2.4 - Use Environment.abort_callbacks.append(cb) instead&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="o">+=</span> <span class="p">[</span><span class="n">cb</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_stop_callback"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_stop_callback">[docs]</a>    <span class="k">def</span> <span class="nf">get_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;get_stop_callback() is deprecated since 2.4 - Use the abort_callbacks property instead&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="WorkerEnvironment.get_logger"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.WorkerEnvironment.get_logger">[docs]</a>    <span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="p">,</span> <span class="s1">&#39;logger&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">LoggerToDocloud</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solve_hook</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">LoggerToFile</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span></div></div>
+
+
+<div class="viewcode-block" id="OverrideEnvironment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.OverrideEnvironment">[docs]</a><span class="k">class</span> <span class="nc">OverrideEnvironment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Allows to temporarily replace the default environment.</span>
+
+<span class="sd">    If the override environment is None, nothing happens and the default</span>
+<span class="sd">    environment is not replaced</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_env</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_env</span> <span class="o">=</span> <span class="n">new_env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_env</span><span class="p">:</span>
+            <span class="k">global</span> <span class="n">default_environment</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span> <span class="o">=</span> <span class="n">default_environment</span>
+            <span class="n">default_environment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_env</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span><span class="p">:</span>
+            <span class="k">global</span> <span class="n">default_environment</span>
+            <span class="n">default_environment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_env</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_default_environment</span><span class="p">():</span>
+    <span class="c1"># creates a new instance of the default environment</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">docplex.worker.solvehook</span> <span class="k">as</span> <span class="nn">worker_env</span>
+        <span class="n">hook</span> <span class="o">=</span> <span class="n">worker_env</span><span class="o">.</span><span class="n">get_solve_hook</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">hook</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">WorkerEnvironment</span><span class="p">(</span><span class="n">hook</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">if</span> <span class="n">in_ws_nb</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">WSNotebookEnvironment</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">LocalEnvironment</span><span class="p">()</span>
+
+<span class="n">default_environment</span> <span class="o">=</span> <span class="n">_get_default_environment</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_get_cplex_edition</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">OverrideEnvironment</span><span class="p">(</span><span class="n">Environment</span><span class="p">()):</span>
+        <span class="kn">import</span> <span class="nn">docplex.mp.model</span>
+        <span class="kn">import</span> <span class="nn">docplex.mp.environment</span>
+        <span class="n">edition</span> <span class="o">=</span> <span class="s2">&quot; ce&quot;</span> <span class="k">if</span> <span class="n">docplex</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">Model</span><span class="o">.</span><span class="n">is_cplex_ce</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">docplex</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">Environment</span><span class="p">()</span><span class="o">.</span><span class="n">cplex_version</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">edition</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_environment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.get_environment">[docs]</a><span class="k">def</span> <span class="nf">get_environment</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39; Returns the Environment object that represents the actual execution</span>
+<span class="sd">    environment.</span>
+
+<span class="sd">    Note: the default environment is the value of the</span>
+<span class="sd">    ``docplex.util.environment.default_environment`` property.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An instance of the :class:`.Environment` class that implements methods</span>
+<span class="sd">        corresponding to actual execution environment.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span></div>
+
+
+<div class="viewcode-block" id="get_input_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.get_input_stream">[docs]</a><span class="k">def</span> <span class="nf">get_input_stream</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Get an input of the program as a stream (file-like object),</span>
+<span class="sd">    with the default environment.</span>
+
+<span class="sd">    An input of the program is a file that is available in the working directory.</span>
+
+<span class="sd">    When run on DOcplexcloud, all input attachments are copied to the working directory before</span>
+<span class="sd">    the program is run. ``get_input_stream`` lets you open the input attachments of the job.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: Name of the input object.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A file object to read the input from.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">get_input_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="set_output_attachment"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.set_output_attachment">[docs]</a><span class="k">def</span> <span class="nf">set_output_attachment</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Attach the file which filename is specified as an output of the</span>
+<span class="sd">    program.</span>
+
+<span class="sd">    The file is recorded as being part of the program output.</span>
+<span class="sd">    This method can be called multiple times if the program contains</span>
+<span class="sd">    multiple output objects.</span>
+
+<span class="sd">    When run on premise, ``filename`` is copied to the the working</span>
+<span class="sd">    directory (if not already there) under the name ``name``.</span>
+
+<span class="sd">    When run on DOcplexcloud, the file is attached as output attachment.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: Name of the output object.</span>
+<span class="sd">        filename: The name of the file to attach.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">set_output_attachment</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_output_stream"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.get_output_stream">[docs]</a><span class="k">def</span> <span class="nf">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Get a file-like object to write the output of the program.</span>
+
+<span class="sd">    The file is recorded as being part of the program output.</span>
+<span class="sd">    This method can be called multiple times if the program contains</span>
+<span class="sd">    multiple output objects.</span>
+
+<span class="sd">    When run on premise, the output of the program is written as files in</span>
+<span class="sd">    the working directory. When run on DOcplexcloud, the files are attached</span>
+<span class="sd">    as output attachments.</span>
+
+<span class="sd">    The stream is opened in binary mode, and will accept 8 bits data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: Name of the output object.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A file object to write the output to.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="read_df"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.read_df">[docs]</a><span class="k">def</span> <span class="nf">read_df</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Reads an input of the program as a ``pandas.DataFrame`` with the</span>
+<span class="sd">    default environment.</span>
+
+<span class="sd">    ``pandas`` must be installed.</span>
+
+<span class="sd">    ``name`` is the name of the input object, as a filename. If a reader</span>
+<span class="sd">    is not user provided, the reader used depends on the filename extension.</span>
+
+<span class="sd">    The default reader used depending on extension are:</span>
+
+<span class="sd">        * ``.csv``: ``pandas.read_csv()``</span>
+<span class="sd">        * ``.msg``: ``pandas.read_msgpack()``</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: The name of the input object</span>
+<span class="sd">        reader: an optional reader function</span>
+<span class="sd">        **kwargs: additional parameters passed to the reader</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        NotAvailableError: raises this error when ``pandas`` is not</span>
+<span class="sd">            available.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">read_df</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reader</span><span class="o">=</span><span class="n">reader</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="write_df"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.write_df">[docs]</a><span class="k">def</span> <span class="nf">write_df</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">writer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Write a ``pandas.DataFrame`` as an output of the program with the</span>
+<span class="sd">    default environment.</span>
+
+<span class="sd">    ``pandas`` must be installed.</span>
+
+<span class="sd">    ``name`` is the name of the input object, as a filename. If a writer</span>
+<span class="sd">    is not user provided, the writer used depends on the filename extension.</span>
+
+<span class="sd">    The default writer used depending on extension are:</span>
+
+<span class="sd">        * ``.csv``: ``DataFrame.to_csv()``</span>
+<span class="sd">        * ``.msg``: ``DataFrame.to_msgpack()``</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: The name of the input object</span>
+<span class="sd">        writer: an optional writer function</span>
+<span class="sd">        **kwargs: additional parameters passed to the writer</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        NotAvailableError: raises this error when ``pandas`` is not</span>
+<span class="sd">            available.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">write_df</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">writer</span><span class="o">=</span><span class="n">writer</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_available_core_count"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.get_available_core_count">[docs]</a><span class="k">def</span> <span class="nf">get_available_core_count</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39; Returns the number of cores available for processing if the environment</span>
+<span class="sd">    sets a limit, with the default environment.</span>
+
+<span class="sd">    This number is used in the solving engine as the number of threads.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The available number of cores or ``None`` if the environment does not</span>
+<span class="sd">        limit the number of cores.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">get_available_core_count</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="get_parameter"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.get_parameter">[docs]</a><span class="k">def</span> <span class="nf">get_parameter</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Returns a parameter of the program, with the default environment.</span>
+
+<span class="sd">    On DOcplexcloud, this method returns the job parameter whose name is specified.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: The name of the parameter.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The parameter whose name is specified.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">get_parameter</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="update_solve_details"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.update_solve_details">[docs]</a><span class="k">def</span> <span class="nf">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Update the solve details, with the default environment</span>
+
+<span class="sd">    You use this method to send solve details to the DOcplexcloud service.</span>
+<span class="sd">    If ``context.solver.auto_publish`` is set, the underlying</span>
+<span class="sd">    solver will automatically update solve details once the solve has</span>
+<span class="sd">    finished.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        details: A ``dict`` with solve details as key/value pairs.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">default_environment</span><span class="o">.</span><span class="n">update_solve_details</span><span class="p">(</span><span class="n">details</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="add_abort_callback"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.add_abort_callback">[docs]</a><span class="k">def</span> <span class="nf">add_abort_callback</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Adds the specified callback to the default environment.</span>
+
+<span class="sd">    The abort callback is called when the script is run on</span>
+<span class="sd">    DOcplexcloud and a job abort operation is requested.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cb: The abort callback</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">default_environment</span><span class="o">.</span><span class="n">abort_callbacks</span> <span class="o">+=</span> <span class="p">[</span><span class="n">cb</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="remove_abort_callback"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.remove_abort_callback">[docs]</a><span class="k">def</span> <span class="nf">remove_abort_callback</span><span class="p">(</span><span class="n">cb</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Adds the specified callback to the default environment.</span>
+
+<span class="sd">    The abort callback is called when the script is run on</span>
+<span class="sd">    DOcplexcloud and a job abort operation is requested.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cb: The abort callback</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">default_environment</span><span class="o">.</span><span class="n">abort_callbacks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span></div>
+
+<span class="n">attachment_invalid_characters</span> <span class="o">=</span> <span class="s1">&#39;/</span><span class="se">\\</span><span class="s1">?%*:|&quot;#&lt;&gt; &#39;</span>
+<span class="n">attachment_trans_table</span> <span class="o">=</span> <span class="n">maketrans</span><span class="p">(</span><span class="n">attachment_invalid_characters</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">attachment_invalid_characters</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="make_attachment_name"><a class="viewcode-back" href="../../../docplex.util.environment.html#docplex.util.environment.make_attachment_name">[docs]</a><span class="k">def</span> <span class="nf">make_attachment_name</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;From `name`, create an attachment name that is correct for DOcplexcloud.</span>
+
+<span class="sd">    Attachment filenames in DOcplexcloud has certain restrictions. A file name:</span>
+
+<span class="sd">        - is limited to 255 characters;</span>
+<span class="sd">        - can include only ASCII characters;</span>
+<span class="sd">        - cannot include the characters `/\?%*:|&quot;&lt;&gt;`, the space character, or the null character; and</span>
+<span class="sd">        - cannot include _ as the first character.</span>
+
+<span class="sd">    This method replace all unauthorized characters with _, then removing leading</span>
+<span class="sd">    &#39;_&#39;.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: The original attachment name</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        An attachment name that conforms to the restrictions.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError if the attachment name is more than 255 characters</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">new_name</span> <span class="o">=</span> <span class="n">translate</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">attachment_trans_table</span><span class="p">)</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">new_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)):</span>
+        <span class="n">new_name</span> <span class="o">=</span> <span class="n">new_name</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">255</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Attachment names are limited to 255 characters&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_name</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>
