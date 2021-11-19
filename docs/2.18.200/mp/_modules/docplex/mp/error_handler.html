@@ -1,0 +1,378 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.mp.error_handler &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.error_handler</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">DOcplexException</span><span class="p">,</span> <span class="n">DOcplexLimitsExceeded</span><span class="p">,</span> <span class="n">resolve_pattern</span><span class="p">,</span> <span class="n">is_int</span><span class="p">,</span> <span class="n">is_string</span>
+
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="c1">##########################</span>
+<span class="c1"># Error handling</span>
+
+
+<span class="k">class</span> <span class="nc">IErrorHandler</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">fatal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">ok</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">get_output_level</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">set_output_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_level</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">ensure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">condition</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="InfoLevel"><a class="viewcode-back" href="../../../docplex.mp.error_handler.html#docplex.mp.error_handler.InfoLevel">[docs]</a><span class="k">class</span> <span class="nc">InfoLevel</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Enumerated type for the possible output levels.</span>
+
+<span class="sd">    Info levels are sorted in increasing order of severity: `INFO`, `WARNING`, `ERROR`, `FATAL`.</span>
+<span class="sd">    Setting a level enables the printing of all messages from that severity and above.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        Setting the level to `WARNING` enables the printing of `WARNING`, `ERROR`, and `FATAL` messages, but not</span>
+<span class="sd">        `INFO` level messages.</span>
+<span class="sd">        Setting the level to `FATAL` suppresses all messages, except for fatal errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">INFO</span><span class="p">,</span> <span class="n">WARNING</span><span class="p">,</span> <span class="n">ERROR</span><span class="p">,</span> <span class="n">FATAL</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">9999999</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">default_level</span><span class="o">=</span><span class="n">INFO</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">INFO</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">arg</span>
+        <span class="k">elif</span> <span class="n">is_string</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_name2level_map</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">default_level</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_int</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">arg</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="c1"># anything below 10 is INFO</span>
+                <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">INFO</span>
+            <span class="k">elif</span> <span class="n">arg</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">WARNING</span>
+            <span class="k">elif</span> <span class="n">arg</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">ERROR</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># level fatal prints nothing except fatal errors</span>
+                <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">FATAL</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="s2">&quot;Cannot convert this to InfoLevel: </span><span class="si">{0!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_headers</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">FATAL</span><span class="p">:</span> <span class="s2">&quot;FATAL&quot;</span><span class="p">,</span>
+                <span class="n">InfoLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span>
+                <span class="n">InfoLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span> <span class="s2">&quot;Warning:&quot;</span><span class="p">,</span>
+                <span class="n">InfoLevel</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span> <span class="s2">&quot;Error:&quot;</span>
+                <span class="p">}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_name2level_map</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;fatal&quot;</span><span class="p">:</span> <span class="n">InfoLevel</span><span class="o">.</span><span class="n">FATAL</span><span class="p">,</span>
+                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">InfoLevel</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span>
+                <span class="s2">&quot;warning&quot;</span><span class="p">:</span> <span class="n">InfoLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span>
+                <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="n">InfoLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># cannot put the dict in the class</span>
+        <span class="c1"># as it willbe interpreted as another enum value.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headers</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;???&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">AbstractErrorHandler</span><span class="p">(</span><span class="n">IErrorHandler</span><span class="p">):</span>
+    <span class="n">TRACE_HEADER</span> <span class="o">=</span> <span class="s2">&quot;--&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_level</span><span class="o">=</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">):</span>
+        <span class="n">IErrorHandler</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trace_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_errors</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_warnings</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_fatals</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_level</span> <span class="o">=</span> <span class="n">InfoLevel</span><span class="o">.</span><span class="n">INFO</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_print_suspended</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_postponed</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_output_level</span><span class="p">(</span><span class="n">output_level</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_warnings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the number of warnings.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_warnings</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the number of errors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_errors</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_fatals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_fatals</span>
+
+    <span class="k">def</span> <span class="nf">get_output_level</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_level</span>
+
+    <span class="k">def</span> <span class="nf">set_output_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_level_arg</span><span class="p">):</span>
+        <span class="n">output_level</span> <span class="o">=</span> <span class="n">InfoLevel</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">output_level_arg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">output_level</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_level</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_output_level</span> <span class="o">=</span> <span class="n">output_level</span>
+
+    <span class="k">def</span> <span class="nf">set_trace_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace_mode</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trace_enabled</span> <span class="o">=</span> <span class="n">trace_mode</span>
+
+    <span class="k">def</span> <span class="nf">enable_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_trace_mode</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">disable_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_trace_mode</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_trace_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trace_enabled</span>
+
+    <span class="k">def</span> <span class="nf">set_quiet</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Changes the output level to enable only error messages.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_output_level</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_errors</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_warnings</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_fatals</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">_internal_is_printed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_level</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="n">level</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">_internal_print_if</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_is_printed</span><span class="p">(</span><span class="n">level</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_internal_print</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_internal_print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="c1"># resolve message w/ args</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">level</span><span class="o">.</span><span class="n">header</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_print_header</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_internal_print_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="n">resolved_message</span> <span class="o">=</span> <span class="n">resolve_pattern</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+        <span class="n">mline</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">resolved_message</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_print_suspended</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_postponed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mline</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">mline</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">trace_header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">TRACE_HEADER</span>
+
+    <span class="k">def</span> <span class="nf">trace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_trace_enabled</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_internal_print_header</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trace_header</span><span class="p">(),</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_print_if</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_warnings</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_print_if</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">docplex_error_stop_here</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_errors</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_internal_print_if</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fatal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_fatals</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">resolved_message</span> <span class="o">=</span> <span class="n">resolve_pattern</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+        <span class="n">docplex_error_stop_here</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="n">resolved_message</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fatal_limits_exceeded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">docplex_error_stop_here</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="n">DOcplexLimitsExceeded</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">ok</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks whether the handler has not recorded any error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_errors</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_number_of_fatals</span> <span class="o">==</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">prints_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_trace_enabled</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">prints_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_is_printed</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">prints_warning</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_is_printed</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">prints_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_is_printed</span><span class="p">(</span><span class="n">InfoLevel</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">suspend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_print_suspended</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is_print_suspended</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_postponed</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_postponed</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+<span class="k">def</span> <span class="nf">docplex_error_stop_here</span><span class="p">():</span>
+    <span class="c1"># INTERNAL, use to set breakpoints</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">docplex_add_trivial_infeasible_ct</span><span class="p">(</span><span class="n">ct</span><span class="p">):</span>
+    <span class="c1"># INTERNAL: set breakpoint here to inspect ct</span>
+    <span class="k">pass</span>
+
+<span class="k">def</span> <span class="nf">docplex_fatal</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="n">resolved_message</span> <span class="o">=</span> <span class="n">resolve_pattern</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+    <span class="n">docplex_error_stop_here</span><span class="p">()</span>
+    <span class="k">raise</span> <span class="n">DOcplexException</span><span class="p">(</span><span class="n">resolved_message</span><span class="p">)</span>
+
+<span class="n">is_debug</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DOCPLEX_DEBUG&#39;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">docplex_debug_msg</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">is_debug</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">args</span><span class="p">)</span>
+        <span class="c1">#print(f&quot;-- {msg}&quot;)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-- </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="DefaultErrorHandler"><a class="viewcode-back" href="../../../docplex.mp.error_handler.html#docplex.mp.error_handler.DefaultErrorHandler">[docs]</a><span class="k">class</span> <span class="nc">DefaultErrorHandler</span><span class="p">(</span><span class="n">AbstractErrorHandler</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The default error handler class.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_level</span><span class="o">=</span><span class="n">InfoLevel</span><span class="p">):</span>
+        <span class="n">AbstractErrorHandler</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_level</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">SilentErrorHandler</span><span class="p">(</span><span class="n">AbstractErrorHandler</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_level</span><span class="o">=</span><span class="n">InfoLevel</span><span class="p">):</span>
+        <span class="n">AbstractErrorHandler</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_level</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_internal_print</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="c1"># nothing out, this is the point!</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">suspend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>

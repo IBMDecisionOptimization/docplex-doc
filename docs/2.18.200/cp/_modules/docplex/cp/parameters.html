@@ -1,0 +1,1258 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.cp.parameters &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.cp.parameters</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016, 2017, 2018</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module handles the parameters that can be assigned to CP Optimizer to configure</span>
+<span class="sd">the solving of a model.</span>
+
+<span class="sd">The class `CpoParameters` contains the list of modifiable parameters</span>
+<span class="sd">expressed as properties with getters and setters.</span>
+<span class="sd">For the parameters that require special values, those values are given as constants.</span>
+
+<span class="sd">Changing the value of a parameter can be done in multiple ways.</span>
+<span class="sd">For example, the `TimeLimit` can be set to 60s :</span>
+
+<span class="sd">   * `params.TimeLimit = 60`</span>
+<span class="sd">   * `params.set_TimeLimit(60)`</span>
+<span class="sd">   * `params[&#39;TimeLimit&#39;] = 60`</span>
+<span class="sd">   * `params.set_attribute(&#39;TimeLimit&#39;, 60)`</span>
+
+<span class="sd">Retrieving the value of a parameter can be done in the same way using:</span>
+
+<span class="sd">   * `v = params.TimeLimit`</span>
+<span class="sd">   * `v = params.get_TimeLimit()`</span>
+<span class="sd">   * `v = params[&#39;TimeLimit&#39;]`</span>
+<span class="sd">   * `v = params.get_attribute(&#39;TimeLimit&#39;)`</span>
+
+<span class="sd">If a parameter is not set, the value returned by the first two access forms is None.</span>
+<span class="sd">The last access form (element of a dictionary) raises an exception.</span>
+
+<span class="sd">Setting a parameter value to None is equivalent to force its default value.</span>
+<span class="sd">This may be for example useful to reset at solve time a parameter that has been set at model level.</span>
+
+<span class="sd">Getting the list of all parameters that have been changed can be done by calling the method `keys()`.</span>
+
+<span class="sd">Note that the *PEP8* naming convention is not applied here, to keep parameter names as they</span>
+<span class="sd">are in the solver, so that they can be referenced in solver logs.</span>
+
+<span class="sd">Summary of parameters</span>
+<span class="sd">---------------------</span>
+
+<span class="sd">The following list gives the summary of all public parameters.</span>
+
+<span class="sd">**Display and output**</span>
+
+<span class="sd"> * :attr:`~CpoParameters.LogVerbosity`: Determines the verbosity of the search log.</span>
+<span class="sd">   The value is a symbol in [&#39;Quiet&#39;, &#39;Terse&#39;, &#39;Normal&#39;, &#39;Verbose&#39;]. Default value is &#39;Normal&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.LogPeriod`: Controls how often the log information is displayed.</span>
+<span class="sd">   The value is an integer strictly greater than 0. Default value is 1000.</span>
+<span class="sd"> * :attr:`~CpoParameters.WarningLevel`: Level of warnings issued by CP Optimizer when a solve is launched.</span>
+<span class="sd">   The value is an integer in [0..3]. Default value is 2.</span>
+<span class="sd"> * :attr:`~CpoParameters.PrintModelDetailsInMessages`: Controls printing of additional information on error and warning messages.</span>
+<span class="sd">   The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.ModelAnonymizer`: Controls anonymization of a model dumped via dumpModel.</span>
+<span class="sd">   The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;Off&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.UseFileLocations`: Controls whether location information (file, line) is added to the model.</span>
+<span class="sd">   The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.LogSearchTags`: Controls the activation of search failure tags.</span>
+<span class="sd">   The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;Off&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.KPIDisplay`: Controls the display of the KPI values in the log.</span>
+<span class="sd">   The value is a symbol in [&#39;SingleLine&#39;, &#39;MultipleLines&#39;]. Default value is &#39;SingleLine&#39;.</span>
+<span class="sd">   </span>
+<span class="sd">**Presolve**</span>
+
+<span class="sd"> * :attr:`~CpoParameters.Presolve`: Controls the presolve of the model to produce more compact formulations and to achieve more domain reduction.</span>
+
+<span class="sd">**Optimality tolerances**</span>
+
+<span class="sd"> * :attr:`~CpoParameters.OptimalityTolerance`: Absolute tolerance on the objective value for optimization models.</span>
+<span class="sd">   The value is a positive float. Default value is 1e-09.</span>
+<span class="sd"> * :attr:`~CpoParameters.RelativeOptimalityTolerance`: Relative tolerance on the objective value for optimization models.</span>
+<span class="sd">   The value is a non-negative float. Default value is 0.0001.</span>
+
+<span class="sd">**Search control**</span>
+
+<span class="sd"> * :attr:`~CpoParameters.Workers`: Number of workers to run in parallel to solve the model.</span>
+<span class="sd">   The value is a positive integer. Default value is Auto.</span>
+<span class="sd"> * :attr:`~CpoParameters.SearchType`: Type of search that is applied when solving a problem.</span>
+<span class="sd">   The value is a symbol in [&#39;DepthFirst&#39;, &#39;Restart&#39;, &#39;MultiPoint&#39;, &#39;IterativeDiving&#39;, &#39;Auto&#39;]. Default value is &#39;Auto&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.RandomSeed`: Seed of the random generator used by search strategies.</span>
+<span class="sd">   The value is a non-negative integer. Default value is 0.</span>
+<span class="sd"> * :attr:`~CpoParameters.RestartFailLimit`: Controls the number of failures that must occur before restarting search.</span>
+<span class="sd">   The value is an integer greater than 0. Default value is 100.</span>
+<span class="sd"> * :attr:`~CpoParameters.RestartGrowthFactor`: Controls the increase of the number of failures between restarts.</span>
+<span class="sd">   The value is a float greater or equal to 1. Default value is 1.15.</span>
+<span class="sd"> * :attr:`~CpoParameters.DynamicProbing`: Controls probing carried out during search.</span>
+<span class="sd">   The value is a symbol in [&#39;On&#39;, &#39;Off&#39;, &#39;Auto&#39;]. Default value is &#39;Auto&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.DynamicProbingStrength`: Controls the effort which is dedicated to dynamic probing.</span>
+<span class="sd">   The value is a float in [0.001..1000]. Default value is 0.03.</span>
+<span class="sd"> * :attr:`~CpoParameters.MultiPointNumberOfSearchPoints`: Controls the number of solutions manipulated by the multi-point search algorithm.</span>
+<span class="sd">   The value is an integer strictly greater than 1. Default value is 30.</span>
+<span class="sd"> * :attr:`~CpoParameters.TemporalRelaxation`: Advanced parameter can be used to control the usage of a temporal relaxation.</span>
+<span class="sd">   Possible values are &#39;On&#39; or &#39;Off&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.FailureDirectedSearch`: Controls usage of failure-directed search.</span>
+<span class="sd">   Possible values are &#39;On&#39; or &#39;Off&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.FailureDirectedSearchEmphasis`: Controls how much time CP Optimizer invests into failure-directed search once it is started.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.FailureDirectedSearchMaxMemory`: Controls the maximum amount of memory available to failure-directed search</span>
+<span class="sd">   The value is a non-negative integer, or None that does not set any limit. Default value is 104857600.</span>
+<span class="sd"> * :attr:`~CpoParameters.AutomaticReplay`: Low-level control of the behavior of *solve()* and *next()*.</span>
+<span class="sd">   Possible values are &#39;On&#39; or &#39;Off&#39;.</span>
+
+<span class="sd">**Search limits**</span>
+
+<span class="sd"> * :attr:`~CpoParameters.TimeLimit`: Limits the CPU or elapsed time spent solving before terminating a search.</span>
+<span class="sd">   The value is a non-negative float, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.TimeMode`: Defines how time is measured in CP Optimizer.</span>
+<span class="sd">   The value is a symbol in [&#39;CPUTime&#39;, &#39;ElapsedTime&#39;]. Default value is &#39;ElapsedTime&#39;.</span>
+<span class="sd"> * :attr:`~CpoParameters.FailLimit`: Limits the number of failures that can occur before terminating the search.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.ChoicePointLimit`: Limits the number of choice points that are created before terminating a search.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.BranchLimit`: Limits the number of branches that are made before terminating a search.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.SolutionLimit`: Limits the number of feasible solutions that are found before terminating a search.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+
+<span class="sd">**Inference levels for constraint propagation**</span>
+
+<span class="sd">For all following attributes, possible values are &#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, Medium&#39; or &#39;Extended&#39;. Default value is &#39;Default&#39;.</span>
+
+<span class="sd"> * :attr:`~CpoParameters.DefaultInferenceLevel`: General inference level for constraints whose particular inference level is Default.</span>
+<span class="sd"> * :attr:`~CpoParameters.AllDiffInferenceLevel`: Inference level for every constraint *allDiff*.</span>
+<span class="sd"> * :attr:`~CpoParameters.DistributeInferenceLevel`: Inference level for every constraint *Distribute*.</span>
+<span class="sd"> * :attr:`~CpoParameters.CountInferenceLevel`: Inference level for every constraint *Count* extracted to the invoked CP instance.</span>
+<span class="sd"> * :attr:`~CpoParameters.CountDifferentInferenceLevel`: Inference level for every constraint *CountDifferent*.</span>
+<span class="sd"> * :attr:`~CpoParameters.SequenceInferenceLevel`: Inference level for every constraint *Sequence*.</span>
+<span class="sd"> * :attr:`~CpoParameters.AllMinDistanceInferenceLevel`: Inference level for every constraint *allMinDistance*.</span>
+<span class="sd"> * :attr:`~CpoParameters.ElementInferenceLevel`: Inference level for every *element* constraint.</span>
+<span class="sd"> * :attr:`~CpoParameters.PrecedenceInferenceLevel`: Inference level for precedence constraints between interval variables.</span>
+<span class="sd"> * :attr:`~CpoParameters.IntervalSequenceInferenceLevel`: Inference level for the maintenance of the domain of every interval sequence variable.</span>
+<span class="sd"> * :attr:`~CpoParameters.NoOverlapInferenceLevel`: Inference level for every constraint NoOverlap extracted.</span>
+<span class="sd"> * :attr:`~CpoParameters.CumulFunctionInferenceLevel`: Inference level for constraints on expression *CumulFunctionExpr*.</span>
+<span class="sd"> * :attr:`~CpoParameters.StateFunctionInferenceLevel`: Inference level for constraints on state functions *StateFunction*.</span>
+
+<span class="sd">**Conflict refiner**</span>
+
+<span class="sd"> * :attr:`~CpoParameters.ConflictRefinerTimeLimit`: Limits the CPU time spent before terminating the conflict refiner.</span>
+<span class="sd">   The value is a non-negative float, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.ConflictRefinerIterationLimit`: Limits the number of iterations that are made before terminating the conflict refiner.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.ConflictRefinerBranchLimit`: Limits the total number of branches that are made before terminating the conflict refiner.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.ConflictRefinerFailLimit`: Limits the total number of failures that can occur before terminating the conflict refiner.</span>
+<span class="sd">   The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd"> * :attr:`~CpoParameters.ConflictRefinerOnVariables`: Specifies whether the conflict refiner should refine variables domains.</span>
+<span class="sd">   The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;Off&#39;.</span>
+
+
+<span class="sd">Detailed description</span>
+<span class="sd">--------------------</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="k">import</span> <span class="n">Context</span><span class="p">,</span> <span class="n">is_int</span><span class="p">,</span> <span class="n">is_number</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">## Public constants</span>
+<span class="c1">###############################################################################</span>
+
+<span class="c1"># Set of all public parameter names</span>
+<span class="n">PUBLIC_PARAMETER_NAMES</span> <span class="o">=</span> \
+    <span class="p">{</span><span class="s2">&quot;AllDiffInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;AllMinDistanceInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;AutomaticReplay&quot;</span><span class="p">,</span> <span class="s2">&quot;BranchLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;ChoicePointLimit&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;ConflictRefinerBranchLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;ConflictRefinerFailLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;ConflictRefinerIterationLimit&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;ConflictRefinerOnVariables&quot;</span><span class="p">,</span> <span class="s2">&quot;ConflictRefinerTimeLimit&quot;</span><span class="p">,</span><span class="s2">&quot;CountDifferentInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;CountInferenceLevel&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;CumulFunctionInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;DefaultInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;DistributeInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;DynamicProbing&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;DynamicProbingStrength&quot;</span><span class="p">,</span> <span class="s2">&quot;ElementInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;FailLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;FailureDirectedSearch&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;FailureDirectedSearchEmphasis&quot;</span><span class="p">,</span> <span class="s2">&quot;FailureDirectedSearchMaxMemory&quot;</span><span class="p">,</span> <span class="s2">&quot;IntervalSequenceInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;LogPeriod&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;LogSearchTags&quot;</span><span class="p">,</span> <span class="s2">&quot;LogVerbosity&quot;</span><span class="p">,</span> <span class="s2">&quot;ModelAnonymizer&quot;</span><span class="p">,</span> <span class="s2">&quot;MultiPointNumberOfSearchPoints&quot;</span><span class="p">,</span> <span class="s2">&quot;NoOverlapInferenceLevel&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;OptimalityTolerance&quot;</span><span class="p">,</span> <span class="s2">&quot;PrecedenceInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;Presolve&quot;</span><span class="p">,</span> <span class="s2">&quot;PrintModelDetailsInMessages&quot;</span><span class="p">,</span> <span class="s2">&quot;RandomSeed&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;RelativeOptimalityTolerance&quot;</span><span class="p">,</span> <span class="s2">&quot;RestartFailLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;RestartGrowthFactor&quot;</span><span class="p">,</span> <span class="s2">&quot;SearchType&quot;</span><span class="p">,</span> <span class="s2">&quot;SequenceInferenceLevel&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;SolutionLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;StateFunctionInferenceLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;TemporalRelaxation&quot;</span><span class="p">,</span> <span class="s2">&quot;TimeLimit&quot;</span><span class="p">,</span> <span class="s2">&quot;TimeMode&quot;</span><span class="p">,</span> <span class="s2">&quot;UseFileLocations&quot;</span><span class="p">,</span>
+     <span class="s2">&quot;WarningLevel&quot;</span><span class="p">,</span> <span class="s2">&quot;Workers&quot;</span><span class="p">,</span> <span class="s2">&quot;KPIDisplay&quot;</span><span class="p">}</span>
+
+<span class="c1"># Set of all private but accepted parameter names</span>
+<span class="n">PRIVATE_PARAMETER_NAMES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ObjectiveLimit&quot;</span><span class="p">,}</span>
+
+<span class="c1"># Set of all authorized parameter names</span>
+<span class="n">ALL_PARAMETER_NAMES</span> <span class="o">=</span> <span class="n">PUBLIC_PARAMETER_NAMES</span> <span class="o">|</span> <span class="n">PRIVATE_PARAMETER_NAMES</span>
+
+<span class="c1"># Symbolic parameter values</span>
+<span class="n">VALUE_AUTO</span>             <span class="o">=</span> <span class="s1">&#39;Auto&#39;</span>
+<span class="n">VALUE_OFF</span>              <span class="o">=</span> <span class="s1">&#39;Off&#39;</span>
+<span class="n">VALUE_ON</span>               <span class="o">=</span> <span class="s1">&#39;On&#39;</span>
+<span class="n">VALUE_DEFAULT</span>          <span class="o">=</span> <span class="s1">&#39;Default&#39;</span>
+<span class="n">VALUE_LOW</span>              <span class="o">=</span> <span class="s1">&#39;Low&#39;</span>
+<span class="n">VALUE_BASIC</span>            <span class="o">=</span> <span class="s1">&#39;Basic&#39;</span>
+<span class="n">VALUE_MEDIUM</span>           <span class="o">=</span> <span class="s1">&#39;Medium&#39;</span>
+<span class="n">VALUE_EXTENDED</span>         <span class="o">=</span> <span class="s1">&#39;Extended&#39;</span>
+<span class="n">VALUE_QUIET</span>            <span class="o">=</span> <span class="s1">&#39;Quiet&#39;</span>
+<span class="n">VALUE_TERSE</span>            <span class="o">=</span> <span class="s1">&#39;Terse&#39;</span>
+<span class="n">VALUE_NORMAL</span>           <span class="o">=</span> <span class="s1">&#39;Normal&#39;</span>
+<span class="n">VALUE_VERBOSE</span>          <span class="o">=</span> <span class="s1">&#39;Verbose&#39;</span>
+<span class="n">VALUE_DEPTH_FIRST</span>      <span class="o">=</span> <span class="s1">&#39;DepthFirst&#39;</span>
+<span class="n">VALUE_RESTART</span>          <span class="o">=</span> <span class="s1">&#39;Restart&#39;</span>
+<span class="n">VALUE_MULTI_POINT</span>      <span class="o">=</span> <span class="s1">&#39;MultiPoint&#39;</span>
+<span class="n">VALUE_ITERATIVE_DIVING</span> <span class="o">=</span> <span class="s1">&#39;IterativeDiving&#39;</span>
+<span class="n">VALUE_DIVERSE</span>          <span class="o">=</span> <span class="s1">&#39;Diverse&#39;</span>
+<span class="n">VALUE_CPU_TIME</span>         <span class="o">=</span> <span class="s1">&#39;CPUTime&#39;</span>
+<span class="n">VALUE_ELAPSED_TIME</span>     <span class="o">=</span> <span class="s1">&#39;ElapsedTime&#39;</span>
+<span class="n">VALUE_SINGLE_LINE</span>      <span class="o">=</span> <span class="s1">&#39;SingleLine&#39;</span>
+<span class="n">VALUE_MULTIPLE_LINES</span>   <span class="o">=</span> <span class="s1">&#39;MultipleLines&#39;</span>
+
+<span class="c1"># Authorized sets of values</span>
+<span class="n">_INFERENCE_LEVELS</span> <span class="o">=</span> <span class="p">(</span><span class="n">VALUE_DEFAULT</span><span class="p">,</span> <span class="n">VALUE_LOW</span><span class="p">,</span> <span class="n">VALUE_BASIC</span><span class="p">,</span> <span class="n">VALUE_MEDIUM</span><span class="p">,</span> <span class="n">VALUE_EXTENDED</span><span class="p">)</span>
+<span class="n">_ON_OFF_AUTO</span> <span class="o">=</span> <span class="p">(</span><span class="n">VALUE_ON</span><span class="p">,</span> <span class="n">VALUE_OFF</span><span class="p">,</span> <span class="n">VALUE_AUTO</span><span class="p">)</span>
+<span class="n">_ON_OFF</span> <span class="o">=</span> <span class="p">(</span><span class="n">VALUE_ON</span><span class="p">,</span> <span class="n">VALUE_OFF</span><span class="p">)</span>
+<span class="n">_KPI_DISPLAY</span> <span class="o">=</span> <span class="p">(</span><span class="n">VALUE_SINGLE_LINE</span><span class="p">,</span> <span class="n">VALUE_MULTIPLE_LINES</span><span class="p">)</span>
+<span class="n">_SEARCH_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">VALUE_DEPTH_FIRST</span><span class="p">,</span> <span class="n">VALUE_RESTART</span><span class="p">,</span> <span class="n">VALUE_MULTI_POINT</span><span class="p">,</span> <span class="n">VALUE_ITERATIVE_DIVING</span><span class="p">,</span> <span class="n">VALUE_AUTO</span><span class="p">)</span>
+
+
+<span class="c1">###############################################################################</span>
+<span class="c1">## Public classes</span>
+<span class="c1">###############################################################################</span>
+
+<div class="viewcode-block" id="CpoParameters"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters">[docs]</a><span class="k">class</span> <span class="nc">CpoParameters</span><span class="p">(</span><span class="n">Context</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Class for handling solving parameters</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Creates a new set of solving parameters.</span>
+
+<span class="sd">        This constructor takes a variable number of optional arguments that allow to set parameters directly.</span>
+<span class="sd">        For example:</span>
+<span class="sd">        ::</span>
+<span class="sd">           myparams = CpoParameters(TimeLimit=20, LogPeriod=5000))</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            kwargs: (Optional) Any individual parameter as defined in this class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoParameters</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set a parameter.</span>
+<span class="sd">        This method calls appropriate setter if exists (property does not work in this context)</span>
+<span class="sd">        to check the parameter value.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            name:  Parameter name</span>
+<span class="sd">            value: Parameter value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;set_&#39;</span> <span class="o">+</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="ow">and</span> <span class="n">callable</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+            <span class="n">m</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.reset_to_default"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.reset_to_default">[docs]</a>    <span class="k">def</span> <span class="nf">reset_to_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Reset all the parameters to their default value.</span>
+
+<span class="sd">        Parameters are reset to their default value by being removed from this object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CpoParameters.add"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add another parameters to this one.</span>
+
+<span class="sd">        All attributes of given parameters are set in this one, except if there value is None.</span>
+<span class="sd">        If one value is another context, it is cloned before being set.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ctx:  Other context to add to this one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">Context</span><span class="p">):</span>
+                    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CpoParameters.get_AllDiffInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_AllDiffInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_AllDiffInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint AllDiff extracted to the invoking</span>
+<span class="sd">        CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and Extended. The</span>
+<span class="sd">        default value is Default, which allows the inference strength of all AllDiff constraints to be</span>
+<span class="sd">        controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;AllDiffInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_AllDiffInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;AllDiffInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">AllDiffInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_AllDiffInferenceLevel</span><span class="p">,</span> <span class="n">set_AllDiffInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_AllMinDistanceInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_AllMinDistanceInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_AllMinDistanceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint AllMinDistance extracted to the</span>
+<span class="sd">        invoked CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and</span>
+<span class="sd">        Extended. The default value is Default, which allows the inference strength of all AllMinDistance</span>
+<span class="sd">        constraints to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;AllMinDistanceInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_AllMinDistanceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;AllMinDistanceInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">AllMinDistanceInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_AllMinDistanceInferenceLevel</span><span class="p">,</span> <span class="n">set_AllMinDistanceInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_AutomaticReplay"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_AutomaticReplay">[docs]</a>    <span class="k">def</span> <span class="nf">get_AutomaticReplay</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter is an advanced, low-level one for controlling the behavior of solve() and next().</span>
+<span class="sd">        When the model being solved has an objective and solve is used, or when startNewSearch and next are</span>
+<span class="sd">        used to produce multiple solutions, the solver may have a need to replay the last (or best) solution</span>
+<span class="sd">        found. This can, in some cases, involve re-invoking the strategy which produced the solution.</span>
+<span class="sd">        Normally this is only necessary if you use low level &quot;Ilc&quot; interfaces to specify problem elements</span>
+<span class="sd">        not in the model (instance of Model). This parameter can take the values On or Off. The default</span>
+<span class="sd">        value is On. A typical reason for setting this parameter to Off is, for instance, if you use your</span>
+<span class="sd">        own custom goal (instance of IlcGoal), and this goal is not deterministic (does not do the same</span>
+<span class="sd">        thing when executed twice). In this instance, the replay will not work correctly, and you can use</span>
+<span class="sd">        this parameter to disable replay.</span>
+
+<span class="sd">        This parameter is deprecated since release 2.3.</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Parameter &#39;AutomaticReplay&#39; is deprecated since release 2.3.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;AutomaticReplay&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_AutomaticReplay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Parameter &#39;AutomaticReplay&#39; is deprecated since release 2.3.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;AutomaticReplay&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">AutomaticReplay</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_AutomaticReplay</span><span class="p">,</span> <span class="n">set_AutomaticReplay</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_BranchLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_BranchLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_BranchLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the number of branches that are made before terminating a search. A branch is</span>
+<span class="sd">        a decision made at a choice point in the search, a typical node being made up of two branches, for</span>
+<span class="sd">        example: x == value and x != value. A branch is only counted at the moment a decision is executed,</span>
+<span class="sd">        not when the two branches of the choice point are decided. A branch is counted even if the decision</span>
+<span class="sd">        leads to an inconsistency (failure).</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;BranchLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_BranchLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;BranchLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">BranchLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_BranchLimit</span><span class="p">,</span> <span class="n">set_BranchLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ChoicePointLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ChoicePointLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_ChoicePointLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the number of choice points that are created before terminating a search.</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ChoicePointLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ChoicePointLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;ChoicePointLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">ChoicePointLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ChoicePointLimit</span><span class="p">,</span> <span class="n">set_ChoicePointLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ConflictRefinerBranchLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ConflictRefinerBranchLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_ConflictRefinerBranchLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the total number of branches that are made before terminating the conflict</span>
+<span class="sd">        refiner.</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerBranchLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ConflictRefinerBranchLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerBranchLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">ConflictRefinerBranchLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ConflictRefinerBranchLimit</span><span class="p">,</span> <span class="n">set_ConflictRefinerBranchLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ConflictRefinerFailLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ConflictRefinerFailLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_ConflictRefinerFailLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the total number of failures that can occur before terminating the conflict</span>
+<span class="sd">        refiner.</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerFailLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ConflictRefinerFailLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerFailLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">ConflictRefinerFailLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ConflictRefinerFailLimit</span><span class="p">,</span> <span class="n">set_ConflictRefinerFailLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ConflictRefinerIterationLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ConflictRefinerIterationLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_ConflictRefinerIterationLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the number of iterations that are made before terminating the conflict</span>
+<span class="sd">        refiner.</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerIterationLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ConflictRefinerIterationLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerIterationLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">ConflictRefinerIterationLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ConflictRefinerIterationLimit</span><span class="p">,</span> <span class="n">set_ConflictRefinerIterationLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ConflictRefinerOnVariables"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ConflictRefinerOnVariables">[docs]</a>    <span class="k">def</span> <span class="nf">get_ConflictRefinerOnVariables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies whether the conflict refiner should refine variables domains. Possible</span>
+<span class="sd">        values for this parameter are On (conflict refiner will refine both constraints and variables</span>
+<span class="sd">        domains) and Off (conflict refiner will only refine constraints).</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;Off&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerOnVariables&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ConflictRefinerOnVariables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerOnVariables&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">ConflictRefinerOnVariables</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ConflictRefinerOnVariables</span><span class="p">,</span> <span class="n">set_ConflictRefinerOnVariables</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ConflictRefinerTimeLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ConflictRefinerTimeLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_ConflictRefinerTimeLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the CPU time spent before terminating the conflict refiner.</span>
+
+<span class="sd">        The value is a non-negative float, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerTimeLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ConflictRefinerTimeLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;ConflictRefinerTimeLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">ConflictRefinerTimeLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ConflictRefinerTimeLimit</span><span class="p">,</span> <span class="n">set_ConflictRefinerTimeLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_CountDifferentInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_CountDifferentInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_CountDifferentInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint CountDifferent extracted to the</span>
+<span class="sd">        invoking CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and</span>
+<span class="sd">        Extended. The default value is Default, which allows the inference strength of all CountDifferent</span>
+<span class="sd">        constraints to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;CountDifferentInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_CountDifferentInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;CountDifferentInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">CountDifferentInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_CountDifferentInferenceLevel</span><span class="p">,</span> <span class="n">set_CountDifferentInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_CountInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_CountInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_CountInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint Count extracted to the invoked CP</span>
+<span class="sd">        instance. Possible values for this parameter are Default, Low, Basic, Medium, and Extended. The</span>
+<span class="sd">        default value is Default, which allows the inference strength of all Count constraints to be</span>
+<span class="sd">        controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;CountInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_CountInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;CountInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">CountInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_CountInferenceLevel</span><span class="p">,</span> <span class="n">set_CountInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_CumulFunctionInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_CumulFunctionInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_CumulFunctionInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for constraints on expressions CumulFunctionExpr</span>
+<span class="sd">        extracted to the invoked CP instance. Possible values for this parameter are Default, Low, Basic,</span>
+<span class="sd">        Medium, and Extended. The default value is Default, which allows the inference strength of all</span>
+<span class="sd">        constraints on CumulFunctionExpr to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;CumulFunctionInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_CumulFunctionInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;CumulFunctionInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">CumulFunctionInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_CumulFunctionInferenceLevel</span><span class="p">,</span> <span class="n">set_CumulFunctionInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_DefaultInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_DefaultInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_DefaultInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the general inference level for constraints whose particular inference</span>
+<span class="sd">        level is Default. Possible values for this parameter (in increasing order of inference strength) are</span>
+<span class="sd">        Low, Basic, Medium, and Extended.</span>
+
+<span class="sd">       The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">         &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;DefaultInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_DefaultInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;DefaultInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">DefaultInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_DefaultInferenceLevel</span><span class="p">,</span> <span class="n">set_DefaultInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_DistributeInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_DistributeInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_DistributeInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint Distribute extracted to the</span>
+<span class="sd">        invoked CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and</span>
+<span class="sd">        Extended. The default value is Default, which allows the inference strength of all Distribute</span>
+<span class="sd">        constraints to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;DistributeInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_DistributeInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;DistributeInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">DistributeInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_DistributeInferenceLevel</span><span class="p">,</span> <span class="n">set_DistributeInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_DynamicProbing"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_DynamicProbing">[docs]</a>    <span class="k">def</span> <span class="nf">get_DynamicProbing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls probing carried out during search. Probing can be useful on some problems as</span>
+<span class="sd">        it can make stronger inferences on combinations of constraints. Possible values for this parameter</span>
+<span class="sd">        are On (dynamic probing is activated with a constant strength), Auto (dynamic probing is activated</span>
+<span class="sd">        and its strength is adjusted adaptively) and Off (dynamic probing is deactivated). The strength of</span>
+<span class="sd">        probing can be defined by parameter DynamicProbingStrength. Dynamic probing only has an effect when</span>
+<span class="sd">        using the &quot;Restart&quot; (Restart) search type, on problems without interval variables.</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;, &#39;Auto&#39;]. Default value is &#39;Auto&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;DynamicProbing&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_DynamicProbing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;DynamicProbing&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF_AUTO</span><span class="p">)</span>
+
+    <span class="n">DynamicProbing</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_DynamicProbing</span><span class="p">,</span> <span class="n">set_DynamicProbing</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_DynamicProbingStrength"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_DynamicProbingStrength">[docs]</a>    <span class="k">def</span> <span class="nf">get_DynamicProbingStrength</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls the effort which is dedicated to dynamic probing. It is expressed as a</span>
+<span class="sd">        factor of the total search effort: changing this parameter has no effect unless the DynamicProbing</span>
+<span class="sd">        parameter is set to Auto or On. When DynamicProbing has value On, the probing strength is held</span>
+<span class="sd">        constant throughout the search process. When DynamicProbing has value Auto, the probing strength</span>
+<span class="sd">        starts off at the specified value and is thereafter adjusted automatically. Possible values for this</span>
+<span class="sd">        parameter range from 0.001 to 1000. A value of 1.0 indicates that dynamic probing will consume a</span>
+<span class="sd">        roughly equal amount of effort as the rest of the search. The default value of this parameter is</span>
+<span class="sd">        0.03, meaning that around 3% of total search time is dedicated to dynamic probing.</span>
+
+<span class="sd">        The value is a float in [0.001..1000]. Default value is 0.03.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;DynamicProbingStrength&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_DynamicProbingStrength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;DynamicProbingStrength&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+    <span class="n">DynamicProbingStrength</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_DynamicProbingStrength</span><span class="p">,</span> <span class="n">set_DynamicProbingStrength</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ElementInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ElementInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_ElementInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every element constraint extracted to the invoked</span>
+<span class="sd">        CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and Extended. The</span>
+<span class="sd">        default value is Default, which allows the inference strength of all element constraints to be</span>
+<span class="sd">        controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ElementInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ElementInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;ElementInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">ElementInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ElementInferenceLevel</span><span class="p">,</span> <span class="n">set_ElementInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_FailLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_FailLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_FailLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the number of failures that can occur before terminating the search.</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;FailLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_FailLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;FailLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">FailLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_FailLimit</span><span class="p">,</span> <span class="n">set_FailLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_FailureDirectedSearch"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_FailureDirectedSearch">[docs]</a>    <span class="k">def</span> <span class="nf">get_FailureDirectedSearch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls usage of failure-directed search. Failure-directed search assumes that there</span>
+<span class="sd">        is no (better) solution or that such a solution is very hard to find. Therefore it focuses on a</span>
+<span class="sd">        systematic exploration of search space, first eliminating assignments that are most likely to fail.</span>
+<span class="sd">        Failure-directed search is used only for scheduling problems (i.e. models containing interval</span>
+<span class="sd">        variables) and only when the parameter SearchType is set to Restart or Auto. Legal values for the</span>
+<span class="sd">        FailureDirectedSearch parameter are On (the default) and Off. When the value is On then CP Optimizer</span>
+<span class="sd">        starts failure-directed search when other search strategies are (no longer) successful and when the</span>
+<span class="sd">        memory necessary for the search does not exceed the value set by the FailureDirectedSearchMaxMemory</span>
+<span class="sd">        parameter.</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;FailureDirectedSearch&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_FailureDirectedSearch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;FailureDirectedSearch&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">FailureDirectedSearch</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_FailureDirectedSearch</span><span class="p">,</span> <span class="n">set_FailureDirectedSearch</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_FailureDirectedSearchEmphasis"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_FailureDirectedSearchEmphasis">[docs]</a>    <span class="k">def</span> <span class="nf">get_FailureDirectedSearchEmphasis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls how much time CP Optimizer invests into failure-directed search once it is</span>
+<span class="sd">        started. The default value Auto means that CP Optimizer observes the actual performance of</span>
+<span class="sd">        failure-directed search and decides automatically how much time is invested. Any other value means</span>
+<span class="sd">        that once failure-directed search has started, it is used by given number of workers. The value does</span>
+<span class="sd">        not have to be integer. For example, value 1.5 means that first worker spends 100% of the time by</span>
+<span class="sd">        failure-directed search, second worker 50% and remaining workers 0%. See also Workers For more</span>
+<span class="sd">        information about failure-directed search see parameter FailureDirectedSearch.</span>
+<span class="sd">        </span>
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;FailureDirectedSearchEmphasis&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_FailureDirectedSearchEmphasis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;FailureDirectedSearchEmphasis&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">FailureDirectedSearchEmphasis</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_FailureDirectedSearchEmphasis</span><span class="p">,</span> <span class="n">set_FailureDirectedSearchEmphasis</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_FailureDirectedSearchMaxMemory"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_FailureDirectedSearchMaxMemory">[docs]</a>    <span class="k">def</span> <span class="nf">get_FailureDirectedSearchMaxMemory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls the maximum amount of memory (in bytes) available to failure-directed search</span>
+<span class="sd">        (see FailureDirectedSearchMaxMemory). The default value is 104,857,600 (100MB). Failure-directed</span>
+<span class="sd">        search can sometimes consume a lot of memory, especially when end times of interval variables are</span>
+<span class="sd">        not bounded. Therefore it is usually not started immediately, but only when the effective horizon</span>
+<span class="sd">        (time period over which CP Optimizer must reason) becomes small enough for failure-directed search</span>
+<span class="sd">        to operate inside the memory limit specified by this parameter. For many types of scheduling</span>
+<span class="sd">        problems, the effective horizon tends to reduce when CP Optimizer finds a better solution (often</span>
+<span class="sd">        most significantly when the initial solution is found). Therefore, when each new solution is found,</span>
+<span class="sd">        CP Optimizer decides whether or not to turn on failure-directed search. Note that this parameter</span>
+<span class="sd">        does not influence the effectiveness of failure-directed search, once started. Its purpose is only</span>
+<span class="sd">        to control the point at which failure-directed search will begin to function.</span>
+
+<span class="sd">        The value is a non-negative integer, or None that does not set any limit. Default value is 104857600.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;FailureDirectedSearchMaxMemory&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_FailureDirectedSearchMaxMemory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;FailureDirectedSearchMaxMemory&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">FailureDirectedSearchMaxMemory</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_FailureDirectedSearchMaxMemory</span><span class="p">,</span> <span class="n">set_FailureDirectedSearchMaxMemory</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_IntervalSequenceInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_IntervalSequenceInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_IntervalSequenceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for the maintenance of the domain of every interval</span>
+<span class="sd">        sequence variable IntervalSequenceVar extracted to the invoking CP instance. Possible values for</span>
+<span class="sd">        this parameter are Default, Low, Basic, Medium, and Extended. The default value is Default, which</span>
+<span class="sd">        allows the inference strength of all IntervalSequenceVar to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;IntervalSequenceInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_IntervalSequenceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;IntervalSequenceInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">IntervalSequenceInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_IntervalSequenceInferenceLevel</span><span class="p">,</span> <span class="n">set_IntervalSequenceInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_KPIDisplay"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_KPIDisplay">[docs]</a>    <span class="k">def</span> <span class="nf">get_KPIDisplay</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter determines how KPIs are displayed in the log during the search.</span>
+
+<span class="sd">        The value is a symbol in [&#39;SingleLine&#39;, &#39;MultipleLines&#39;]. Default value is &#39;SingleLine&#39;.</span>
+
+<span class="sd">        *New in version 2.8, for CPO solver version 12.9.0 and higher.*</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;KPIDisplay&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_KPIDisplay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;KPIDisplay&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_KPI_DISPLAY</span><span class="p">)</span>
+
+    <span class="n">KPIDisplay</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_KPIDisplay</span><span class="p">,</span> <span class="n">set_KPIDisplay</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_LogPeriod"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_LogPeriod">[docs]</a>    <span class="k">def</span> <span class="nf">get_LogPeriod</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The CP Optimizer search log includes information that is displayed periodically. This parameter</span>
+<span class="sd">        controls how often that information is displayed. By setting this parameter to a value of k, the log</span>
+<span class="sd">        is displayed every k branches (search decisions).</span>
+
+<span class="sd">        The value is an integer strictly greater than 0. Default value is 1000.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;LogPeriod&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_LogPeriod</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;LogPeriod&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">LogPeriod</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_LogPeriod</span><span class="p">,</span> <span class="n">set_LogPeriod</span><span class="p">)</span>
+
+
+    <span class="c1"># def get_LogSearchTags(self):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     This parameter controls the log activation. When set to On, the engine will display failure tags</span>
+    <span class="c1">#     (indices) in the engine log when solving the model. To specify the failures to explain, the member</span>
+    <span class="c1">#     functions explainFailure(Int failureTag) or explainFailure(IntArray tagArray) needs to be called</span>
+    <span class="c1">#     with the failure tags as the parameter. Several failures tags can be added. The member function</span>
+    <span class="c1">#     clearExplanations() is used to clear the set of failure tags to be explained. To be able to see</span>
+    <span class="c1">#     failure tags and explanations, the parameter SearchType must be set to DepthFirst and the parameter</span>
+    <span class="c1">#     Workers to 1.</span>
+    <span class="c1">#</span>
+    <span class="c1">#     The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;Off&#39;.</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     return self.get_attribute(&#39;LogSearchTags&#39;)</span>
+    <span class="c1">#</span>
+    <span class="c1"># def set_LogSearchTags(self, val):</span>
+    <span class="c1">#     self._set_value_enum(&#39;LogSearchTags&#39;, val, _ON_OFF)</span>
+    <span class="c1">#</span>
+    <span class="c1"># LogSearchTags = property(get_LogSearchTags, set_LogSearchTags)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_LogVerbosity"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_LogVerbosity">[docs]</a>    <span class="k">def</span> <span class="nf">get_LogVerbosity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter determines the verbosity of the search log. The possible values are Quiet, Terse,</span>
+<span class="sd">        Normal, and Verbose. Mode Quiet does not display any information, the other modes display</span>
+<span class="sd">        progressively more information. The default value is Normal. The CP Optimizer search log is meant</span>
+<span class="sd">        for visual inspection only, not for mechanized parsing. In particular, the log may change from</span>
+<span class="sd">        version to version of CP Optimizer in order to improve the quality of information displayed in the</span>
+<span class="sd">        log. Any code based on the log output for correct functioning may have to be updated when a new</span>
+<span class="sd">        version of CP Optimizer is released.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Quiet&#39;, &#39;Terse&#39;, &#39;Normal&#39;, &#39;Verbose&#39;]. Default value is &#39;Normal&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;LogVerbosity&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_LogVerbosity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;LogVerbosity&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="n">VALUE_QUIET</span><span class="p">,</span> <span class="n">VALUE_TERSE</span><span class="p">,</span> <span class="n">VALUE_NORMAL</span><span class="p">,</span> <span class="n">VALUE_VERBOSE</span><span class="p">))</span>
+
+    <span class="n">LogVerbosity</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_LogVerbosity</span><span class="p">,</span> <span class="n">set_LogVerbosity</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_ModelAnonymizer"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_ModelAnonymizer">[docs]</a>    <span class="k">def</span> <span class="nf">get_ModelAnonymizer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls anonymization of a model dumped in CPO file format. The legal values of this</span>
+<span class="sd">        parameter are Off and On. The default is Off. When the anonymizer is off, then names of variables</span>
+<span class="sd">        and constraints in the model may be found in the output file. When the anonymizer is on, names given</span>
+<span class="sd">        to variables or constraints in the model will not be reflected in the output file and standard</span>
+<span class="sd">        anonymized names will be used.</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;Off&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;ModelAnonymizer&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_ModelAnonymizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;ModelAnonymizer&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">ModelAnonymizer</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_ModelAnonymizer</span><span class="p">,</span> <span class="n">set_ModelAnonymizer</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_MultiPointNumberOfSearchPoints"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_MultiPointNumberOfSearchPoints">[docs]</a>    <span class="k">def</span> <span class="nf">get_MultiPointNumberOfSearchPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls the number of (possibly partial) solutions manipulated by the multi-point</span>
+<span class="sd">        search algorithm. The default value is 30. A larger value will diversify the search, with possible</span>
+<span class="sd">        improvement in solution quality at the expense of a longer run time. A smaller value will intensify</span>
+<span class="sd">        the search, resulting in faster convergence at the expense of solution quality. Note that memory</span>
+<span class="sd">        consumption increases proportionally to this parameter, for each search point must store each</span>
+<span class="sd">        decision variable domain.</span>
+
+<span class="sd">        The value is an integer strictly greater than 1. Default value is 30.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MultiPointNumberOfSearchPoints&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_MultiPointNumberOfSearchPoints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;MultiPointNumberOfSearchPoints&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">MultiPointNumberOfSearchPoints</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_MultiPointNumberOfSearchPoints</span><span class="p">,</span> <span class="n">set_MultiPointNumberOfSearchPoints</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_NoOverlapInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_NoOverlapInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_NoOverlapInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint NoOverlap extracted to the invoked</span>
+<span class="sd">        CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and Extended. The</span>
+<span class="sd">        default value is Default, which allows the inference strength of all NoOverlap constraints to be</span>
+<span class="sd">        controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;NoOverlapInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_NoOverlapInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;NoOverlapInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">NoOverlapInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_NoOverlapInferenceLevel</span><span class="p">,</span> <span class="n">set_NoOverlapInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_OptimalityTolerance"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_OptimalityTolerance">[docs]</a>    <span class="k">def</span> <span class="nf">get_OptimalityTolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter sets an absolute tolerance on the objective value for optimization models. This means</span>
+<span class="sd">        that when CP Optimizer reports an optimal solution found, then there is no solution which improves</span>
+<span class="sd">        the objective by more than the value of this parameter.</span>
+<span class="sd">        This parameter is used in conjunction with RelativeOptimalityTolerance. The optimality of a solution</span>
+<span class="sd">        is proven if either of the two parameters&#39; criteria is fulfilled.</span>
+
+<span class="sd">        The value is a positive float. Default value is 1e-09.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;OptimalityTolerance&#39;</span><span class="p">,</span> <span class="mf">1e-09</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_OptimalityTolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;OptimalityTolerance&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">OptimalityTolerance</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_OptimalityTolerance</span><span class="p">,</span> <span class="n">set_OptimalityTolerance</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_PrecedenceInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_PrecedenceInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_PrecedenceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for precedence constraints between interval variables</span>
+<span class="sd">        extracted to the invoking CP instance. Possible values for this parameter are Default, Low, Basic,</span>
+<span class="sd">        Medium, and Extended. The default value is Default, which allows the inference strength for</span>
+<span class="sd">        precedence constraints between interval variables to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;PrecedenceInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_PrecedenceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;PrecedenceInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">PrecedenceInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_PrecedenceInferenceLevel</span><span class="p">,</span> <span class="n">set_PrecedenceInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_Presolve"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_Presolve">[docs]</a>    <span class="k">def</span> <span class="nf">get_Presolve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls the presolve of the model to produce more compact formulations and to</span>
+<span class="sd">        achieve more domain reduction. Possible values for this parameter are On (presolve is activated) and</span>
+<span class="sd">        Off (presolve is deactivated).</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;Presolve&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_Presolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;Presolve&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">Presolve</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_Presolve</span><span class="p">,</span> <span class="n">set_Presolve</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_PrintModelDetailsInMessages"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_PrintModelDetailsInMessages">[docs]</a>    <span class="k">def</span> <span class="nf">get_PrintModelDetailsInMessages</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Whenever CP Optimizer prints an error or warning message, it can also print concerning part of the</span>
+<span class="sd">        input model (in cpo file format). This parameter controls printing of this additional information.</span>
+<span class="sd">        Possible values are On and Off, the Default value is &#39;On&#39;. See also WarningLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;PrintModelDetailsInMessages&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_PrintModelDetailsInMessages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;PrintModelDetailsInMessages&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">PrintModelDetailsInMessages</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_PrintModelDetailsInMessages</span><span class="p">,</span> <span class="n">set_PrintModelDetailsInMessages</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_RandomSeed"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_RandomSeed">[docs]</a>    <span class="k">def</span> <span class="nf">get_RandomSeed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The search uses some randomization in some strategies. This parameter sets the seed of the random</span>
+<span class="sd">        generator used by these strategies.</span>
+
+<span class="sd">        The value is a non-negative integer. Default value is 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;RandomSeed&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_RandomSeed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;RandomSeed&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">RandomSeed</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_RandomSeed</span><span class="p">,</span> <span class="n">set_RandomSeed</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_RelativeOptimalityTolerance"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_RelativeOptimalityTolerance">[docs]</a>    <span class="k">def</span> <span class="nf">get_RelativeOptimalityTolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter sets a relative tolerance on the objective value for optimization models. This means</span>
+<span class="sd">        that when CP Optimizer reports an optimal solution found, then there is no solution which improves</span>
+<span class="sd">        the objective by more than the absolute value of the objective times the value of this parameter.</span>
+<span class="sd">        The default value of this parameter is 1e-4. This parameter is used in conjunction with</span>
+<span class="sd">        OptimalityTolerance. The optimality of a solution is proven if either of the two parameters&#39;</span>
+<span class="sd">        criteria are fulfilled.</span>
+
+<span class="sd">        The value is a non-negative float. Default value is 0.0001.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;RelativeOptimalityTolerance&#39;</span><span class="p">,</span> <span class="mf">0.0001</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_RelativeOptimalityTolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;RelativeOptimalityTolerance&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">RelativeOptimalityTolerance</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_RelativeOptimalityTolerance</span><span class="p">,</span> <span class="n">set_RelativeOptimalityTolerance</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_RestartFailLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_RestartFailLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_RestartFailLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When SearchType is set to Restart, a depth-first search is restarted after a certain number of</span>
+<span class="sd">        failures. This parameter controls the number of failures that must occur before restarting search.</span>
+<span class="sd">        Possible values range from 0 to Infinity. The default value is 100. This value can increase after</span>
+<span class="sd">        each restart: see the parameter RestartGrowthFactor.</span>
+
+<span class="sd">        The value is an integer greater than 0. Default value is 100.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;RestartFailLimit&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_RestartFailLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;RestartFailLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">RestartFailLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_RestartFailLimit</span><span class="p">,</span> <span class="n">set_RestartFailLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_RestartGrowthFactor"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_RestartGrowthFactor">[docs]</a>    <span class="k">def</span> <span class="nf">get_RestartGrowthFactor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When SearchType is set to Restart, a depth-first search is restarted after a certain number of</span>
+<span class="sd">        failures. This parameter controls the increase of this number between restarts. If the last fail</span>
+<span class="sd">        limit was f after a restart, for next run, the new fail limit will be f times the value of this</span>
+<span class="sd">        parameter. Possible values of this parameter range from 1.0 to Infinity. The default value is 1.05.</span>
+<span class="sd">        The initial fail limit can be controlled with the parameter RestartFailLimit.</span>
+
+<span class="sd">        The value is a float greater or equal to 1. Default value is 1.15.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;RestartGrowthFactor&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_RestartGrowthFactor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;RestartGrowthFactor&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">RestartGrowthFactor</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_RestartGrowthFactor</span><span class="p">,</span> <span class="n">set_RestartGrowthFactor</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_SearchType"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_SearchType">[docs]</a>    <span class="k">def</span> <span class="nf">get_SearchType</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter determines the type of search that is applied when solving a problem.</span>
+
+<span class="sd">         * When set to *DepthFirst*, a regular depth-first search is applied.</span>
+<span class="sd">         * When set to *Restart*, a depth-first search that restarts from time to time is applied.</span>
+<span class="sd">         * When set to *IterativeDiving* on scheduling problems (ones with at least one interval variable),</span>
+<span class="sd">           a more aggressive diving technique is applied in order to find solutions to large problems more quickly.</span>
+<span class="sd">         * When set to *MultiPoint*, a method that combines a set of - possibly partial - solutions is applied.</span>
+<span class="sd">         * When set to *Auto* in sequential mode, this value chooses the appropriate search method to be used.</span>
+<span class="sd">           In general Auto will be the Restart search. The default value is Auto.</span>
+
+<span class="sd">        In parallel mode (i.e, when the number of workers is greater than one - see the Workers</span>
+<span class="sd">        parameter), the different searches described above are spread over the workers. When the value of</span>
+<span class="sd">        SearchType is Auto, then the decision of choosing the search type for a worker is automatically</span>
+<span class="sd">        made; otherwise, all workers execute the same type of search. Note that in the latter case, the</span>
+<span class="sd">        workers will not do the same exploration due to some randomness introduced to break ties in decision</span>
+<span class="sd">        making.</span>
+
+<span class="sd">        The value is a symbol in [&#39;DepthFirst&#39;, &#39;Restart&#39;, &#39;MultiPoint&#39;, &#39;IterativeDiving&#39;, &#39;Auto&#39;]. Default value is &#39;Auto&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SearchType&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_SearchType</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;SearchType&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_SEARCH_TYPES</span><span class="p">)</span>
+
+    <span class="n">SearchType</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_SearchType</span><span class="p">,</span> <span class="n">set_SearchType</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_SequenceInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_SequenceInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_SequenceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for every constraint Sequence extracted to the invoked</span>
+<span class="sd">        CP instance. Possible values for this parameter are Default, Low, Basic, Medium, and Extended. The</span>
+<span class="sd">        default value is Default, which allows the inference strength of all Sequence constraints to be</span>
+<span class="sd">        controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SequenceInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_SequenceInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;SequenceInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">SequenceInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_SequenceInferenceLevel</span><span class="p">,</span> <span class="n">set_SequenceInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_SolutionLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_SolutionLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_SolutionLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the number of feasible solutions that are found before terminating a search.</span>
+
+<span class="sd">        The value is a non-negative integer, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SolutionLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_SolutionLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;SolutionLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">SolutionLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_SolutionLimit</span><span class="p">,</span> <span class="n">set_SolutionLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_StateFunctionInferenceLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_StateFunctionInferenceLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_StateFunctionInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter specifies the inference level for constraints on state functions StateFunction</span>
+<span class="sd">        extracted to the invoked CP instance. Possible values for this parameter are Default, Low, Basic,</span>
+<span class="sd">        Medium, and Extended. The default value is Default, which allows the inference strength of all</span>
+<span class="sd">        constraints on state functions StateFunction to be controlled via DefaultInferenceLevel.</span>
+
+<span class="sd">        The value is a symbol in [&#39;Default&#39;, &#39;Low&#39;, &#39;Basic&#39;, &#39;Medium&#39;, &#39;Extended&#39;]. Default value is &#39;Default&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;StateFunctionInferenceLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_StateFunctionInferenceLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;StateFunctionInferenceLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_INFERENCE_LEVELS</span><span class="p">)</span>
+
+    <span class="n">StateFunctionInferenceLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_StateFunctionInferenceLevel</span><span class="p">,</span> <span class="n">set_StateFunctionInferenceLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_TemporalRelaxation"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_TemporalRelaxation">[docs]</a>    <span class="k">def</span> <span class="nf">get_TemporalRelaxation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This advanced parameter can be used to control the usage of a temporal relaxation internal to the</span>
+<span class="sd">        invoking CP engine. This parameter can take values On or Off, with On being the default, meaning the</span>
+<span class="sd">        relaxation is used in the engine when needed. For some models, using the relaxation becomes</span>
+<span class="sd">        inefficient, and you may deactivate the use of the temporal relaxation using value Off.</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;TemporalRelaxation&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_TemporalRelaxation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;TemporalRelaxation&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">TemporalRelaxation</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_TemporalRelaxation</span><span class="p">,</span> <span class="n">set_TemporalRelaxation</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_TimeLimit"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_TimeLimit">[docs]</a>    <span class="k">def</span> <span class="nf">get_TimeLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter limits the CPU time spent solving before terminating a search. The time is given in</span>
+<span class="sd">        seconds.</span>
+
+<span class="sd">        The value is a non-negative float, or None (default) that does not set any limit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;TimeLimit&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_TimeLimit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_float</span><span class="p">(</span><span class="s1">&#39;TimeLimit&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">TimeLimit</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_TimeLimit</span><span class="p">,</span> <span class="n">set_TimeLimit</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_TimeMode"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_TimeMode">[docs]</a>    <span class="k">def</span> <span class="nf">get_TimeMode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter defines how time is measured in CP Optimizer, the two legal values being ElapsedTime</span>
+<span class="sd">        and CPUTime. CP Optimizer uses time for both display purposes and for limiting the search via</span>
+<span class="sd">        TimeLimit. Note that when multiple processors are available and the number of workers (Workers) is</span>
+<span class="sd">        greater than one, then the CPU time can be greater than the elapsed time by a factor up to the</span>
+<span class="sd">        number of workers.</span>
+
+<span class="sd">        The value is a symbol in [&#39;CPUTime&#39;, &#39;ElapsedTime&#39;]. Default value is &#39;ElapsedTime&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;TimeMode&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_TimeMode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;TimeMode&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="n">VALUE_CPU_TIME</span><span class="p">,</span> <span class="n">VALUE_ELAPSED_TIME</span><span class="p">))</span>
+
+    <span class="n">TimeMode</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_TimeMode</span><span class="p">,</span> <span class="n">set_TimeMode</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_UseFileLocations"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_UseFileLocations">[docs]</a>    <span class="k">def</span> <span class="nf">get_UseFileLocations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls whether CP Optimizer processes file locations. With each constraint,</span>
+<span class="sd">        variable or expression it is possible to associate a source file location (file name and line</span>
+<span class="sd">        number). CP Optimizer can use locations later for reporting errors and conflicts. Locations are also</span>
+<span class="sd">        included in exported/dumped models (#line directives). Legal values for this parameter are On (the</span>
+<span class="sd">        default) and Off. When the value is Off then CP Optimizer ignores locations in the input model and</span>
+<span class="sd">        also does not export them in CPO file format (functions dumpModel and exportModel).</span>
+
+<span class="sd">        The value is a symbol in [&#39;On&#39;, &#39;Off&#39;]. Default value is &#39;On&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;UseFileLocations&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_UseFileLocations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_enum</span><span class="p">(</span><span class="s1">&#39;UseFileLocations&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">_ON_OFF</span><span class="p">)</span>
+
+    <span class="n">UseFileLocations</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_UseFileLocations</span><span class="p">,</span> <span class="n">set_UseFileLocations</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_WarningLevel"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_WarningLevel">[docs]</a>    <span class="k">def</span> <span class="nf">get_WarningLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter controls the level of warnings issued by CP Optimizer when a solve is launched.</span>
+<span class="sd">        Specifically, all warnings of level higher than this parameter are masked. Since CP Optimizer</span>
+<span class="sd">        warning levels run from 1 to 3, setting this parameter to 0 turns off all warnings. Warnings issued</span>
+<span class="sd">        may indicate potential errors or inefficiencies in your model. The default value of this parameter</span>
+<span class="sd">        is 2. See also PrintModelDetailsInMessages.</span>
+
+<span class="sd">        The value is an integer in [0..3]. Default value is 2.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;WarningLevel&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_WarningLevel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_value_integer</span><span class="p">(</span><span class="s1">&#39;WarningLevel&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">WarningLevel</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_WarningLevel</span><span class="p">,</span> <span class="n">set_WarningLevel</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoParameters.get_Workers"><a class="viewcode-back" href="../../../docplex.cp.parameters.py.html#docplex.cp.parameters.CpoParameters.get_Workers">[docs]</a>    <span class="k">def</span> <span class="nf">get_Workers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This parameter sets the number of workers to run in parallel to solve your model. If the number of</span>
+<span class="sd">        workers is set to n (with n greater than one), the CP optimizer will create n workers, each in their</span>
+<span class="sd">        own thread, that will work together to solve the problem. The emphasis of these workers is more to</span>
+<span class="sd">        find better feasible solutions and then to speed up the proof of optimality. The default value is</span>
+<span class="sd">        Auto. This amounts to using as many workers as there are CPU cores available on the machine. Note</span>
+<span class="sd">        that the memory required by CP Optimizer grows roughly linearly as the number of workers is</span>
+<span class="sd">        increased. If you are solving a very large model on a multi-core processor and memory usage is an</span>
+<span class="sd">        issue, it is advisable to specify a reduced number of workers, or even one worker, rather than use</span>
+<span class="sd">        the default value.</span>
+
+<span class="sd">        The value is a positive integer. Default value is Auto.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;Workers&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">set_Workers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">and</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">==</span> <span class="s2">&quot;Auto&quot;</span><span class="p">,</span> \
+            <span class="s2">&quot;Value of parameter &#39;Workers&#39; should be a positive integer or &#39;Auto&#39;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="s1">&#39;Workers&#39;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="n">Workers</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">get_Workers</span><span class="p">,</span> <span class="n">set_Workers</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_value_enum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">accepted</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if a value is in a given set and set it if ok.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            name:     Parameter name</span>
+<span class="sd">            val:      Parameter value to set</span>
+<span class="sd">            accepted: Accepted values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">val</span> <span class="ow">in</span> <span class="n">accepted</span><span class="p">),</span> <span class="s2">&quot;Value of parameter &#39;</span><span class="si">{}</span><span class="s2">&#39; should be in </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">accepted</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_value_integer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if a value is a non-negative integer and set it if ok.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            name:     Parameter name</span>
+<span class="sd">            val:      Parameter value to set</span>
+<span class="sd">            min:      (Optional) Minimun value</span>
+<span class="sd">            max:      (Optional) Maximum value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> \
+               <span class="p">(</span><span class="n">is_int</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">and</span> <span class="p">((</span><span class="nb">min</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">max</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="nb">max</span><span class="p">))),</span> \
+                     <span class="s2">&quot;Value of parameter &#39;</span><span class="si">{}</span><span class="s2">&#39; should be an integer in [</span><span class="si">{}</span><span class="s2">..</span><span class="si">{}</span><span class="s2">]&quot;</span>\
+                         <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;-Infinity&quot;</span> <span class="k">if</span> <span class="nb">min</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">min</span><span class="p">,</span> <span class="s2">&quot;Infinity&quot;</span> <span class="k">if</span> <span class="nb">max</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">max</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_set_value_float</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if a value is a non-negative float and set it if ok.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            name:     Parameter name</span>
+<span class="sd">            val:      Parameter value to set</span>
+<span class="sd">            min:      (Optional) Minimun value</span>
+<span class="sd">            max:      (Optional) Maximum value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> \
+               <span class="p">(</span><span class="n">is_number</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="ow">and</span> <span class="p">((</span><span class="nb">min</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">max</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="nb">max</span><span class="p">))),</span> \
+                      <span class="s2">&quot;Value of parameter &#39;</span><span class="si">{}</span><span class="s2">&#39; should be a float in [</span><span class="si">{}</span><span class="s2">..</span><span class="si">{}</span><span class="s2">]&quot;</span>\
+                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;-Infinity&quot;</span> <span class="k">if</span> <span class="nb">min</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">min</span><span class="p">,</span> <span class="s2">&quot;Infinity&quot;</span> <span class="k">if</span> <span class="nb">max</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">max</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_attribute</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>
