@@ -26,6 +26,7 @@ This library is numpy friendly.
 
 * [Latest documentation](http://ibmdecisionoptimization.github.io/docplex-doc/)
 * Documentation archives:
+   * [2.23.217](http://ibmdecisionoptimization.github.io/docplex-doc/2.23.217)
    * [2.22.213](http://ibmdecisionoptimization.github.io/docplex-doc/2.22.213)
    * [2.21.207](http://ibmdecisionoptimization.github.io/docplex-doc/2.21.207)
    * [2.20.204](http://ibmdecisionoptimization.github.io/docplex-doc/2.20.204)
@@ -46,7 +47,6 @@ This library is numpy friendly.
 
 These third-party dependencies are automatically installed with ``pip``
 
-- [docloud](https://pypi.python.org/pypi/docloud)
 - [enum34](https://pypi.python.org/pypi/enum34)
 - [futures](https://pypi.python.org/pypi/futures)
 - [requests](https://pypi.python.org/pypi/requests)

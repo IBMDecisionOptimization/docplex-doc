@@ -1,0 +1,777 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.cp.blackbox &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.23 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.23 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.cp.blackbox</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2021</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A blackbox expression is a numerical expression for which the analytical form is not known or cannot be</span>
+<span class="sd">formulated using CP Optimizer&#39;s classical expressions.</span>
+<span class="sd">A blackbox expression is specified by giving a function that evaluates the expression at given points.</span>
+
+<span class="sd">This feature is accessible from Python only for COS solver releases strictly greater than 20.X.</span>
+
+
+<span class="sd">Defining a blackbox function</span>
+<span class="sd">----------------------------</span>
+
+<span class="sd">A blackbox function is defined by an instance of the class :class:`~docplex.cp.blackbox.CpoBlackboxFunction`</span>
+<span class="sd">that contains:</span>
+
+<span class="sd"> * the name of the blackbox function, auto-allocated if not given,</span>
+<span class="sd"> * the number of values that are returned by the evaluation of the function, one by default,</span>
+<span class="sd"> * the list of argument types, auto-determined if not given,</span>
+<span class="sd"> * the implementation of the function,</span>
+<span class="sd"> * optionally an argument to pass known result bounds when evaluating the function,</span>
+<span class="sd"> * an indicator allowing parallel evaluation of the blackbox function, False by default.</span>
+
+<span class="sd">Each argument type can be given using its symbolic name string, or using its corresponding</span>
+<span class="sd">type descriptor constant object of class :class:`~docplex.cp.catalog.CpoType` listed in module</span>
+<span class="sd">:mod:`~docplex.cp.catalog`. Allowed argument types are:</span>
+
+<span class="sd"> * &#39;Int&#39; or :const:`~docplex.cp.catalog.Type_Int`</span>
+<span class="sd"> * &#39;IntVar&#39; or :const:`~docplex.cp.catalog.Type_IntVar`</span>
+<span class="sd"> * &#39;IntExpr&#39; or :const:`~docplex.cp.catalog.Type_IntExpr`</span>
+<span class="sd"> * &#39;Float&#39; or :const:`~docplex.cp.catalog.Type_Float`</span>
+<span class="sd"> * &#39;FloatExpr&#39; or :const:`~docplex.cp.catalog.Type_FloatExpr`</span>
+<span class="sd"> * &#39;IntervalVar&#39; or :const:`~docplex.cp.catalog.Type_IntervalVar`</span>
+<span class="sd"> * &#39;SequenceVar&#39; or :const:`~docplex.cp.catalog.Type_SequenceVar`</span>
+<span class="sd"> * &#39;IntArray&#39; or :const:`~docplex.cp.catalog.Type_IntArray`</span>
+<span class="sd"> * &#39;IntVarArray&#39; or :const:`~docplex.cp.catalog.Type_IntVarArray`</span>
+<span class="sd"> * &#39;IntExprArray&#39; or :const:`~docplex.cp.catalog.Type_IntExprArray`</span>
+<span class="sd"> * &#39;FloatArray&#39; or :const:`~docplex.cp.catalog.Type_FloatArray`</span>
+<span class="sd"> * &#39;FloatExprArray&#39; or :const:`~docplex.cp.catalog.Type_FloatExprArray`</span>
+<span class="sd"> * &#39;IntervalVarArray&#39; or :const:`~docplex.cp.catalog.Type_IntervalVarArray`</span>
+<span class="sd"> * &#39;SequenceVarArray&#39; or :const:`~docplex.cp.catalog.Type_SequenceVarArray`</span>
+
+<span class="sd">If not given, the list of argument types is automatically computed as the smallest list of types</span>
+<span class="sd">that are common to all the references to the blackbox function in the model.</span>
+
+
+<span class="sd">Evaluating a blackbox function</span>
+<span class="sd">------------------------------</span>
+
+<span class="sd">The implementation of the function is a function or a lambda expression that takes as many parameters as declared</span>
+<span class="sd">in the list of argument types.</span>
+<span class="sd">If the blackbox definition parameter *args_with_vars* is not set to True (default value is False), the</span>
+<span class="sd">arguments are limited to their values.</span>
+<span class="sd">If it is set to True, then the argument is an object of class CpoXxxVarSolution every time the argument type explicitly</span>
+<span class="sd">refers to a variable. This allows to access to the model variable, that constitute the argument, if available.</span>
+<span class="sd">In such case:</span>
+
+<span class="sd"> * argument variable can be accessed with method *get_var()*,</span>
+<span class="sd"> * argument value can be accessed with method *get_value()*.</span>
+
+<span class="sd">Here is what is given as argument value for each argument type if *args_with_vars* is set to False (default):</span>
+
+<span class="sd"> * &#39;Int&#39;: integer constant.</span>
+<span class="sd"> * &#39;IntVar&#39;: integer constant.</span>
+<span class="sd"> * &#39;IntExpr&#39;: integer constant.</span>
+<span class="sd"> * &#39;Float&#39;: float constant.</span>
+<span class="sd"> * &#39;FloatExpr&#39;: float constant.</span>
+<span class="sd"> * &#39;IntervalVar&#39;: interval variable solution value, named tuple containing start, end and size of the variable.</span>
+<span class="sd"> * &#39;SequenceVar&#39;: sequence variable solution value, ordered list of model interval variables in the sequence.</span>
+<span class="sd"> * &#39;IntArray&#39;: list of integer constants.</span>
+<span class="sd"> * &#39;IntVarArray&#39;: list of integer constants.</span>
+<span class="sd"> * &#39;IntExprArray&#39;: list of integer constants.</span>
+<span class="sd"> * &#39;FloatArray&#39;: list of float constants.</span>
+<span class="sd"> * &#39;FloatExprArray&#39;: list of float constants.</span>
+<span class="sd"> * &#39;IntervalVarArray&#39;: list of interval variable solution value (see &#39;IntervalVar&#39;).</span>
+<span class="sd"> * &#39;SequenceVarArray&#39;: list of sequence variable solution value (see &#39;SequenceVar&#39;).</span>
+
+<span class="sd">Here is what is given as argument value for each argument type if *args_with_vars* is explicitly set to True:</span>
+
+<span class="sd"> * &#39;Int&#39;: integer constant.</span>
+<span class="sd"> * &#39;IntVar&#39;: object of :class:`~docplex.cp.solution.CpoIntVarSolution`.</span>
+<span class="sd"> * &#39;IntExpr&#39;: integer constant.</span>
+<span class="sd"> * &#39;Float&#39;: float constant.</span>
+<span class="sd"> * &#39;FloatExpr&#39;: float constant.</span>
+<span class="sd"> * &#39;IntervalVar&#39;: object of :class:`~docplex.cp.solution.CpoIntervalVarSolution`.</span>
+<span class="sd"> * &#39;SequenceVar&#39;: object of :class:`~docplex.cp.solution.CpoSequenceVarSolution`.</span>
+<span class="sd"> * &#39;IntArray&#39;: list of integer constants.</span>
+<span class="sd"> * &#39;IntVarArray&#39;: list of objects of :class:`~docplex.cp.solution.CpoIntVarSolution`.</span>
+<span class="sd"> * &#39;IntExprArray&#39;: list of integer constants.</span>
+<span class="sd"> * &#39;FloatArray&#39;: list of float constants.</span>
+<span class="sd"> * &#39;FloatExprArray&#39;: list of float constants.</span>
+<span class="sd"> * &#39;IntervalVarArray&#39;: list of objects of class :class:`~docplex.cp.solution.CpoIntervalVarSolution`.</span>
+<span class="sd"> * &#39;SequenceVarArray&#39;: list of objects of class :class:`~docplex.cp.solution.CpoSequenceVarSolution`, with value as list of objects of class :class:`~docplex.cp.expression.CpoSequenceVar`.</span>
+
+<span class="sd">The function may return:</span>
+
+<span class="sd"> * one or several float results in a list,</span>
+<span class="sd"> * a single number value, automatically converted in a list with this single value,</span>
+<span class="sd"> * a boolean value, converted as an integer 0 or 1 put in a single value list,</span>
+<span class="sd"> * *None*, if the function has no solution for these arguments.</span>
+
+<span class="sd">If an error occurs during the function evaluation, the exception is forwarded to the solver that will fail with this error.</span>
+
+<span class="sd">If an exception is thrown, it is propagated to the solver that rethrow an exception to exit from the solve.</span>
+
+<span class="sd">As the evaluation of the blackbox function is required by the different CPO workers, multiple evaluation requests</span>
+<span class="sd">may happen concurrently.</span>
+<span class="sd">As Python does not support real multi-threading (see Global Interpreter Lock here: https://wiki.python.org/moin/GlobalInterpreterLock),</span>
+<span class="sd">concurrent processing may introduce overhead, or computation problems if the blackbox evaluation uses services of</span>
+<span class="sd">libraries that are not designed to run concurrently.</span>
+<span class="sd">By default, blackbox function evaluation is then executed in mutual exclusion, but this can be changed by setting</span>
+<span class="sd">the parameter *parallel* to True, or using method :meth:`~CpoBlackboxFunction.set_parallel_eval`</span>
+
+<span class="sd">To avoid calling the blackbox function multiple times with the same parameters, the solver can use a cache that may be</span>
+<span class="sd">configured at the declaration of the blackbox.</span>
+<span class="sd">This cache is by default local to each call instance of the blackbox function in the model, in case the evaluation</span>
+<span class="sd">of the function depends on the calling context and may return different results with the same parameters depending</span>
+<span class="sd">where the call is placed in the model.</span>
+
+
+<span class="sd">Using a blackbox function in a model</span>
+<span class="sd">------------------------------------</span>
+
+<span class="sd">Once defined, the blackbox function can be used in a model simply by calling the blackbox function descriptor</span>
+<span class="sd">with appropriate model expressions as arguments.</span>
+<span class="sd">Following is a simple example that shows how to use a blackbox function with 2 parameters:</span>
+<span class="sd">::</span>
+
+<span class="sd">    bbf = CpoBlackboxFunction(lambda x, y: x + y)</span>
+<span class="sd">    mdl = CpoModel()</span>
+<span class="sd">    v1 = integer_var(0, 10, &quot;V1&quot;)</span>
+<span class="sd">    v2 = integer_var(0, 10, &quot;V2&quot;)</span>
+<span class="sd">    mdl.add(bbf(v1, v2) == 5)</span>
+
+<span class="sd">If the blackbox function returns multiple values, using the function in a model is done in two steps, as follows:</span>
+<span class="sd">::</span>
+
+<span class="sd">    bbf = CpoBlackboxFunction(impl=lambda x, y: (x + y, x - y), dimension=2)</span>
+<span class="sd">    mdl = CpoModel()</span>
+<span class="sd">    v1 = integer_var(0, 10, &quot;V1&quot;)</span>
+<span class="sd">    v2 = integer_var(0, 10, &quot;V2&quot;)</span>
+<span class="sd">    a, b = bbf(v1, v2)</span>
+<span class="sd">    mdl.add(a + b == 4)</span>
+
+<span class="sd">Note that not all returned expressions need to be used in the model.</span>
+
+
+<span class="sd">Detailed description</span>
+<span class="sd">--------------------</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.catalog</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.expression</span> <span class="kn">import</span> <span class="n">build_cpo_expr</span><span class="p">,</span> <span class="n">CpoFunctionCall</span>
+<span class="kn">from</span> <span class="nn">docplex.cp.utils</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">count</span>
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Constants</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># List of possible argument types (DO NOT CHANGE AS ENCODING DEPENDS ON IT)</span>
+<span class="n">ARGUMENT_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">Type_Int</span><span class="p">,</span> <span class="n">Type_IntVar</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,</span>
+                  <span class="n">Type_Float</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span>
+                  <span class="n">Type_IntervalVar</span><span class="p">,</span> <span class="n">Type_SequenceVar</span><span class="p">,</span>
+                  <span class="n">Type_IntArray</span><span class="p">,</span> <span class="n">Type_IntVarArray</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">,</span>
+                  <span class="n">Type_FloatArray</span><span class="p">,</span> <span class="n">Type_FloatExprArray</span><span class="p">,</span>
+                  <span class="n">Type_IntervalVarArray</span><span class="p">,</span> <span class="n">Type_SequenceVarArray</span><span class="p">,)</span>
+
+<span class="c1"># Encoding of blackbox types into integer (zero reserved)</span>
+<span class="n">BLACKBOX_ARGUMENT_TYPES_ENCODING</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ARGUMENT_TYPES</span><span class="p">)}</span>
+
+<span class="c1"># Set of all argument types</span>
+<span class="n">_ARG_TYPES_SET</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">ARGUMENT_TYPES</span><span class="p">)</span>
+
+<span class="c1"># Build allowed types per name, ignoring case. Key is type name in lower case, value is type descriptor.</span>
+<span class="n">_ARG_TYPES_DICT</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ARGUMENT_TYPES</span><span class="p">}</span>
+
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Classes</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="CpoBlackboxFunction"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction">[docs]</a><span class="k">class</span> <span class="nc">CpoBlackboxFunction</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This class represents the descriptor of a blackbox function.</span>
+
+<span class="sd">    A blackbox function is defined by:</span>
+
+<span class="sd">     * a name, that must not be equal to an existing modeling operation,</span>
+<span class="sd">     * the number of float values it returns (the dimension),</span>
+<span class="sd">     * the list argument types,</span>
+<span class="sd">     * the implementation of the function, that evaluates the result from a list of</span>
+<span class="sd">       fully evaluated arguments.</span>
+<span class="sd">     * a parameter allowing to pass the known bounds of the result.</span>
+
+<span class="sd">    Each argument type can be given using its symbolic name string, or using its corresponding</span>
+<span class="sd">    type descriptor constant object of class :class:`~docplex.cp.catalog.CpoType` listed in module</span>
+<span class="sd">    :mod:`~docplex.cp.catalog`.</span>
+
+<span class="sd">    Allowed argument types are:</span>
+
+<span class="sd">     * &#39;Int&#39; or :const:`~docplex.cp.catalog.Type_Int`</span>
+<span class="sd">     * &#39;IntVar&#39; or :const:`~docplex.cp.catalog.Type_IntVar`</span>
+<span class="sd">     * &#39;IntExpr&#39; or :const:`~docplex.cp.catalog.Type_IntExpr`</span>
+<span class="sd">     * &#39;Float&#39; or :const:`~docplex.cp.catalog.Type_Float`</span>
+<span class="sd">     * &#39;FloatExpr&#39; or :const:`~docplex.cp.catalog.Type_FloatExpr`</span>
+<span class="sd">     * &#39;IntervalVar&#39; or :const:`~docplex.cp.catalog.Type_IntervalVar`</span>
+<span class="sd">     * &#39;SequenceVar&#39; or :const:`~docplex.cp.catalog.Type_SequenceVar`</span>
+<span class="sd">     * &#39;IntArray&#39; or :const:`~docplex.cp.catalog.Type_IntArray`</span>
+<span class="sd">     * &#39;IntVarArray&#39; or :const:`~docplex.cp.catalog.Type_IntVarArray`</span>
+<span class="sd">     * &#39;IntExprArray&#39; or :const:`~docplex.cp.catalog.Type_IntExprArray`</span>
+<span class="sd">     * &#39;FloatArray&#39; or :const:`~docplex.cp.catalog.Type_FloatArray`</span>
+<span class="sd">     * &#39;FloatExprArray&#39; or :const:`~docplex.cp.catalog.Type_FloatExprArray`</span>
+<span class="sd">     * &#39;IntervalVarArray&#39; or :const:`~docplex.cp.catalog.Type_IntervalVarArray`</span>
+<span class="sd">     * &#39;SequenceVarArray&#39; or :const:`~docplex.cp.catalog.Type_SequenceVarArray`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span>           <span class="c1"># Name of the blackbox function, None for auto-allocation</span>
+                 <span class="s1">&#39;dimension&#39;</span><span class="p">,</span>      <span class="c1"># Number of result values</span>
+                 <span class="s1">&#39;argtypes&#39;</span><span class="p">,</span>       <span class="c1"># List of argument types</span>
+                 <span class="s1">&#39;atypes_given&#39;</span><span class="p">,</span>   <span class="c1"># Indicates that argument types where given at function declaration</span>
+                 <span class="s1">&#39;impl&#39;</span><span class="p">,</span>           <span class="c1"># Implementation of the function</span>
+                 <span class="s1">&#39;bounds_param&#39;</span><span class="p">,</span>   <span class="c1"># Name of the bounds parameter</span>
+                 <span class="s1">&#39;args_with_vars&#39;</span><span class="p">,</span> <span class="c1"># Indicates to include variables in arguments</span>
+                 <span class="s1">&#39;cachesize&#39;</span><span class="p">,</span>      <span class="c1"># Size of the function call cache</span>
+                 <span class="s1">&#39;globalcache&#39;</span><span class="p">,</span>    <span class="c1"># Global cache indicator</span>
+                 <span class="s1">&#39;operation&#39;</span><span class="p">,</span>      <span class="c1"># Corresponding operation descriptor</span>
+                 <span class="s1">&#39;eval_count&#39;</span><span class="p">,</span>     <span class="c1"># Number of evaluation resuests</span>
+                 <span class="s1">&#39;auto&#39;</span><span class="p">,</span>           <span class="c1"># Auto-created blackbox (for smart parsing)</span>
+                 <span class="s1">&#39;eval_mutex&#39;</span><span class="p">,</span>     <span class="c1"># Lock to ensure mutual exclusion of function evaluation</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">impl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dimension</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">argtypes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bounds_parameter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">args_with_vars</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cachesize</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">globalcache</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; **Constructor**</span>
+
+<span class="sd">        The list of function argument types is optional.</span>
+<span class="sd">        If not given, it is automatically determined as the most common types of the expression arguments used</span>
+<span class="sd">        in its different references in the model.</span>
+
+<span class="sd">        Function implementation is optional.</span>
+<span class="sd">        This allows to parse a CPO file that contains references to blackbox functions(s), which requires</span>
+<span class="sd">        to register them in the model prior to parse it.</span>
+<span class="sd">        However, the model will not be able to be solved.</span>
+
+<span class="sd">        The name of the function is optional.</span>
+<span class="sd">        If not given, a name is automatically allocated when solving the model.</span>
+<span class="sd">        If given, the name of the function must be a symbol (only letters and digits, starting by a letter)</span>
+<span class="sd">        that is not already used as the name of an existing modeling function.</span>
+
+<span class="sd">        Bound parameter is optional.</span>
+<span class="sd">        If defined, the known bounds of the function result is passed to the function implementation using this named</span>
+<span class="sd">        parameter.</span>
+<span class="sd">        If the dimension of the function is 1, the bounds is a simple tuple containing lower and upper bounds.</span>
+<span class="sd">        Otherwise, the bounds is a list of tuples, one for each returned value.</span>
+<span class="sd">        If unknown, bounds are set to -inf or inf (float(&quot;inf&quot;) in Python).</span>
+
+<span class="sd">        By default, arguments passed when evaluating the function are only values.</span>
+<span class="sd">        If the parameter *include_vars* is set to True, when arguments are variables, an object of type</span>
+<span class="sd">        CpoXxxVarSolution, that include reference to the model variable, is used instead.</span>
+
+<span class="sd">        A cache can be used by the solver to avoid calling the blackbox function multiple times with the same values.</span>
+<span class="sd">        By default (cachesize=-1), the size of the cache is automatically determined by the solver, but it can be</span>
+<span class="sd">        forced to a given value, or zero for no cache at all.</span>
+
+<span class="sd">        By default, this cache is local to each call instance of the blackbox function in the model, in case the</span>
+<span class="sd">        evaluation of the function depends on the calling context and may return different results with the same</span>
+<span class="sd">        parameters depending where the call is placed in the model.</span>
+<span class="sd">        The parameter *globalcache* can be set to *True* if the same cache can be used for all call instances.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            impl:             (Optional) Implementation of the function</span>
+<span class="sd">            dimension:        (Optional) Number of float values that are returned by the function. Default is 1.</span>
+<span class="sd">            argtypes:         (Optional) List of argument types or type names.</span>
+<span class="sd">            name:             (Optional) Name of the function, restricted to symbol.</span>
+<span class="sd">            parallel:         (Optional) Indicates that the blackbox function evaluation is allowed concurrently.</span>
+<span class="sd">                              Default is False.</span>
+<span class="sd">            bounds_parameter: (Optional) Name of the parameter in which known return values bounds can be set.</span>
+<span class="sd">                              Default is None.</span>
+<span class="sd">            args_with_vars:   (Optional) Enable passing an object of type CpoXxxVarSolution instead of value only.</span>
+<span class="sd">                              Default is False.</span>
+<span class="sd">            cachesize:        (Optional) Indicates that the blackbox function evaluation is allowed concurrently.</span>
+<span class="sd">                              Default value is -1, indicating that the cache is managed by the solver with default settings.</span>
+<span class="sd">            globalcache:      (Optional) Indicates that the same cache can be used for all blackbox function call instances</span>
+<span class="sd">                              in the model.</span>
+<span class="sd">                              Default is False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check dimension</span>
+        <span class="k">if</span> <span class="n">dimension</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">is_int</span><span class="p">(</span><span class="n">dimension</span><span class="p">)</span> <span class="ow">and</span> <span class="n">dimension</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Blackbox function dimension should be greater than zero&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="n">dimension</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds_param</span> <span class="o">=</span> <span class="n">bounds_parameter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args_with_vars</span> <span class="o">=</span> <span class="n">args_with_vars</span>
+
+        <span class="c1"># Check argument types</span>
+        <span class="k">if</span> <span class="n">argtypes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">atypes_given</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">atypes_given</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">argtypes</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">_ARG_TYPES_SET</span><span class="p">:</span>
+                    <span class="n">at</span> <span class="o">=</span> <span class="n">t</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Consider t as a name and search in types map</span>
+                    <span class="n">at</span> <span class="o">=</span> <span class="n">_ARG_TYPES_DICT</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+                    <span class="k">if</span> <span class="n">at</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;Argument type &#39;</span><span class="si">{}</span><span class="s2">&#39; is not allowed as blackbox function argument&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">at</span><span class="p">)</span>
+
+        <span class="c1"># Check function name</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ALL_OPERATIONS_PER_NAME</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;Function name </span><span class="si">{}</span><span class="s2"> is already used for a standard modeling operation&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="c1"># Store attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">impl</span> <span class="o">=</span> <span class="n">impl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cachesize</span> <span class="o">=</span> <span class="n">cachesize</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">globalcache</span> <span class="o">=</span> <span class="n">globalcache</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto</span> <span class="o">=</span> <span class="p">(</span><span class="n">dimension</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_parallel_eval</span><span class="p">(</span><span class="n">parallel</span><span class="p">)</span>
+
+        <span class="c1"># Build operation descriptor</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">atypes_given</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="n">CpoOperation</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">CpoSignature</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">),)</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operation</span> <span class="o">=</span> <span class="n">CpoOperation</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">()</span> <span class="p">)</span>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.set_name"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.set_name">[docs]</a>    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nm</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set the name of the blackbox function</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            nm: Name of the blackbox function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">nm</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.get_name"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.get_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the name of the blackbox function</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Name of the blackbox function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.set_dimension"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.set_dimension">[docs]</a>    <span class="k">def</span> <span class="nf">set_dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set the dimension of this blackbox function, i.e. the number of values that it returns.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dim: Number of result values (size of the result list or array)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="n">dim</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.get_dimension"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.get_dimension">[docs]</a>    <span class="k">def</span> <span class="nf">get_dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the dimension of this blackbox function</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Number of result values (size of the result list or array)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.set_implementation"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.set_implementation">[docs]</a>    <span class="k">def</span> <span class="nf">set_implementation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">impl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set the blackbox function implementation</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            impl:  Blackbox function implementation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">impl</span> <span class="o">=</span> <span class="n">impl</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.get_implementation"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.get_implementation">[docs]</a>    <span class="k">def</span> <span class="nf">get_implementation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the blackbox function implementation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Blackbox function implementation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">impl</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.has_implementation"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.has_implementation">[docs]</a>    <span class="k">def</span> <span class="nf">has_implementation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get if the blackbox function has an implementation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if the blackbox function has an implementation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">impl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.get_arg_types"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.get_arg_types">[docs]</a>    <span class="k">def</span> <span class="nf">get_arg_types</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the list of argument types</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of argument types, objects of class :class:`~docplex.cp.catalog.CpoType`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.set_parallel_eval"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.set_parallel_eval">[docs]</a>    <span class="k">def</span> <span class="nf">set_parallel_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">par</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set parallel evaluation enablement indicator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            par:  Parallel evaluation indicator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_mutex</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">par</span> <span class="k">else</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.is_parallel_eval"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.is_parallel_eval">[docs]</a>    <span class="k">def</span> <span class="nf">is_parallel_eval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if parallel evaluation is allowed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if parallel evaluation is allowed, false oherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_mutex</span> <span class="ow">is</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.set_cache_size"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.set_cache_size">[docs]</a>    <span class="k">def</span> <span class="nf">set_cache_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set the size of evaluation cache.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            size: Cache size, -1 for default, 0 for none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cachesize</span> <span class="o">=</span> <span class="n">size</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.get_cache_size"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.get_cache_size">[docs]</a>    <span class="k">def</span> <span class="nf">get_cache_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the size of the evaluation cache</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Evaluation cache size, -1 for default, 0 for none.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cachesize</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.set_global_cache"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.set_global_cache">[docs]</a>    <span class="k">def</span> <span class="nf">set_global_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">glob</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set the global cache indicator.</span>
+
+<span class="sd">        When set, there is a single evaluation cache for all the blackbox function call instances.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            glob: Global cache indicator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">globalcache</span> <span class="o">=</span> <span class="n">glob</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.is_global_cache"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.is_global_cache">[docs]</a>    <span class="k">def</span> <span class="nf">is_global_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if a global cache has been set.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if there is a global cache for this function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">globalcache</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.get_eval_count"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.get_eval_count">[docs]</a>    <span class="k">def</span> <span class="nf">get_eval_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the number of times this blackbox function has been evaluated</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            number of times this blackbox function has been evaluated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_count</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.reset_eval_count"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.reset_eval_count">[docs]</a>    <span class="k">def</span> <span class="nf">reset_eval_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Reset the number of times this blackbox function has been evaluated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_count</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.build_model_call"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.build_model_call">[docs]</a>    <span class="k">def</span> <span class="nf">build_model_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build a model expression representing a call to this blackbox function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            *args:  List of expressions that are arguments of the function</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List model expressions representing access to the unitary result values,</span>
+<span class="sd">            or single result if dimension is 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Build argument expressions</span>
+        <span class="n">argexprs</span> <span class="o">=</span> <span class="p">[</span><span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span>
+
+        <span class="c1"># Update/check argument types</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_check_arg_types</span><span class="p">(</span><span class="n">argexprs</span><span class="p">)</span>
+
+        <span class="c1"># Build function call expression</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="n">CpoBlackboxFunctionCall</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">argexprs</span><span class="p">)</span>
+
+        <span class="c1"># Build list of result access expressions</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">CpoFunctionCall</span><span class="p">(</span><span class="n">Oper_eval</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,</span> <span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">build_cpo_expr</span><span class="p">(</span><span class="n">i</span><span class="p">)))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">res</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build a model expression representing a call to this blackbox function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            *args:  List of expressions that are arguments of the function</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List model expressions representing access to the unitary result values,</span>
+<span class="sd">            or single result if dimension is 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_model_call</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Build a string representing this blackbox function.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            String representing this blackbox function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Anonymous&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">argtypes</span> <span class="o">=</span> <span class="s2">&quot;...&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">(</span><span class="si">{}</span><span class="s2">): </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">argtypes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_eval_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rbnds</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Evaluate the function from the list of parameter values</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rbnds: Known result bounds, None in unknown</span>
+<span class="sd">            *args: List of parameter values</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List of result float values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#print(&quot;Evaluate blackbox function {}{}&quot;.format(self.name, args))</span>
+        <span class="c1"># Increment number of evaluation requests</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Get and check arguments</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; argument types are unknown&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Evaluation of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; with wrong number of parameters </span><span class="si">{}</span><span class="s2"> when </span><span class="si">{}</span><span class="s2"> are expected.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">)))</span>
+
+        <span class="c1"># Build associated arguments</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">rbnds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds_param</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">rbnds</span> <span class="o">=</span> <span class="n">rbnds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds_param</span><span class="p">]</span> <span class="o">=</span> <span class="n">rbnds</span>
+
+        <span class="c1"># Evaluate function</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">impl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; implementation is not provided&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">impl</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Check single result (separatly to process the case of zero)</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">res</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>  <span class="s2">&quot;Evaluation of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; returned 1 result values instead of </span><span class="si">{}</span><span class="s2"> that have been declared.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="n">res</span><span class="p">,)</span>
+        <span class="k">elif</span> <span class="n">is_bool</span><span class="p">(</span><span class="n">res</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>  <span class="s2">&quot;Evaluation of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; returned 1 result values instead of </span><span class="si">{}</span><span class="s2"> that have been declared.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">res</span><span class="p">),)</span>
+        <span class="c1"># Check result (None is allowed)</span>
+        <span class="k">elif</span> <span class="n">res</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">is_array</span><span class="p">(</span><span class="n">res</span><span class="p">),</span> <span class="s2">&quot;Evaluation of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; should return a tuple or a list, not </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">res</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">,</span> <span class="s2">&quot;Evaluation of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; returned </span><span class="si">{}</span><span class="s2"> result values instead of </span><span class="si">{}</span><span class="s2"> that have been declared.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">is_number</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">res</span><span class="p">),</span> <span class="s2">&quot;Evaluation of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; result should contain only numbers.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="c1">#print(&quot;{}{} = {}&quot;.format(self.name, args, res))</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunction.eval"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunction.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Evaluate the function from the list of parameter values</span>
+
+<span class="sd">        This function evaluates the blackbox function without providing bounds.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            *args: List of parameter values</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List of result float values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eval_function</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_update_check_arg_types</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">argexprs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Update function argument types from a list of argument expressions</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            argexprs:  List of expressions that are arguments of the function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check if argument types already known</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Retrieve argument types from expressions</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">_get_argument_type</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">argexprs</span><span class="p">]</span>
+            <span class="c1"># Set new signature in operation</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">operation</span><span class="o">.</span><span class="n">signatures</span> <span class="o">=</span> <span class="p">(</span><span class="n">CpoSignature</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">),)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Build and check list or arguments</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">argexprs</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">),</span> <span class="s2">&quot;This blackbox function should be called with </span><span class="si">{}</span><span class="s2"> arguments&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">atypes_given</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">count</span><span class="p">(),</span> <span class="n">argexprs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">):</span>
+                    <span class="k">assert</span> <span class="n">_get_argument_type</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">is_kind_of</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="s2">&quot;The argument </span><span class="si">{}</span><span class="s2"> of blackbox function &#39;</span><span class="si">{}</span><span class="s2">&#39; should be a </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">get_public_name</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tchanged</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">count</span><span class="p">(),</span> <span class="n">argexprs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">):</span>
+                    <span class="c1"># Determine most common type</span>
+                    <span class="n">ct</span> <span class="o">=</span> <span class="n">_get_argument_type</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">get_common_type</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+                    <span class="k">assert</span> <span class="n">ct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Argument type </span><span class="si">{}</span><span class="s2"> is not compatible with already used type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+                    <span class="k">assert</span> <span class="n">ct</span> <span class="ow">in</span> <span class="n">_ARG_TYPES_SET</span><span class="p">,</span> <span class="s2">&quot;Common expression type </span><span class="si">{}</span><span class="s2"> is not allowed as blackbox function argument&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ct</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">ct</span> <span class="o">!=</span> <span class="n">t</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ct</span>
+                        <span class="n">tchanged</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="c1"># Set new signature in operation if type changed</span>
+                <span class="k">if</span> <span class="n">tchanged</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">operation</span><span class="o">.</span><span class="n">signatures</span> <span class="o">=</span> <span class="p">(</span><span class="n">CpoSignature</span><span class="p">(</span><span class="n">Type_FloatExprArray</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">argtypes</span><span class="p">),)</span>
+
+
+    <span class="k">def</span> <span class="nf">_update_dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Update blackbox dimension with an evaluation index</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            anx:  Evaluation index</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">&lt;=</span> <span class="n">anx</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="n">anx</span> <span class="o">+</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="CpoBlackboxFunctionCall"><a class="viewcode-back" href="../../../docplex.cp.blackbox.py.html#docplex.cp.blackbox.CpoBlackboxFunctionCall">[docs]</a><span class="k">class</span> <span class="nc">CpoBlackboxFunctionCall</span><span class="p">(</span><span class="n">CpoFunctionCall</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This class represent all model expression nodes that call a blackbox function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;blackbox&#39;</span><span class="p">,</span>  <span class="c1"># Blackbox function descriptor</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bbf</span><span class="p">,</span> <span class="n">oprnds</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; **Constructor**</span>
+<span class="sd">        Args:</span>
+<span class="sd">            bbf:    Blackbox function descriptor</span>
+<span class="sd">            oprnds: List of operand expressions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bbf</span><span class="p">,</span> <span class="n">CpoBlackboxFunction</span><span class="p">),</span> <span class="s2">&quot;Argument &#39;bbf&#39; should be a CpoBlackboxFunction&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CpoBlackboxFunctionCall</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">bbf</span><span class="o">.</span><span class="n">operation</span><span class="p">,</span> <span class="n">Type_Blackbox</span><span class="p">,</span> <span class="n">oprnds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blackbox</span> <span class="o">=</span> <span class="n">bbf</span>
+
+    <span class="k">def</span> <span class="nf">_equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks the equality of this expression with another object.</span>
+
+<span class="sd">        This particular method just checks local attributes, but does not check recursively children if any.</span>
+<span class="sd">        Recursion is implemented by method equals() that uses a self-managed stack to avoid too many</span>
+<span class="sd">        recursive calls that may lead to an exception &#39;RuntimeError: maximum recursion depth exceeded&#39;.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Other object to compare with.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if &#39;other&#39; is semantically identical to this object, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">CpoBlackboxFunctionCall</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_equals</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blackbox</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">blackbox</span><span class="p">)</span></div>
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Private functions</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># Dictionary of type mapping to accepted type</span>
+<span class="n">_ARG_TYPE_MAPPING</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ARGUMENT_TYPES</span><span class="p">}</span>
+<span class="n">_ARG_TYPE_MAPPING</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+<span class="p">{</span>
+    <span class="n">Type_Bool</span><span class="p">:</span>           <span class="n">Type_IntExpr</span><span class="p">,</span>
+    <span class="n">Type_BoolExpr</span><span class="p">:</span>       <span class="n">Type_IntExpr</span><span class="p">,</span>
+    <span class="n">Type_BoolArray</span><span class="p">:</span>      <span class="n">Type_IntArray</span><span class="p">,</span>
+    <span class="n">Type_BoolExprArray</span><span class="p">:</span>  <span class="n">Type_IntExprArray</span><span class="p">,</span>
+<span class="p">})</span>
+
+
+<span class="k">def</span> <span class="nf">_get_argument_type</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Get the blackbox argument type corresponding to a given argument type</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        a: Argument value</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Authorized blackbox argument type</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        CpoException if given argument type is not supported.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">at</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">type</span>
+    <span class="n">nt</span> <span class="o">=</span> <span class="n">_ARG_TYPE_MAPPING</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">at</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Expression type </span><span class="si">{}</span><span class="s2"> is not allowed as blackbox function argument&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">at</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">nt</span>
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.23 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>
