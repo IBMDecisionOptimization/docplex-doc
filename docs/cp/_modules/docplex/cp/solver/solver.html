@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-    <title>docplex.cp.solver.solver &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.22 documentation</title>
+    <title>docplex.cp.solver.solver &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.23 documentation</title>
     <link rel="stylesheet" href="../../../../_static/bizstyle.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     
@@ -32,7 +32,7 @@
         <li class="right" >
           <a href="../../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.22 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.23 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
       </ul>
     </div>
@@ -65,6 +65,7 @@
 <span class="c1"># (c) Copyright IBM Corp. 2015, 2016, 2017, 2018</span>
 <span class="c1"># --------------------------------------------------------------------------</span>
 <span class="c1"># Author: Olivier OUDOT, IBM Analytics, France Lab, Sophia-Antipolis</span>
+<span class="c1"># Author: Christiane BRACCHI, IBM Decision Optimization, France Lab, Saclay</span>
 
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This module implements appropriate software to solve a CPO model represented by a</span>
@@ -188,7 +189,7 @@
                 <span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solver</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Constructor</span>
+        <span class="sd">&quot;&quot;&quot; **Constructor**</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            solver:   Parent solver, object of type CpoSolver</span>
@@ -565,14 +566,14 @@
                  <span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot; Constructor</span>
+        <span class="sd">&quot;&quot;&quot; **Constructor**</span>
 
 <span class="sd">        All necessary solving parameters are taken from the solving context that is constructed from the following list</span>
 <span class="sd">        of sources, each one overwriting the previous:</span>
 
-<span class="sd">           - the parameters that are set in the model itself,</span>
 <span class="sd">           - the default solving context that is defined in the module :mod:`~docplex.cp.config`</span>
 <span class="sd">           - the user-specific customizations of the context that may be defined (see :mod:`~docplex.cp.config` for details),</span>
+<span class="sd">           - the parameters that are set in the model itself,</span>
 <span class="sd">           - the optional arguments of this method.</span>
 
 <span class="sd">        If an optional argument other than `context` or `params` is given to this method, it is searched in the</span>
@@ -614,21 +615,27 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">callbacks_registered</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="c1"># Build effective context from args</span>
-        <span class="n">context</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">_get_effective_context</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">context</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">merge_with_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+        <span class="c1"># OO&#39;s version</span>
+        <span class="c1"># context = config._get_effective_context(**kwargs)</span>
+        <span class="c1"># context.params = model.merge_with_parameters(context.params)</span>
+        <span class="c1">## trying to fix CP#303</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">_get_effective_context</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">set_other</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">_get_effective_context</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">ctx</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c1"># If defined, limit the number of threads</span>
-        <span class="n">mxt</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">max_threads</span>
+        <span class="n">mxt</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">max_threads</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mxt</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
             <span class="c1"># Maximize number of workers</span>
-            <span class="n">nbw</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span>
+            <span class="n">nbw</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span>
             <span class="k">if</span> <span class="p">(</span><span class="n">nbw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">nbw</span> <span class="o">&gt;</span> <span class="n">mxt</span><span class="p">):</span>
-                <span class="n">context</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span> <span class="o">=</span> <span class="n">mxt</span>
+                <span class="n">ctx</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">Workers</span> <span class="o">=</span> <span class="n">mxt</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: Number of workers has been reduced to &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">mxt</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; to comply with platform limitations.&quot;</span><span class="p">)</span>
 
         <span class="c1"># Save attributes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">ctx</span>
 
         <span class="c1"># Determine appropriate solver agent</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_solver_agent</span><span class="p">()</span>
@@ -636,7 +643,7 @@
 
         <span class="c1"># Add configured default listeners if any</span>
         <span class="c1"># Note: calling solver_created() is not required as it is done by add_listener().</span>
-        <span class="n">lstnrs</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">listeners</span>
+        <span class="n">lstnrs</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">listeners</span>
         <span class="k">if</span> <span class="n">lstnrs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">is_array</span><span class="p">(</span><span class="n">lstnrs</span><span class="p">):</span>
                 <span class="k">for</span> <span class="n">lstnr</span> <span class="ow">in</span> <span class="n">lstnrs</span><span class="p">:</span>
@@ -808,7 +815,7 @@
             <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
             <span class="n">last_res</span><span class="o">.</span><span class="n">new_solution</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">elif</span> <span class="n">sres</span><span class="o">.</span><span class="n">get_stop_cause</span><span class="p">()</span> <span class="o">==</span> <span class="n">STOP_CAUSE_ABORT</span><span class="p">:</span>
-            <span class="c1"># Force last solution to be last one to get the abor status</span>
+            <span class="c1"># Force last solution to be last one to get the abort status</span>
             <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
         <span class="k">elif</span> <span class="n">last_res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">last_res</span> <span class="o">=</span> <span class="n">sres</span>
@@ -898,12 +905,21 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            CpoNotSupportedException: if method not available in the solver agent.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check solve aborted</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="ow">in</span> <span class="p">(</span><span class="n">STATUS_RELEASED</span><span class="p">,</span> <span class="n">STATUS_ABORTED</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
+
+        <span class="c1"># Check old fashion abort</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_supported</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">STATUS_IDLE</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_notify_listeners_end_operation</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_status</span><span class="p">(</span><span class="n">STATUS_SEARCH_WAITING</span><span class="p">)</span>
+
+        <span class="c1"># Normal case</span>
         <span class="n">msol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">end_search</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_set_status</span><span class="p">(</span><span class="n">STATUS_IDLE</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_result</span> <span class="o">=</span> <span class="n">msol</span>
@@ -1506,7 +1522,7 @@
         <span class="c1"># Retrieve blackbox descriptor from its name</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
         <span class="n">bbf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blackbox_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="c1">#bbf = self.model._get_blackbox_function(name)</span>
+        <span class="c1">#bbf = self.model.get_blackbox_function(name)</span>
         <span class="k">if</span> <span class="n">bbf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Try to evaluate a blackbox function </span><span class="si">{}</span><span class="s2"> that does not exists&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bbf</span><span class="p">,</span> <span class="n">CpoBlackboxFunction</span><span class="p">):</span>
@@ -1517,7 +1533,8 @@
         <span class="n">ptypes</span> <span class="o">=</span> <span class="n">bbf</span><span class="o">.</span><span class="n">get_arg_types</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ptypes</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
            <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;Blackbox function call to &#39;</span><span class="si">{}</span><span class="s2">&#39; contains a wrong number of parameters.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-        <span class="n">argvalues</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_arg_value</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ptypes</span><span class="p">,</span> <span class="n">params</span><span class="p">)]</span>
+        <span class="n">incvars</span> <span class="o">=</span> <span class="n">bbf</span><span class="o">.</span><span class="n">args_with_vars</span>
+        <span class="n">argvalues</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_arg_value</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">incvars</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ptypes</span><span class="p">,</span> <span class="n">params</span><span class="p">)]</span>
 
         <span class="c1"># Build bound values</span>
         <span class="n">bnds</span> <span class="o">=</span> <span class="n">fcall</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;returnValuesBounds&#39;</span><span class="p">,</span> <span class="p">())</span>
@@ -1528,11 +1545,12 @@
         <span class="k">return</span> <span class="n">bbf</span><span class="p">,</span> <span class="n">argvalues</span><span class="p">,</span> <span class="n">bndsvalues</span>
 
 
-    <span class="k">def</span> <span class="nf">_build_arg_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tp</span><span class="p">,</span> <span class="n">vl</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_build_arg_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tp</span><span class="p">,</span> <span class="n">vl</span><span class="p">,</span> <span class="n">adv</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot; Build blackbox function call argument value</span>
 <span class="sd">        Args:</span>
-<span class="sd">            tp: Parameter type</span>
-<span class="sd">            vl: Parameter JSON value</span>
+<span class="sd">            tp:  Parameter type</span>
+<span class="sd">            vl:  Parameter JSON value</span>
+<span class="sd">            adv: Include vars indicator</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            Parameter value to be passed to evaluation</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1540,20 +1558,35 @@
         <span class="n">t</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
         <span class="n">v</span> <span class="o">=</span> <span class="n">vl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Int</span><span class="p">,</span> <span class="n">Type_IntVar</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,):</span>
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Int</span><span class="p">,</span> <span class="n">Type_IntExpr</span><span class="p">,):</span>
             <span class="k">return</span> <span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_Float</span><span class="p">,</span> <span class="n">Type_FloatExpr</span><span class="p">,):</span>
             <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntVar</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">adv</span><span class="p">:</span>
+                <span class="n">iv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">CpoIntVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="n">iv</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntervalVar</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+            <span class="n">iv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="n">iv</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">r</span> <span class="k">if</span> <span class="n">adv</span> <span class="k">else</span> <span class="n">r</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntArray</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
 
-        <span class="k">if</span> <span class="n">tp</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Type_IntVarArray</span><span class="p">,</span> <span class="n">Type_IntExprArray</span><span class="p">,):</span>
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntExprArray</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntVarArray</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">adv</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">CpoIntVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)),</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">solution</span><span class="o">.</span><span class="n">_get_num_value</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_FloatArray</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">v</span>
@@ -1562,14 +1595,17 @@
             <span class="k">return</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_IntervalVarArray</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">[</span><span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="p">[</span><span class="n">CpoIntervalVarSolution</span><span class="o">.</span><span class="n">_create_from_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)),</span> <span class="n">e</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">res</span> <span class="k">if</span> <span class="n">adv</span> <span class="k">else</span> <span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">get_value</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">res</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_SequenceVar</span><span class="p">:</span>
             <span class="c1"># Retrieve original variable</span>
             <span class="n">sv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
             <span class="k">assert</span> <span class="n">sv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Sequence variable &#39;</span><span class="si">{}</span><span class="s2">&#39; not found in the model&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
             <span class="nb">vars</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">get_interval_variables</span><span class="p">()</span>
-            <span class="k">return</span> <span class="p">[</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+            <span class="c1"># Build actual list of variables from list of indexes</span>
+            <span class="n">lv</span> <span class="o">=</span> <span class="p">[</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">v</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">CpoSequenceVarSolution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">lv</span><span class="p">)</span> <span class="k">if</span> <span class="n">adv</span> <span class="k">else</span> <span class="n">lv</span>
 
         <span class="k">if</span> <span class="n">tp</span> <span class="ow">is</span> <span class="n">Type_SequenceVarArray</span><span class="p">:</span>
             <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1578,7 +1614,11 @@
                 <span class="n">sv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expr_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">svn</span><span class="p">)</span>
                 <span class="k">assert</span> <span class="n">sv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Sequence variable &#39;</span><span class="si">{}</span><span class="s2">&#39; not found in the model&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">svn</span><span class="p">)</span>
                 <span class="nb">vars</span> <span class="o">=</span> <span class="n">sv</span><span class="o">.</span><span class="n">get_interval_variables</span><span class="p">()</span>
-                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">jsv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)])</span>
+                <span class="n">lv</span> <span class="o">=</span> <span class="p">[</span><span class="nb">vars</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">jsv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="n">adv</span><span class="p">:</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CpoSequenceVarSolution</span><span class="p">(</span><span class="n">sv</span><span class="p">,</span> <span class="n">lv</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lv</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">res</span>
 
         <span class="k">raise</span> <span class="n">CpoException</span><span class="p">(</span><span class="s2">&quot;INTERNAL ERROR: Unknown blackbox argument type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tp</span><span class="p">))</span></div>
@@ -1708,7 +1748,7 @@
         <li class="right" >
           <a href="../../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.22 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.23 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
       </ul>
     </div>
