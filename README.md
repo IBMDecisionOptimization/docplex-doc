@@ -26,6 +26,7 @@ This library is numpy friendly.
 
 * [Latest documentation](http://ibmdecisionoptimization.github.io/docplex-doc/)
 * Documentation archives:
+   * [2.23.222](http://ibmdecisionoptimization.github.io/docplex-doc/2.23.222)
    * [2.22.213](http://ibmdecisionoptimization.github.io/docplex-doc/2.22.213)
    * [2.21.207](http://ibmdecisionoptimization.github.io/docplex-doc/2.21.207)
    * [2.20.204](http://ibmdecisionoptimization.github.io/docplex-doc/2.20.204)
