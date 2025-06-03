@@ -1,0 +1,633 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="iso-8859-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>docplex.mp.progress module &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.29 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=c92c1228" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=588fc259"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="docplex.mp.publish module" href="docplex.mp.publish.html" />
+    <link rel="prev" title="docplex.mp.priority module" href="docplex.mp.priority.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="docplex.mp.publish.html" title="docplex.mp.publish module"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="docplex.mp.priority.html" title="docplex.mp.priority module"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.29 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="refman.html" accesskey="U"><strong>docplex.mp</strong> reference manual</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">docplex.mp.progress module</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="docplex-mp-progress-module">
+<h1>docplex.mp.progress module<a class="headerlink" href="#docplex-mp-progress-module" title="Permalink to this heading">&para;</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<span class="target" id="module-docplex.mp.progress"></span><p>This package contains classes to monitor the progress of a MIP solve.</p>
+<p>This abstract class defines protocol methods, which are called from within CPLEX&#8217;s MIP search algorithm.</p>
+<p>Progress listeners are based on CPLEX&#8217;s MIPInfoCallback, and work only with a
+local installation of CPLEX, not on Cplexcloud.</p>
+<p>At each node, all progress listeners attached to the model receive progress data
+through a <cite>notify_progress</cite> method, with an instance of <a class="reference internal" href="#docplex.mp.progress.ProgressData" title="docplex.mp.progress.ProgressData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressData</span></code></a>.
+This named tuple class contains information about solve time, objective value,
+best bound, gap and nodes, but no variable values.</p>
+<p>The base class for progress listeners is <a class="reference internal" href="#docplex.mp.progress.ProgressListener" title="docplex.mp.progress.ProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressListener</span></code></a>.
+DOcplex provides concrete sub-classes to handle basic cases, but
+you may also create your own sub-class of <a class="reference internal" href="#docplex.mp.progress.ProgressListener" title="docplex.mp.progress.ProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressListener</span></code></a> to suit your needs.
+Each instance of <a class="reference internal" href="#docplex.mp.progress.ProgressListener" title="docplex.mp.progress.ProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressListener</span></code></a> must be attached to a model to receive events during
+a MIP solve., using <cite>Model.add_progress_listener</cite>.</p>
+<p>An example of such a progress listener is <a class="reference internal" href="#docplex.mp.progress.TextProgressListener" title="docplex.mp.progress.TextProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextProgressListener</span></code></a>,
+which prints a message to stdout in a format similar to CPLEX log, each time it receives a progress data.</p>
+<p>If you need to get the values of variables in an intermediate solution,
+you should sub-class from class <a class="reference internal" href="#docplex.mp.progress.SolutionListener" title="docplex.mp.progress.SolutionListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionListener</span></code></a>.
+In this case, the <a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_solution" title="docplex.mp.progress.ProgressListener.notify_solution"><code class="xref py py-func docutils literal notranslate"><span class="pre">notify_solution()</span></code></a> method will be called
+each time CPLEX finds a valid intermediate solution, with an instance of <a class="reference internal" href="docplex.mp.solution.html#docplex.mp.solution.SolveSolution" title="docplex.mp.solution.SolveSolution"><code class="xref py py-class docutils literal notranslate"><span class="pre">docplex.mp.solution.SolveSolution</span></code></a>.</p>
+<p>Listeners are called from within CPLEX code, with its own frequency. It may occur that listeners are
+called with no real progress in either the objective or the best bound. To help you chose what kind
+of calls you are really interested in, DOcplex uses the enumerated class <code class="xref py py-class docutils literal notranslate"><span class="pre">Objective</span></code> filters all calls but those where the objective has improved.</p>
+<p>To summarize, listeners are called from within CPLEX&#8217;s MIP search algorithm, when the clock
+you have chosen accepts the call. All listeners are created with a clock argument that controls which
+calls they accept.</p>
+<p>When a listener accepts a call, its method <a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_progress" title="docplex.mp.progress.ProgressListener.notify_progress"><code class="xref py py-func docutils literal notranslate"><span class="pre">notify_progress()</span></code></a> is called with the current progress data.
+See <a class="reference internal" href="#docplex.mp.progress.TextProgressListener" title="docplex.mp.progress.TextProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextProgressListener</span></code></a> as an example of a simple progress listener.</p>
+<p>In addition, if the listener derives from <a class="reference internal" href="#docplex.mp.progress.SolutionListener" title="docplex.mp.progress.SolutionListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionListener</span></code></a>, its method <a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_solution" title="docplex.mp.progress.ProgressListener.notify_solution"><code class="xref py py-func docutils literal notranslate"><span class="pre">notify_solution()</span></code></a> is also called
+with the intermediate solution, passed as an instance of <a class="reference internal" href="docplex.mp.solution.html#docplex.mp.solution.SolveSolution" title="docplex.mp.solution.SolveSolution"><code class="xref py py-class docutils literal notranslate"><span class="pre">docplex.mp.solution.SolveSolution</span></code></a>.
+See <a class="reference internal" href="#docplex.mp.progress.SolutionRecorder" title="docplex.mp.progress.SolutionRecorder"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionRecorder</span></code></a> as an example of solution listener</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.FunctionalSolutionListener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">FunctionalSolutionListener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solution_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#FunctionalSolutionListener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.FunctionalSolutionListener" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.SolutionListener" title="docplex.mp.progress.SolutionListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionListener</span></code></a></p>
+<p>A subclass of SolutionListener, which calls a function at each intermediate solution.</p>
+<p>No exception is caught.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.FunctionalSolutionListener.notify_solution">
+<span class="sig-name descname"><span class="pre">notify_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#FunctionalSolutionListener.notify_solution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.FunctionalSolutionListener.notify_solution" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Generic method to be redefined by custom listeners to
+handle intermediate solutions. This method is called by the
+CPLEX search with an intermediate solution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sol</strong> &#8211; an instance of <a class="reference internal" href="docplex.mp.solution.html#docplex.mp.solution.SolveSolution" title="docplex.mp.solution.SolveSolution"><code class="xref py py-class docutils literal notranslate"><span class="pre">docplex.mp.solution.SolveSolution</span></code></a></p>
+</dd>
+</dl>
+<p>Note: as this method is called at each node of the MIP search, it may happen
+that several calls are made with an identical solution, that is, different object
+instances, but sharing the same variable values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.KpiListener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">KpiListener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#KpiListener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.KpiListener" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.SolutionListener" title="docplex.mp.progress.SolutionListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionListener</span></code></a></p>
+<p>A refinement of SolutionListener, which computes KPIs at each intermediate solution.</p>
+<p>Calls the <cite>publish</cite> method with a dicitonary of KPIs. Defaul tis to do nothing.</p>
+<p>This listener listens to the <cite>Gap</cite> clock.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.KpiListener.notify_solution">
+<span class="sig-name descname"><span class="pre">notify_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#KpiListener.notify_solution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.KpiListener.notify_solution" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Generic method to be redefined by custom listeners to
+handle intermediate solutions. This method is called by the
+CPLEX search with an intermediate solution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sol</strong> &#8211; an instance of <a class="reference internal" href="docplex.mp.solution.html#docplex.mp.solution.SolveSolution" title="docplex.mp.solution.SolveSolution"><code class="xref py py-class docutils literal notranslate"><span class="pre">docplex.mp.solution.SolveSolution</span></code></a></p>
+</dd>
+</dl>
+<p>Note: as this method is called at each node of the MIP search, it may happen
+that several calls are made with an identical solution, that is, different object
+instances, but sharing the same variable values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.KpiListener.publish">
+<span class="sig-name descname"><span class="pre">publish</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kpi_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#KpiListener.publish"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.KpiListener.publish" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method is called at each improving solution, with a dictionay of name, values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kpi_dict</strong> &#8211; a dicitonary of names and KPi values, computed on the intermediate solution.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.KpiPrinter">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">KpiPrinter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kpi_format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'*</span> <span class="pre">ItCnt={3:d}</span>&#160; <span class="pre">KPI:</span> <span class="pre">{1:&lt;{0}}</span> <span class="pre">=</span> <span class="pre">'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#KpiPrinter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.KpiPrinter" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.KpiListener" title="docplex.mp.progress.KpiListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">KpiListener</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.KpiPrinter.publish">
+<span class="sig-name descname"><span class="pre">publish</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kpi_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#KpiPrinter.publish"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.KpiPrinter.publish" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method is called at each improving solution, with a dictionay of name, values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kpi_dict</strong> &#8211; a dicitonary of names and KPi values, computed on the intermediate solution.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressClock">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">ProgressClock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressClock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressClock" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>This enumerated class controls the type of events a listener listens to.</p>
+<p>The possible values are (in order of decreasing call frequency).</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>All: the listener listens to all calls from CPLEX.</p></li>
+<li><p>BestBound: listen to changes in best bound, not necessarily with a solution present.</p></li>
+<li><dl class="simple">
+<dt>Solutions: listen to all intermediate solutions, not necessarily impriving.</dt><dd><p>Nothing prevents being called several times with an identical solution.</p>
+</dd>
+</dl>
+</li>
+<li><p>Gap: listen to intermediate solutions, where either objective or best bound has improved.</p></li>
+<li><p>Objective: listen to intermediate solutions, where the solution objective has improved.</p></li>
+</ul>
+</div></blockquote>
+<p>To determine whether objective or best bound have improved (or not), see the numerical parameters
+<cite>absdiff</cite> and <cite>reldiff</cite> in <cite>:class:ProgressListener</cite> and all its descendant classes.</p>
+<p><em>New in version 2.10</em></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">ProgressData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_incumbent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_objective</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">best_bound</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mip_gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_nb_iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_nb_nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remaining_nb_nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">det_time</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressData" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_TProgressData</span></code></p>
+<p>A named tuple class to hold progress data, as reeived from CPLEX.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.has_incumbent">
+<span class="sig-name descname"><span class="pre">has_incumbent</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.has_incumbent" title="Permalink to this definition">&para;</a></dt>
+<dd><p>a boolean, indicating whether an incumbent solution is available (or not),
+at the moment the listener is called.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.current_objective">
+<span class="sig-name descname"><span class="pre">current_objective</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.current_objective" title="Permalink to this definition">&para;</a></dt>
+<dd><p>contains the current objective, if an incumbent is available, else None.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.best_bound">
+<span class="sig-name descname"><span class="pre">best_bound</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.best_bound" title="Permalink to this definition">&para;</a></dt>
+<dd><p>The current best bound as reported by the solver.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.mip_gap">
+<span class="sig-name descname"><span class="pre">mip_gap</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.mip_gap" title="Permalink to this definition">&para;</a></dt>
+<dd><p>the gap between the best integer objective and the objective of the best node remaining;
+available if an incumbent is available.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.current_nb_nodes">
+<span class="sig-name descname"><span class="pre">current_nb_nodes</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.current_nb_nodes" title="Permalink to this definition">&para;</a></dt>
+<dd><p>the current number of nodes.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.current_nb_iterations">
+<span class="sig-name descname"><span class="pre">current_nb_iterations</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.current_nb_iterations" title="Permalink to this definition">&para;</a></dt>
+<dd><p>the current number of iterations.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.remaining_nb_nodes">
+<span class="sig-name descname"><span class="pre">remaining_nb_nodes</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.remaining_nb_nodes" title="Permalink to this definition">&para;</a></dt>
+<dd><p>the remaining number of nodes.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.time">
+<span class="sig-name descname"><span class="pre">time</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.time" title="Permalink to this definition">&para;</a></dt>
+<dd><p>the elapsed time since solve started.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressData.det_time">
+<span class="sig-name descname"><span class="pre">det_time</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressData.det_time" title="Permalink to this definition">&para;</a></dt>
+<dd><p>the deterministic time since solve started.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressDataRecorder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">ProgressDataRecorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressDataRecorder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressDataRecorder" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.ProgressListener" title="docplex.mp.progress.ProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressListener</span></code></a></p>
+<p>A specialized class of ProgressListener, which collects all ProgressData it receives.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressDataRecorder.iter_recorded">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iter_recorded</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressDataRecorder.iter_recorded" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Returns an iterator on stored progress data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>an iterator.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressDataRecorder.notify_progress">
+<span class="sig-name descname"><span class="pre">notify_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressDataRecorder.notify_progress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressDataRecorder.notify_progress" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method is called from within the solve with a ProgressData instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>progress_data</strong> &#8211; an instance of <a class="reference internal" href="#docplex.mp.progress.ProgressData" title="docplex.mp.progress.ProgressData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressData</span></code></a> containing data about the
+current point in the search tree.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressDataRecorder.notify_start">
+<span class="sig-name descname"><span class="pre">notify_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressDataRecorder.notify_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressDataRecorder.notify_start" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This methods  is called on all attached listeners at the beginning of a solve().</p>
+<p>When writing a custom listener, this method is used to restore
+internal data which can be modified during solve.
+Always call the superclass <cite>notify_start</cite> before adding specific code in a sub-class.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressDataRecorder.recorded">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">recorded</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressDataRecorder.recorded" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Returns a copy of the recorded data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">ProgressListener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clock_arg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.All</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressListener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressListener" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AbstractProgressListener</span></code></p>
+<p>The base class for progress listeners.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.abort">
+<span class="sig-name descname"><span class="pre">abort</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressListener.abort"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressListener.abort" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Aborts the CPLEX search.</p>
+<p>This method tells CPLEX to stop the MIP search.
+You may use this method in a custom progress listener to stop the search based on your own
+criteria (for example, when improvements in gap is consistently below a minimum threshold).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method should be called from within a <a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_progress" title="docplex.mp.progress.ProgressListener.notify_progress"><code class="xref py py-func docutils literal notranslate"><span class="pre">notify_progress()</span></code></a> method call, otherwise it will have
+no effect.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.clock">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">clock</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressListener.clock" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Returns the clock of the listener.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>an instance of <a class="reference internal" href="#docplex.mp.progress.ProgressClock" title="docplex.mp.progress.ProgressClock"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressClock</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.current_progress_data">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">current_progress_data</span></span><a class="headerlink" href="#docplex.mp.progress.ProgressListener.current_progress_data" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This property return the current progress data, if any.</p>
+<p>Returns the latest progress data, if at least one has been received.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>an instance of :class:~ProgressData` or None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.notify_end">
+<span class="sig-name descname"><span class="pre">notify_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressListener.notify_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressListener.notify_end" title="Permalink to this definition">&para;</a></dt>
+<dd><p>The method called when solve is finished on a model.</p>
+<p>The status is the solve status from the
+solve() method</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.notify_progress">
+<span class="sig-name descname"><span class="pre">notify_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressListener.notify_progress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressListener.notify_progress" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method is called from within the solve with a ProgressData instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>progress_data</strong> &#8211; an instance of <a class="reference internal" href="#docplex.mp.progress.ProgressData" title="docplex.mp.progress.ProgressData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressData</span></code></a> containing data about the
+current point in the search tree.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.notify_solution">
+<span class="sig-name descname"><span class="pre">notify_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressListener.notify_solution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressListener.notify_solution" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Redefine this method to handle an intermediate solution from the callback.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>s</strong> &#8211; solution</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>if you need to access runtime information (time, gap, number of nodes), use
+<code class="xref py py-func docutils literal notranslate"><span class="pre">SolutionListener.current_progress_data()</span></code>, which contains the latest
+priogress information as a tuple.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.ProgressListener.notify_start">
+<span class="sig-name descname"><span class="pre">notify_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#ProgressListener.notify_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.ProgressListener.notify_start" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This methods  is called on all attached listeners at the beginning of a solve().</p>
+<p>When writing a custom listener, this method is used to restore
+internal data which can be modified during solve.
+Always call the superclass <cite>notify_start</cite> before adding specific code in a sub-class.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionListener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">SolutionListener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Solutions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionListener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionListener" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.ProgressListener" title="docplex.mp.progress.ProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressListener</span></code></a></p>
+<p>The base class for listeners that work on intermediate solutions.</p>
+<p>To define a custom behavior for a subclass of this class, you need to redefine <cite>notify_solution</cite>.
+The current progress data is available from the <cite>current_progress_data</cite> property.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionListener.notify_solution">
+<span class="sig-name descname"><span class="pre">notify_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionListener.notify_solution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionListener.notify_solution" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Generic method to be redefined by custom listeners to
+handle intermediate solutions. This method is called by the
+CPLEX search with an intermediate solution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sol</strong> &#8211; an instance of <a class="reference internal" href="docplex.mp.solution.html#docplex.mp.solution.SolveSolution" title="docplex.mp.solution.SolveSolution"><code class="xref py py-class docutils literal notranslate"><span class="pre">docplex.mp.solution.SolveSolution</span></code></a></p>
+</dd>
+</dl>
+<p>Note: as this method is called at each node of the MIP search, it may happen
+that several calls are made with an identical solution, that is, different object
+instances, but sharing the same variable values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionListener.notify_start">
+<span class="sig-name descname"><span class="pre">notify_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionListener.notify_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionListener.notify_start" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This methods  is called on all attached listeners at the beginning of a solve().</p>
+<p>When writing a custom listener, this method is used to restore
+internal data which can be modified during solve.
+Always call the superclass <cite>notify_start</cite> before adding specific code in a sub-class.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionRecorder">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">SolutionRecorder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionRecorder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionRecorder" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.SolutionListener" title="docplex.mp.progress.SolutionListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionListener</span></code></a></p>
+<p>A specialized implementation of <a class="reference internal" href="#docplex.mp.progress.SolutionListener" title="docplex.mp.progress.SolutionListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">SolutionListener</span></code></a>,
+which stores &#8211;all&#8211; intermediate solutions.</p>
+<p>As  the listener might be called at different times with identical incumbent
+values, thus the list of solutions list might well contain identical solutions.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionRecorder.iter_solutions">
+<span class="sig-name descname"><span class="pre">iter_solutions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionRecorder.iter_solutions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionRecorder.iter_solutions" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Returns an iterator on the stored solutions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionRecorder.notify_solution">
+<span class="sig-name descname"><span class="pre">notify_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionRecorder.notify_solution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionRecorder.notify_solution" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Redefintion of the generic <cite>notify_solution</cite> method, called by CPLEX.
+For this class, appends the intermediate solution to the list of stored solutions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionRecorder.notify_start">
+<span class="sig-name descname"><span class="pre">notify_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#SolutionRecorder.notify_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.SolutionRecorder.notify_start" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Redefinition of the generic notify_start() method to clear all data modified by solve().
+In this case, clears the list of solutions.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="docplex.mp.progress.SolutionRecorder.number_of_solutions">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">number_of_solutions</span></span><a class="headerlink" href="#docplex.mp.progress.SolutionRecorder.number_of_solutions" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Returns the number of stored solutions.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="docplex.mp.progress.TextProgressListener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">docplex.mp.progress.</span></span><span class="sig-name descname"><span class="pre">TextProgressListener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ProgressClock.Gap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gap_fmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj_fmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absdiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reldiff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#TextProgressListener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.TextProgressListener" title="Permalink to this definition">&para;</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#docplex.mp.progress.ProgressListener" title="docplex.mp.progress.ProgressListener"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressListener</span></code></a></p>
+<dl class="simple">
+<dt>A simple implementation of Progress Listener, which prints messages to stdout,</dt><dd><p>in the manner of the CPLEX log.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>clock</strong> &#8211; an enumerated value of type <cite>:class:ProgressClock</cite> which defines the frequency of the listener.</p></li>
+<li><p><strong>absdiff</strong> &#8211; a float value which controls the minimum absolute change for objective or best bound values</p></li>
+<li><p><strong>reldiff</strong> &#8211; a float value which controls the minimum absolute change for objective or best bound values.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The default behavior is to listen to an improvement in either the objective or best bound,
+each being improved by either an absolute value change of at least <cite>absdiff</cite>,
+or a relative change of at least <cite>reldiff</cite>.</p>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.TextProgressListener.notify_progress">
+<span class="sig-name descname"><span class="pre">notify_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#TextProgressListener.notify_progress"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.TextProgressListener.notify_progress" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This method is called from within the solve with a ProgressData instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>progress_data</strong> &#8211; an instance of <a class="reference internal" href="#docplex.mp.progress.ProgressData" title="docplex.mp.progress.ProgressData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ProgressData</span></code></a> containing data about the
+current point in the search tree.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="docplex.mp.progress.TextProgressListener.notify_start">
+<span class="sig-name descname"><span class="pre">notify_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/docplex/mp/progress.html#TextProgressListener.notify_start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#docplex.mp.progress.TextProgressListener.notify_start" title="Permalink to this definition">&para;</a></dt>
+<dd><p>This methods  is called on all attached listeners at the beginning of a solve().</p>
+<p>When writing a custom listener, this method is used to restore
+internal data which can be modified during solve.
+Always call the superclass <cite>notify_start</cite> before adding specific code in a sub-class.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">docplex.mp.progress module</a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.FunctionalSolutionListener"><code class="docutils literal notranslate"><span class="pre">FunctionalSolutionListener</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.FunctionalSolutionListener.notify_solution"><code class="docutils literal notranslate"><span class="pre">FunctionalSolutionListener.notify_solution()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.KpiListener"><code class="docutils literal notranslate"><span class="pre">KpiListener</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.KpiListener.notify_solution"><code class="docutils literal notranslate"><span class="pre">KpiListener.notify_solution()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.KpiListener.publish"><code class="docutils literal notranslate"><span class="pre">KpiListener.publish()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.KpiPrinter"><code class="docutils literal notranslate"><span class="pre">KpiPrinter</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.KpiPrinter.publish"><code class="docutils literal notranslate"><span class="pre">KpiPrinter.publish()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressClock"><code class="docutils literal notranslate"><span class="pre">ProgressClock</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData"><code class="docutils literal notranslate"><span class="pre">ProgressData</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.has_incumbent"><code class="docutils literal notranslate"><span class="pre">ProgressData.has_incumbent</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.current_objective"><code class="docutils literal notranslate"><span class="pre">ProgressData.current_objective</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.best_bound"><code class="docutils literal notranslate"><span class="pre">ProgressData.best_bound</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.mip_gap"><code class="docutils literal notranslate"><span class="pre">ProgressData.mip_gap</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.current_nb_nodes"><code class="docutils literal notranslate"><span class="pre">ProgressData.current_nb_nodes</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.current_nb_iterations"><code class="docutils literal notranslate"><span class="pre">ProgressData.current_nb_iterations</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.remaining_nb_nodes"><code class="docutils literal notranslate"><span class="pre">ProgressData.remaining_nb_nodes</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.time"><code class="docutils literal notranslate"><span class="pre">ProgressData.time</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressData.det_time"><code class="docutils literal notranslate"><span class="pre">ProgressData.det_time</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressDataRecorder"><code class="docutils literal notranslate"><span class="pre">ProgressDataRecorder</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressDataRecorder.iter_recorded"><code class="docutils literal notranslate"><span class="pre">ProgressDataRecorder.iter_recorded</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressDataRecorder.notify_progress"><code class="docutils literal notranslate"><span class="pre">ProgressDataRecorder.notify_progress()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressDataRecorder.notify_start"><code class="docutils literal notranslate"><span class="pre">ProgressDataRecorder.notify_start()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressDataRecorder.recorded"><code class="docutils literal notranslate"><span class="pre">ProgressDataRecorder.recorded</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener"><code class="docutils literal notranslate"><span class="pre">ProgressListener</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.abort"><code class="docutils literal notranslate"><span class="pre">ProgressListener.abort()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.clock"><code class="docutils literal notranslate"><span class="pre">ProgressListener.clock</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.current_progress_data"><code class="docutils literal notranslate"><span class="pre">ProgressListener.current_progress_data</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_end"><code class="docutils literal notranslate"><span class="pre">ProgressListener.notify_end()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_progress"><code class="docutils literal notranslate"><span class="pre">ProgressListener.notify_progress()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_solution"><code class="docutils literal notranslate"><span class="pre">ProgressListener.notify_solution()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.ProgressListener.notify_start"><code class="docutils literal notranslate"><span class="pre">ProgressListener.notify_start()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionListener"><code class="docutils literal notranslate"><span class="pre">SolutionListener</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionListener.notify_solution"><code class="docutils literal notranslate"><span class="pre">SolutionListener.notify_solution()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionListener.notify_start"><code class="docutils literal notranslate"><span class="pre">SolutionListener.notify_start()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionRecorder"><code class="docutils literal notranslate"><span class="pre">SolutionRecorder</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionRecorder.iter_solutions"><code class="docutils literal notranslate"><span class="pre">SolutionRecorder.iter_solutions()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionRecorder.notify_solution"><code class="docutils literal notranslate"><span class="pre">SolutionRecorder.notify_solution()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionRecorder.notify_start"><code class="docutils literal notranslate"><span class="pre">SolutionRecorder.notify_start()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.SolutionRecorder.number_of_solutions"><code class="docutils literal notranslate"><span class="pre">SolutionRecorder.number_of_solutions</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#docplex.mp.progress.TextProgressListener"><code class="docutils literal notranslate"><span class="pre">TextProgressListener</span></code></a><ul>
+<li><a class="reference internal" href="#docplex.mp.progress.TextProgressListener.notify_progress"><code class="docutils literal notranslate"><span class="pre">TextProgressListener.notify_progress()</span></code></a></li>
+<li><a class="reference internal" href="#docplex.mp.progress.TextProgressListener.notify_start"><code class="docutils literal notranslate"><span class="pre">TextProgressListener.notify_start()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="docplex.mp.priority.html"
+                          title="previous chapter">docplex.mp.priority module</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="docplex.mp.publish.html"
+                          title="next chapter">docplex.mp.publish module</a></p>
+  </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="docplex.mp.publish.html" title="docplex.mp.publish module"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="docplex.mp.priority.html" title="docplex.mp.priority module"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.29 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="refman.html" ><strong>docplex.mp</strong> reference manual</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">docplex.mp.progress module</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2016-2022, IBM&reg;.
+    </div>
+  </body>
+</html>
