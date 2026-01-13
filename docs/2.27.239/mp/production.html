@@ -1,0 +1,231 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="iso-8859-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>production.py &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=c92c1228" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=49c2ab22"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="sport_scheduling.py" href="sport_scheduling.html" />
+    <link rel="prev" title="diet.py" href="diet.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sport_scheduling.html" title="sport_scheduling.py"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="diet.html" title="diet.py"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="samples.html" accesskey="U">Examples of mathematical programming</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">production.py</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="production-py">
+<h1>production.py<a class="headerlink" href="#production-py" title="Permalink to this heading">&para;</a></h1>
+<p>To meet the demands of its customers, a company manufactures its products in its own factories (inside production) or buys them from other companies (outside production).
+The inside production is subject to some resource constraints: each product consumes a certain amount of each resource.
+In contrast, outside production is theoretically unlimited. The problem is to determine how much of each product should be
+produced inside and outside the company while minimizing the overall production cost, meeting the demand, and satisfying the resource constraints.</p>
+<p>The model aims at minimizing the production cost for a number of products while satisfying customer demand.
+Each product can be produced either inside the company or outside, at a higher cost.
+The inside production is constrained by the company&#8217;s resources, while outside production is considered unlimited.
+The model first declares the products and the resources. The data consists of the description of the products
+(the demand, the inside and outside costs, and the resource consumption) and the capacity of the various resources.</p>
+<p>The variables for this problem are the inside and outside production for each product.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="linenos">  2</span><span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="linenos">  3</span><span class="c1"># http://www.apache.org/licenses/</span>
+<span class="linenos">  4</span><span class="c1"># (c) Copyright IBM Corp. 2015, 2018</span>
+<span class="linenos">  5</span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="linenos">  6</span>
+<span class="linenos">  7</span><span class="sd">&quot;&quot;&quot;The model aims at minimizing the production cost for a number of products</span>
+<span class="linenos">  8</span><span class="sd">while satisfying customer demand. Each product can be produced either inside</span>
+<span class="linenos">  9</span><span class="sd">the company or outside, at a higher cost.</span>
+<span class="linenos"> 10</span>
+<span class="linenos"> 11</span><span class="sd">The inside production is constrained by the company&#39;s resources, while outside</span>
+<span class="linenos"> 12</span><span class="sd">production is considered unlimited.</span>
+<span class="linenos"> 13</span>
+<span class="linenos"> 14</span><span class="sd">The model first declares the products and the resources.</span>
+<span class="linenos"> 15</span><span class="sd">The data consists of the description of the products (the demand, the inside</span>
+<span class="linenos"> 16</span><span class="sd">and outside costs, and the resource consumption) and the capacity of the</span>
+<span class="linenos"> 17</span><span class="sd">various resources.</span>
+<span class="linenos"> 18</span>
+<span class="linenos"> 19</span><span class="sd">The variables for this problem are the inside and outside production for each</span>
+<span class="linenos"> 20</span><span class="sd">product.</span>
+<span class="linenos"> 21</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos"> 22</span>
+<span class="linenos"> 23</span><span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="kn">import</span> <span class="n">Model</span>
+<span class="linenos"> 24</span><span class="kn">from</span> <span class="nn">docplex.util.environment</span> <span class="kn">import</span> <span class="n">get_environment</span>
+<span class="linenos"> 25</span>
+<span class="linenos"> 26</span>
+<span class="linenos"> 27</span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="linenos"> 28</span><span class="c1"># Initialize the problem data</span>
+<span class="linenos"> 29</span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="linenos"> 30</span><span class="n">PRODUCTS</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;kluski&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">),</span>
+<span class="linenos"> 31</span>            <span class="p">(</span><span class="s2">&quot;capellini&quot;</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span>
+<span class="linenos"> 32</span>            <span class="p">(</span><span class="s2">&quot;fettucine&quot;</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)]</span>
+<span class="linenos"> 33</span>
+<span class="linenos"> 34</span><span class="c1"># resources are a list of simple tuples (name, capacity)</span>
+<span class="linenos"> 35</span><span class="n">RESOURCES</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;flour&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+<span class="linenos"> 36</span>             <span class="p">(</span><span class="s2">&quot;eggs&quot;</span><span class="p">,</span> <span class="mi">40</span><span class="p">)]</span>
+<span class="linenos"> 37</span>
+<span class="linenos"> 38</span><span class="n">CONSUMPTIONS</span> <span class="o">=</span> <span class="p">{(</span><span class="s2">&quot;kluski&quot;</span><span class="p">,</span> <span class="s2">&quot;flour&quot;</span><span class="p">):</span> <span class="mf">0.5</span><span class="p">,</span>
+<span class="linenos"> 39</span>                <span class="p">(</span><span class="s2">&quot;kluski&quot;</span><span class="p">,</span> <span class="s2">&quot;eggs&quot;</span><span class="p">):</span> <span class="mf">0.2</span><span class="p">,</span>
+<span class="linenos"> 40</span>                <span class="p">(</span><span class="s2">&quot;capellini&quot;</span><span class="p">,</span> <span class="s2">&quot;flour&quot;</span><span class="p">):</span> <span class="mf">0.4</span><span class="p">,</span>
+<span class="linenos"> 41</span>                <span class="p">(</span><span class="s2">&quot;capellini&quot;</span><span class="p">,</span> <span class="s2">&quot;eggs&quot;</span><span class="p">):</span> <span class="mf">0.4</span><span class="p">,</span>
+<span class="linenos"> 42</span>                <span class="p">(</span><span class="s2">&quot;fettucine&quot;</span><span class="p">,</span> <span class="s2">&quot;flour&quot;</span><span class="p">):</span> <span class="mf">0.3</span><span class="p">,</span>
+<span class="linenos"> 43</span>                <span class="p">(</span><span class="s2">&quot;fettucine&quot;</span><span class="p">,</span> <span class="s2">&quot;eggs&quot;</span><span class="p">):</span> <span class="mf">0.6</span><span class="p">}</span>
+<span class="linenos"> 44</span>
+<span class="linenos"> 45</span>
+<span class="linenos"> 46</span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="linenos"> 47</span><span class="c1"># Build the model</span>
+<span class="linenos"> 48</span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="linenos"> 49</span><span class="k">def</span> <span class="nf">build_production_problem</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">products</span><span class="p">,</span> <span class="n">resources</span><span class="p">,</span> <span class="n">consumptions</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="linenos"> 50</span><span class="w">    </span><span class="sd">&quot;&quot;&quot; Takes as input:</span>
+<span class="linenos"> 51</span><span class="sd">        - a list of product tuples (name, demand, inside, outside)</span>
+<span class="linenos"> 52</span><span class="sd">        - a list of resource tuples (name, capacity)</span>
+<span class="linenos"> 53</span><span class="sd">        - a list of consumption tuples (product_name, resource_named, consumed)</span>
+<span class="linenos"> 54</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos"> 55</span>      <span class="c1"># --- decision variables ---</span>
+<span class="linenos"> 56</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">inside_vars</span>  <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">continuous_var_dict</span><span class="p">(</span><span class="n">products</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="s1">&#39;inside_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="linenos"> 57</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">outside_vars</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">continuous_var_dict</span><span class="p">(</span><span class="n">products</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="s1">&#39;outside_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="linenos"> 58</span>
+<span class="linenos"> 59</span>    <span class="c1"># --- constraints ---</span>
+<span class="linenos"> 60</span>    <span class="c1"># demand satisfaction</span>
+<span class="linenos"> 61</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">((</span><span class="n">mdl</span><span class="o">.</span><span class="n">inside_vars</span><span class="p">[</span><span class="n">prod</span><span class="p">]</span> <span class="o">+</span> <span class="n">mdl</span><span class="o">.</span><span class="n">outside_vars</span><span class="p">[</span><span class="n">prod</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">prod</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;ct_demand_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">prod</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">prod</span> <span class="ow">in</span> <span class="n">products</span><span class="p">)</span>
+<span class="linenos"> 62</span>
+<span class="linenos"> 63</span>    <span class="c1"># --- resource capacity ---</span>
+<span class="linenos"> 64</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">((</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">inside_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">consumptions</span><span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">products</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+<span class="linenos"> 65</span>                         <span class="s1">&#39;ct_res_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">resources</span><span class="p">)</span>
+<span class="linenos"> 66</span>
+<span class="linenos"> 67</span>    <span class="c1"># --- objective ---</span>
+<span class="linenos"> 68</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">total_inside_cost</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">inside_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">products</span><span class="p">)</span>
+<span class="linenos"> 69</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">total_inside_cost</span><span class="p">,</span> <span class="s2">&quot;inside cost&quot;</span><span class="p">)</span>
+<span class="linenos"> 70</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">total_outside_cost</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">outside_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">p</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">products</span><span class="p">)</span>
+<span class="linenos"> 71</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">total_outside_cost</span><span class="p">,</span> <span class="s2">&quot;outside cost&quot;</span><span class="p">)</span>
+<span class="linenos"> 72</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">total_inside_cost</span> <span class="o">+</span> <span class="n">mdl</span><span class="o">.</span><span class="n">total_outside_cost</span><span class="p">)</span>
+<span class="linenos"> 73</span>    <span class="k">return</span> <span class="n">mdl</span>
+<span class="linenos"> 74</span>
+<span class="linenos"> 75</span>
+<span class="linenos"> 76</span><span class="k">def</span> <span class="nf">print_production_solution</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">products</span><span class="p">):</span>
+<span class="linenos"> 77</span>    <span class="n">obj</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">objective_value</span>
+<span class="linenos"> 78</span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* Production model solved with objective: </span><span class="si">{:g}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
+<span class="linenos"> 79</span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* Total inside cost=</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">mdl</span><span class="o">.</span><span class="n">total_inside_cost</span><span class="o">.</span><span class="n">solution_value</span><span class="p">)</span>
+<span class="linenos"> 80</span>    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">products</span><span class="p">:</span>
+<span class="linenos"> 81</span>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Inside production of </span><span class="si">{product}</span><span class="s2">: </span><span class="si">{ins_var}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span>
+<span class="linenos"> 82</span>              <span class="p">(</span><span class="n">product</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ins_var</span><span class="o">=</span><span class="n">mdl</span><span class="o">.</span><span class="n">inside_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span><span class="p">))</span>
+<span class="linenos"> 83</span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* Total outside cost=</span><span class="si">%g</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">mdl</span><span class="o">.</span><span class="n">total_outside_cost</span><span class="o">.</span><span class="n">solution_value</span><span class="p">)</span>
+<span class="linenos"> 84</span>    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">products</span><span class="p">:</span>
+<span class="linenos"> 85</span>        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Outside production of </span><span class="si">{product}</span><span class="s2">: </span><span class="si">{out_var}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span>
+<span class="linenos"> 86</span>              <span class="p">(</span><span class="n">product</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">out_var</span><span class="o">=</span><span class="n">mdl</span><span class="o">.</span><span class="n">outside_vars</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">solution_value</span><span class="p">))</span>
+<span class="linenos"> 87</span>
+<span class="linenos"> 88</span><span class="k">def</span> <span class="nf">build_default_production_problem</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="linenos"> 89</span>    <span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="linenos"> 90</span>    <span class="k">return</span> <span class="n">build_production_problem</span><span class="p">(</span><span class="n">mdl</span><span class="p">,</span> <span class="n">PRODUCTS</span><span class="p">,</span> <span class="n">RESOURCES</span><span class="p">,</span> <span class="n">CONSUMPTIONS</span><span class="p">)</span>
+<span class="linenos"> 91</span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="linenos"> 92</span><span class="c1"># Solve the model and display the result</span>
+<span class="linenos"> 93</span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="linenos"> 94</span><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="linenos"> 95</span>    <span class="c1"># Build the model</span>
+<span class="linenos"> 96</span>    <span class="k">with</span> <span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;production&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">model</span><span class="p">:</span>
+<span class="linenos"> 97</span>        <span class="n">model</span> <span class="o">=</span> <span class="n">build_production_problem</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">PRODUCTS</span><span class="p">,</span> <span class="n">RESOURCES</span><span class="p">,</span> <span class="n">CONSUMPTIONS</span><span class="p">)</span>
+<span class="linenos"> 98</span>        <span class="n">model</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+<span class="linenos"> 99</span>        <span class="c1"># Solve the model.</span>
+<span class="linenos">100</span>        <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">solve</span><span class="p">():</span>
+<span class="linenos">101</span>            <span class="n">print_production_solution</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">PRODUCTS</span><span class="p">)</span>
+<span class="linenos">102</span>            <span class="c1"># Save the CPLEX solution as &quot;solution.json&quot; program output</span>
+<span class="linenos">103</span>            <span class="k">with</span> <span class="n">get_environment</span><span class="p">()</span><span class="o">.</span><span class="n">get_output_stream</span><span class="p">(</span><span class="s2">&quot;solution.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+<span class="linenos">104</span>                <span class="n">model</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s2">&quot;json&quot;</span><span class="p">)</span>
+<span class="linenos">105</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">106</span>            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Problem has no solution&quot;</span><span class="p">)</span>
+<span class="linenos">107</span>
+</pre></div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="diet.html"
+                          title="previous chapter">diet.py</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="sport_scheduling.html"
+                          title="next chapter">sport_scheduling.py</a></p>
+  </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sport_scheduling.html" title="sport_scheduling.py"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="diet.html" title="diet.py"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="samples.html" >Examples of mathematical programming</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">production.py</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2016-2022, IBM&reg;.
+    </div>
+  </body>
+</html>

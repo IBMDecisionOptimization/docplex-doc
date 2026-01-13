@@ -1,0 +1,908 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="iso-8859-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Use decision optimization to help a sports league schedule its games &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=c92c1228" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=49c2ab22"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The Unit Commitment Problem (UCP)" href="ucp_pandas.html" />
+    <link rel="prev" title="Maximizing the profit of an oil company" href="oil_blending.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ucp_pandas.html" title="The Unit Commitment Problem (UCP)"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="oil_blending.html" title="Maximizing the profit of an oil company"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="samples.html" accesskey="U">Examples of mathematical programming</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Use decision optimization to help a sports league schedule its games</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="use-decision-optimization-to-help-a-sports-league-schedule-its-games">
+<h1>Use decision optimization to help a sports league schedule its games<a class="headerlink" href="#use-decision-optimization-to-help-a-sports-league-schedule-its-games" title="Permalink to this heading">&para;</a></h1>
+<p>This tutorial includes everything you need to set up decision
+optimization engines, build mathematical programming models, and arrive
+at a good working schedule for a sports league&#8217;s games.</p>
+<p>When you finish this tutorial, you&#8217;ll have a foundational knowledge of
+<em>Prescriptive Analytics</em>.</p>
+<blockquote>
+<div><p>This notebook is part of <a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/">Prescriptive Analytics for
+Python</a></p>
+<p>It requires either an <a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/getting_started.html">installation of CPLEX
+Optimizers</a>
+or it can be run on <a class="reference external" href="https://www.ibm.com/cloud/watson-studio/">IBM Watson Studio
+Cloud</a> (Sign up for a
+<a class="reference external" href="https://dataplatform.cloud.ibm.com/registration/stepone?context=wdp&amp;apps=all%3E">free IBM Cloud
+account</a>
+and you can start using Watson Studio Cloud right away).</p>
+</div></blockquote>
+<p>Table of contents:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#the-business-problem-games-scheduling-in-the-national-football-league">The business problem:  Games Scheduling in the National Football League</a></p></li>
+<li><p><a class="reference internal" href="#how-decision-optimization-can-help">How  decision optimization can help</a></p></li>
+<li><p><a class="reference internal" href="#use-decision-optimization">Use decision optimization</a></p>
+<ul>
+<li><p><a class="reference internal" href="#step-1-import-the-library">Step 1: Import the library</a></p></li>
+<li><p><a class="reference internal" href="#step-2-model-the-data">Step 2: Model the data</a></p></li>
+<li><p><a class="reference internal" href="#step-3-prepare-the-data">Step 3: Prepare the data</a></p></li>
+<li><p><a class="reference internal" href="#step-4-set-up-the-prescriptive-model">Step 4: Set up the prescriptive model</a></p>
+<ul>
+<li><p><a class="reference internal" href="#define-the-decision-variables">Define the decision variables</a></p></li>
+<li><p><a class="reference internal" href="#express-the-business-constraints">Express the business constraints</a></p></li>
+<li><p><a class="reference internal" href="#express-the-objective">Express the objective</a></p></li>
+<li><p><a class="reference internal" href="#solve-with-decision-optimization">Solve with Decision Optimization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#step-5-investigate-the-solution-and-then-run-an-example-analysis">Step 5: Investigate the solution and then run an example analysis</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#summary">Summary</a></p></li>
+</ul>
+<section id="the-business-problem-games-scheduling-in-the-national-football-league">
+<h2>The business problem: Games Scheduling in the National Football League<a class="headerlink" href="#the-business-problem-games-scheduling-in-the-national-football-league" title="Permalink to this heading">&para;</a></h2>
+<ul class="simple">
+<li><p>A sports league with two divisions must schedule games so that each
+team plays every team within its division a given number of times,
+and each team plays teams in the other division a given number of
+times.</p></li>
+<li><p>A team plays exactly one game each week.</p></li>
+<li><p>A pair of teams cannot play each other on consecutive weeks.</p></li>
+<li><p>While a third of a team&#8217;s intradivisional games must be played in the
+first half of the season, the preference is for intradivisional games
+to be held as late as possible in the season.</p>
+<ul>
+<li><p>To model this preference, there is an incentive for
+intradivisional games that increases each week as a square of the
+week.</p></li>
+<li><p>An opponent must be assigned to each team each week to maximize
+the total of the incentives..</p></li>
+</ul>
+</li>
+</ul>
+<p>This is a type of discrete optimization problem that can be solved by
+using either <strong>Integer Programming</strong> (IP) or <strong>Constraint Programming</strong>
+(CP).</p>
+<blockquote>
+<div><p><strong>Integer Programming</strong> is the class of problems defined as the
+optimization of a linear function, subject to linear constraints over
+integer variables.</p>
+</div></blockquote>
+<blockquote>
+<div><p><strong>Constraint Programming</strong> problems generally have discrete decision
+variables, but the constraints can be logical, and the arithmetic
+expressions are not restricted to being linear.</p>
+</div></blockquote>
+<p>For the purposes of this tutorial, we will illustrate a solution with
+mathematical programming (MIP).</p>
+</section>
+<section id="how-decision-optimization-can-help">
+<h2>How decision optimization can help<a class="headerlink" href="#how-decision-optimization-can-help" title="Permalink to this heading">&para;</a></h2>
+<ul>
+<li><p>Prescriptive analytics (decision optimization) technology recommends
+actions that are based on desired outcomes. It takes into account
+specific scenarios, resources, and knowledge of past and current
+events. With this insight, your organization can make better
+decisions and have greater control of business outcomes.</p></li>
+<li><p>Prescriptive analytics is the next step on the path to insight-based
+actions. It creates value through synergy with predictive analytics,
+which analyzes data to predict future outcomes.</p></li>
+<li><div class="line-block">
+<div class="line">Prescriptive analytics takes that insight to the next level by
+suggesting the optimal way to handle that future situation.
+Organizations that can act fast in dynamic conditions and make
+superior decisions in uncertain environments gain a strong
+competitive advantage.</div>
+<div class="line"><br /></div>
+</div>
+</li>
+</ul>
+<p>With prescriptive analytics, you can:</p>
+<ul class="simple">
+<li><p>Automate the complex decisions and trade-offs to better manage your
+limited resources.</p></li>
+<li><p>Take advantage of a future opportunity or mitigate a future risk.</p></li>
+<li><p>Proactively update recommendations based on changing events.</p></li>
+<li><p>Meet operational goals, increase customer loyalty, prevent threats
+and fraud, and optimize business processes.</p></li>
+</ul>
+</section>
+<section id="use-decision-optimization">
+<h2>Use decision optimization<a class="headerlink" href="#use-decision-optimization" title="Permalink to this heading">&para;</a></h2>
+<section id="step-1-import-the-library">
+<h3>Step 1: Import the library<a class="headerlink" href="#step-1-import-the-library" title="Permalink to this heading">&para;</a></h3>
+<p>Run the following code to import the Decision Optimization CPLEX
+Modeling library. The <em>DOcplex</em> library contains the two modeling
+packages, Mathematical Programming (docplex.mp) and Constraint
+Programming (docplex.cp).</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sys
+try:
+    import docplex.mp
+except:
+    raise Exception(&#39;Please install docplex. See https://pypi.org/project/docplex/&#39;)
+</pre></div>
+</div>
+<p>If <em>CPLEX</em> is not installed, install CPLEX Community edition.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>try:
+    import cplex
+except:
+    raise Exception(&#39;Please install CPLEX. See https://pypi.org/project/cplex/&#39;)
+</pre></div>
+</div>
+</section>
+<section id="step-2-model-the-data">
+<h3>Step 2: Model the data<a class="headerlink" href="#step-2-model-the-data" title="Permalink to this heading">&para;</a></h3>
+<p>In this scenario, the data is simple. There are eight teams in each
+division, and the teams must play each team in the division once and
+each team outside the division once.</p>
+<p>Use a Python module, <em>Collections</em>, which implements some data
+structures that will help solve some problems. <em>Named tuples</em> helps to
+define meaning of each position in a tuple. This helps the code be more
+readable and self-documenting. You can use named tuples in any place
+where you use tuples.</p>
+<p>In this example, you create a <em>namedtuple</em> to contain information for
+points. You are also defining some of the parameters.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Teams in 1st division
+team_div1 = [&quot;Baltimore Ravens&quot;,&quot;Cincinnati Bengals&quot;, &quot;Cleveland Browns&quot;,&quot;Pittsburgh Steelers&quot;,&quot;Houston Texans&quot;,
+                &quot;Indianapolis Colts&quot;,&quot;Jacksonville Jaguars&quot;,&quot;Tennessee Titans&quot;,&quot;Buffalo Bills&quot;,&quot;Miami Dolphins&quot;,
+                &quot;New England Patriots&quot;,&quot;New York Jets&quot;,&quot;Denver Broncos&quot;,&quot;Kansas City Chiefs&quot;,&quot;Oakland Raiders&quot;,
+                &quot;San Diego Chargers&quot;]
+
+# Teams in 2nd division
+team_div2 = [&quot;Chicago Bears&quot;,&quot;Detroit Lions&quot;,&quot;Green Bay Packers&quot;,&quot;Minnesota Vikings&quot;,&quot;Atlanta Falcons&quot;,
+                &quot;Carolina Panthers&quot;,&quot;New Orleans Saints&quot;,&quot;Tampa Bay Buccaneers&quot;,&quot;Dallas Cowboys&quot;,&quot;New York Giants&quot;,
+                &quot;Philadelphia Eagles&quot;,&quot;Washington Redskins&quot;,&quot;Arizona Cardinals&quot;,&quot;San Francisco 49ers&quot;,
+                &quot;Seattle Seahawks&quot;,&quot;St. Louis Rams&quot;]
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>#number_of_matches_to_play = 1  # Number of match to play between two teams on the league
+# Schedule parameters
+nb_teams_in_division = 5
+max_teams_in_division = 10
+number_of_matches_inside_division = 1
+number_of_matches_outside_division = 1
+</pre></div>
+</div>
+<p>Use basic HTML and a stylesheet to format the data.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>CSS = &quot;&quot;&quot;
+body {
+    margin: 0;
+    font-family: Helvetica;
+}
+table.dataframe {
+    border-collapse: collapse;
+    border: none;
+}
+table.dataframe tr {
+    border: none;
+}
+table.dataframe td, table.dataframe th {
+    margin: 0;
+    border: 1px solid white;
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+}
+table.dataframe th:not(:empty) {
+    background-color: #fec;
+    text-align: left;
+    font-weight: normal;
+}
+table.dataframe tr:nth-child(2) th:empty {
+    border-left: none;
+    border-right: 1px dashed #888;
+}
+table.dataframe td {
+    border: 2px solid #ccf;
+    background-color: #f4f4ff;
+}
+    table.dataframe thead th:first-child {
+        display: none;
+    }
+    table.dataframe tbody th {
+        display: none;
+    }
+&quot;&quot;&quot;
+
+from IPython.core.display import HTML
+HTML(&#39;&lt;style&gt;{}&lt;/style&gt;&#39;.format(CSS))
+</pre></div>
+</div>
+<style>
+body {
+    margin: 0;
+    font-family: Helvetica;
+}
+table.dataframe {
+    border-collapse: collapse;
+    border: none;
+}
+table.dataframe tr {
+    border: none;
+}
+table.dataframe td, table.dataframe th {
+    margin: 0;
+    border: 1px solid white;
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+}
+table.dataframe th:not(:empty) {
+    background-color: #fec;
+    text-align: left;
+    font-weight: normal;
+}
+table.dataframe tr:nth-child(2) th:empty {
+    border-left: none;
+    border-right: 1px dashed #888;
+}
+table.dataframe td {
+    border: 2px solid #ccf;
+    background-color: #f4f4ff;
+}
+    table.dataframe thead th:first-child {
+        display: none;
+    }
+    table.dataframe tbody th {
+        display: none;
+    }
+</style><p>Now you will import the <em>pandas</em> library. Pandas is an open source
+Python library for data analysis. It uses two data structures, <em>Series</em>
+and <em>DataFrame</em>, which are built on top of <em>NumPy</em>.</p>
+<p>A <strong>Series</strong> is a one-dimensional object similar to an array, list, or
+column in a table. It will assign a labeled index to each item in the
+series. By default, each item receives an index label from 0 to N, where
+N is the length of the series minus one.</p>
+<p>A <strong>DataFrame</strong> is a tabular data structure comprised of rows and
+columns, similar to a spreadsheet, database table, or R&#8217;s data.frame
+object. Think of a DataFrame as a group of Series objects that share an
+index (the column names).</p>
+<p>In the example, each division (the AFC and the NFC) is part of a
+DataFrame.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import pandas as pd
+
+team1 = pd.DataFrame(team_div1)
+team2 = pd.DataFrame(team_div2)
+team1.columns = [&quot;AFC&quot;]
+team2.columns = [&quot;NFC&quot;]
+
+teams = pd.concat([team1,team2], axis=1)
+</pre></div>
+</div>
+<p>The following <em>display</em> function is a tool to show different
+representations of objects. When you issue the <em>display(teams)</em> command,
+you are sending the output to the notebook so that the result is stored
+in the document.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from IPython.display import display
+
+display(teams)
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>AFC</th>
+      <th>NFC</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>Baltimore Ravens</td>
+      <td>Chicago Bears</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Cincinnati Bengals</td>
+      <td>Detroit Lions</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Cleveland Browns</td>
+      <td>Green Bay Packers</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Pittsburgh Steelers</td>
+      <td>Minnesota Vikings</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Houston Texans</td>
+      <td>Atlanta Falcons</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Indianapolis Colts</td>
+      <td>Carolina Panthers</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Jacksonville Jaguars</td>
+      <td>New Orleans Saints</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Tennessee Titans</td>
+      <td>Tampa Bay Buccaneers</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Buffalo Bills</td>
+      <td>Dallas Cowboys</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Miami Dolphins</td>
+      <td>New York Giants</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>New England Patriots</td>
+      <td>Philadelphia Eagles</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>New York Jets</td>
+      <td>Washington Redskins</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Denver Broncos</td>
+      <td>Arizona Cardinals</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>Kansas City Chiefs</td>
+      <td>San Francisco 49ers</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Oakland Raiders</td>
+      <td>Seattle Seahawks</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>San Diego Chargers</td>
+      <td>St. Louis Rams</td>
+    </tr>
+  </tbody>
+</table>
+</div></section>
+<section id="step-3-prepare-the-data">
+<h3>Step 3: Prepare the data<a class="headerlink" href="#step-3-prepare-the-data" title="Permalink to this heading">&para;</a></h3>
+<p>Given the number of teams in each division and the number of
+intradivisional and interdivisional games to be played, you can
+calculate the total number of teams and the number of weeks in the
+schedule, assuming every team plays exactly one game per week.</p>
+<p>The season is split into halves, and the number of the intradivisional
+games that each team must play in the first half of the season is
+calculated.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import numpy as np
+
+nb_teams = 2 * nb_teams_in_division
+teams = range(nb_teams)
+
+# Calculate the number of weeks necessary
+nb_inside_div = (nb_teams_in_division - 1) * number_of_matches_inside_division
+nb_outside_div = nb_teams_in_division * number_of_matches_outside_division
+nb_weeks = nb_inside_div + nb_outside_div
+
+
+# Weeks to schedule
+weeks = range(nb_weeks)
+
+# Season is split into two halves
+first_half_weeks = range(int(np.floor(nb_weeks / 2)))
+nb_first_half_games = int(np.floor(nb_weeks / 3))
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from collections import namedtuple
+
+match = namedtuple(&quot;match&quot;,[&quot;team1&quot;,&quot;team2&quot;,&quot;is_divisional&quot;])
+
+matches = {match(t1,t2, 1 if ( t2 &lt;= nb_teams_in_division or t1 &gt; nb_teams_in_division) else 0)
+           for t1 in teams for t2 in teams if t1 &lt; t2}
+</pre></div>
+</div>
+<p>Number of games to play between pairs depends on whether the pairing is
+intradivisional or not.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>nb_play = { m :  number_of_matches_inside_division if m.is_divisional==1
+                                                   else number_of_matches_outside_division
+                   for m in matches}
+</pre></div>
+</div>
+</section>
+<section id="step-4-set-up-the-prescriptive-model">
+<h3>Step 4: Set up the prescriptive model<a class="headerlink" href="#step-4-set-up-the-prescriptive-model" title="Permalink to this heading">&para;</a></h3>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from docplex.mp.environment import Environment
+env = Environment()
+env.print_information()
+</pre></div>
+</div>
+<pre class="literal-block">* system is: Windows 64bit
+* Python version 3.7.3, located at: c:\local\python373\python.exe
+* docplex is present, version is (2, 11, 0)
+* pandas is present, version is 0.25.1</pre>
+<section id="create-the-docplex-model">
+<h4>Create the DOcplex model<a class="headerlink" href="#create-the-docplex-model" title="Permalink to this heading">&para;</a></h4>
+<p>The model contains all the business constraints and defines the
+objective.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from docplex.mp.model import Model
+
+mdl = Model(&quot;sports&quot;)
+</pre></div>
+</div>
+</section>
+<section id="define-the-decision-variables">
+<h4>Define the decision variables<a class="headerlink" href="#define-the-decision-variables" title="Permalink to this heading">&para;</a></h4>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>plays = mdl.binary_var_matrix(matches, weeks, lambda ij: &quot;x_%s_%d&quot; %(str(ij[0]), ij[1]))
+</pre></div>
+</div>
+</section>
+<section id="express-the-business-constraints">
+<h4>Express the business constraints<a class="headerlink" href="#express-the-business-constraints" title="Permalink to this heading">&para;</a></h4>
+<section id="each-pair-of-teams-must-play-the-correct-number-of-games">
+<h5>Each pair of teams must play the correct number of games.<a class="headerlink" href="#each-pair-of-teams-must-play-the-correct-number-of-games" title="Permalink to this heading">&para;</a></h5>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>mdl.add_constraints( mdl.sum(plays[m,w]  for w in weeks) == nb_play[m]
+                   for m in matches)
+mdl.print_information()
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">sports</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">405</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">405</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">45</span>
+   <span class="o">-</span> <span class="n">linear</span><span class="o">=</span><span class="mi">45</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+ <span class="o">-</span> <span class="n">problem</span> <span class="nb">type</span> <span class="ow">is</span><span class="p">:</span> <span class="n">MILP</span>
+</pre></div>
+</div>
+</section>
+<section id="each-team-must-play-exactly-once-in-a-week">
+<h5>Each team must play exactly once in a week.<a class="headerlink" href="#each-team-must-play-exactly-once-in-a-week" title="Permalink to this heading">&para;</a></h5>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>mdl.add_constraints( mdl.sum(plays[m,w] for m in matches if (m.team1 == t or m.team2 == t) )  == 1
+                   for w in weeks for t in teams)
+mdl.print_information()
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">sports</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">405</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">405</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">135</span>
+   <span class="o">-</span> <span class="n">linear</span><span class="o">=</span><span class="mi">135</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+ <span class="o">-</span> <span class="n">problem</span> <span class="nb">type</span> <span class="ow">is</span><span class="p">:</span> <span class="n">MILP</span>
+</pre></div>
+</div>
+</section>
+<section id="games-between-the-same-teams-cannot-be-on-successive-weeks">
+<h5>Games between the same teams cannot be on successive weeks.<a class="headerlink" href="#games-between-the-same-teams-cannot-be-on-successive-weeks" title="Permalink to this heading">&para;</a></h5>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>mdl.add_constraints( plays[m,w] + plays[m,w+1] &lt;= 1
+                   for w in weeks
+                   for m in matches
+                   if w &lt; nb_weeks-1)
+mdl.print_information()
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">sports</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">405</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">405</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">495</span>
+   <span class="o">-</span> <span class="n">linear</span><span class="o">=</span><span class="mi">495</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+ <span class="o">-</span> <span class="n">problem</span> <span class="nb">type</span> <span class="ow">is</span><span class="p">:</span> <span class="n">MILP</span>
+</pre></div>
+</div>
+</section>
+<section id="some-intradivisional-games-should-be-in-the-first-half">
+<h5>Some intradivisional games should be in the first half.<a class="headerlink" href="#some-intradivisional-games-should-be-in-the-first-half" title="Permalink to this heading">&para;</a></h5>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>mdl.add_constraints( mdl.sum(plays[m,w]  for w in first_half_weeks for  m in matches
+                            if (((m.team1 == t or m.team2 == t) and m.is_divisional == 1 )))
+                    &gt;= nb_first_half_games
+                   for t in teams)
+mdl.print_information()
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">sports</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">405</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">405</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">505</span>
+   <span class="o">-</span> <span class="n">linear</span><span class="o">=</span><span class="mi">505</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+ <span class="o">-</span> <span class="n">problem</span> <span class="nb">type</span> <span class="ow">is</span><span class="p">:</span> <span class="n">MILP</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="express-the-objective">
+<h4>Express the objective<a class="headerlink" href="#express-the-objective" title="Permalink to this heading">&para;</a></h4>
+<p>The objective function for this example is designed to force
+intradivisional games to occur as late in the season as possible. The
+incentive for intradivisional games increases by week. There is no
+incentive for interdivisional games.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>gain = { w : w*w for w in weeks}
+
+# If an intradivisional pair plays in week w, Gain[w] is added to the objective.
+mdl.maximize( mdl.sum (m.is_divisional * gain[w] * plays[m,w] for m in matches for w in weeks) )
+</pre></div>
+</div>
+</section>
+</section>
+<section id="solve-with-decision-optimization">
+<h3>Solve with Decision Optimization<a class="headerlink" href="#solve-with-decision-optimization" title="Permalink to this heading">&para;</a></h3>
+<p>You will get the best solution found after n seconds, due to a time
+limit parameter.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>mdl.print_information()
+
+assert mdl.solve(), &quot;!!! Solve of the model fails&quot;
+mdl.report()
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">sports</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">405</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">405</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">0</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">505</span>
+   <span class="o">-</span> <span class="n">linear</span><span class="o">=</span><span class="mi">505</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+ <span class="o">-</span> <span class="n">problem</span> <span class="nb">type</span> <span class="ow">is</span><span class="p">:</span> <span class="n">MILP</span>
+<span class="o">*</span> <span class="n">model</span> <span class="n">sports</span> <span class="n">solved</span> <span class="k">with</span> <span class="n">objective</span> <span class="o">=</span> <span class="mi">260</span>
+</pre></div>
+</div>
+</section>
+<section id="step-5-investigate-the-solution-and-then-run-an-example-analysis">
+<h3>Step 5: Investigate the solution and then run an example analysis<a class="headerlink" href="#step-5-investigate-the-solution-and-then-run-an-example-analysis" title="Permalink to this heading">&para;</a></h3>
+<p>Determine which of the scheduled games will be a replay of one of the
+last 10 Super Bowls. We start by creating a pandas DataFrame that
+contains the year and teams who played the last 10 Super Bowls.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>try: # Python 2
+    team_league = dict({t : team_div1[t] for t in range(nb_teams_in_division) }.items() +  \
+                {t+nb_teams_in_division : team_div2[t] for t in range(nb_teams_in_division) }.items()
+            )
+except: # Python 3
+    team_league = dict(list({t : team_div1[t] for t in range(nb_teams_in_division) }.items()) +  \
+                list({t+nb_teams_in_division : team_div2[t] for t in range(nb_teams_in_division) }.items()))
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>sol = namedtuple(&quot;solution&quot;,[&quot;week&quot;,&quot;is_divisional&quot;, &quot;team1&quot;, &quot;team2&quot;])
+
+solution = [sol(w, m.is_divisional, team_league[m.team1], team_league[m.team2]) for m in matches for w in weeks if plays[m,w].solution_value == 1]
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>nfl_finals = [(&quot;2016&quot;, &quot;Carolina Panthers&quot;, &quot;Denver Broncos&quot;),
+              (&quot;2015&quot;, &quot;New England Patriots&quot;, &quot;Seattle Seahawks&quot;),
+              (&quot;2014&quot;, &quot;Seattle Seahawks&quot;, &quot;Denver Broncos&quot;),
+              (&quot;2013&quot;, &quot;Baltimore Ravens&quot;, &quot;San Francisco 49ers&quot;),
+              (&quot;2012&quot;, &quot;New York Giants&quot;, &quot;New England Patriots &quot;),
+              (&quot;2011&quot;, &quot;Green Bay Packers&quot;, &quot;Pittsburgh Steelers&quot;),
+              (&quot;2010&quot;, &quot;New Orleans Saints&quot;, &quot;Indianapolis Colts&quot;),
+              (&quot;2009&quot;, &quot;Pittsburgh Steelers&quot;, &quot;Arizona Cardinals&quot;),
+              (&quot;2008&quot;, &quot;New York Giants&quot;, &quot;New England Patriots&quot;),
+              (&quot;2007&quot;, &quot;Indianapolis Colts&quot;, &quot;Chicago Bears&quot;)
+             ]
+nfl_meetings = {(t[1], t[2]) for t in nfl_finals}
+winners_bd = pd.DataFrame(nfl_finals)
+winners_bd.columns = [&quot;year&quot;, &quot;team1&quot;, &quot;team2&quot;]
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>display(winners_bd)
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>year</th>
+      <th>team1</th>
+      <th>team2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>2016</td>
+      <td>Carolina Panthers</td>
+      <td>Denver Broncos</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>2015</td>
+      <td>New England Patriots</td>
+      <td>Seattle Seahawks</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>2014</td>
+      <td>Seattle Seahawks</td>
+      <td>Denver Broncos</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>2013</td>
+      <td>Baltimore Ravens</td>
+      <td>San Francisco 49ers</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>2012</td>
+      <td>New York Giants</td>
+      <td>New England Patriots</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>2011</td>
+      <td>Green Bay Packers</td>
+      <td>Pittsburgh Steelers</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>2010</td>
+      <td>New Orleans Saints</td>
+      <td>Indianapolis Colts</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>2009</td>
+      <td>Pittsburgh Steelers</td>
+      <td>Arizona Cardinals</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>2008</td>
+      <td>New York Giants</td>
+      <td>New England Patriots</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>2007</td>
+      <td>Indianapolis Colts</td>
+      <td>Chicago Bears</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>We now look for the games in our solution that are replays of one of the
+past 10 Super Bowls.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>months = [&quot;January&quot;, &quot;February&quot;, &quot;March&quot;, &quot;April&quot;, &quot;May&quot;, &quot;June&quot;,
+          &quot;July&quot;, &quot;August&quot;, &quot;September&quot;, &quot;October&quot;, &quot;November&quot;, &quot;December&quot;]
+report = []
+for m in solution:
+    if (m.team1, m.team2) in nfl_meetings:
+        report.append((m.week, months[m.week//4], m.team1, m.team2))
+    if (m.team2, m.team1) in nfl_meetings:
+        report.append((m.week, months[m.week//4], m.team2, m.team1))
+
+print(report)
+matches_bd = pd.DataFrame(report)
+matches_bd.columns = [&quot;week&quot;, &quot;Month&quot;, &quot;Team1&quot;, &quot;Team2&quot;]
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[(</span><span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;February&#39;</span><span class="p">,</span> <span class="s1">&#39;Green Bay Packers&#39;</span><span class="p">,</span> <span class="s1">&#39;Pittsburgh Steelers&#39;</span><span class="p">)]</span>
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>try: #pandas &gt;= 0.17
+    display(matches_bd.sort_values(by=&#39;week&#39;))
+except:
+    display(matches_bd.sort(&#39;week&#39;))
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>week</th>
+      <th>Month</th>
+      <th>Team1</th>
+      <th>Team2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>4</td>
+      <td>February</td>
+      <td>Green Bay Packers</td>
+      <td>Pittsburgh Steelers</td>
+    </tr>
+  </tbody>
+</table>
+</div></section>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading">&para;</a></h2>
+<p>You learned how to set up and use IBM Decision Optimization CPLEX
+Modeling for Python to formulate a Constraint Programming model and
+solve it with CPLEX.</p>
+<ul class="simple">
+<li><p><a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/">Decision Optimization CPLEX Modeling for Python
+documentation</a></p></li>
+<li><p><a class="reference external" href="https://www.ibm.com/cloud/decision-optimization-for-watson-studio/">Decision Optimization on
+Cloud</a></p></li>
+<li><p>Need help with DOcplex or to report a bug? Please go
+<a class="reference external" href="https://stackoverflow.com/questions/tagged/docplex">here</a>.</p></li>
+<li><p>Contact us at <a class="reference external" href="mailto:dofeedback&#37;&#52;&#48;wwpdl&#46;vnet&#46;ibm&#46;com">dofeedback<span>&#64;</span>wwpdl<span>&#46;</span>vnet<span>&#46;</span>ibm<span>&#46;</span>com</a>.</p></li>
+</ul>
+<p>Copyright &#65533; 2017-2019 IBM. IPLA licensed Sample Materials.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Use decision optimization to help a sports league schedule its games</a><ul>
+<li><a class="reference internal" href="#the-business-problem-games-scheduling-in-the-national-football-league">The business problem: Games Scheduling in the National Football League</a></li>
+<li><a class="reference internal" href="#how-decision-optimization-can-help">How decision optimization can help</a></li>
+<li><a class="reference internal" href="#use-decision-optimization">Use decision optimization</a><ul>
+<li><a class="reference internal" href="#step-1-import-the-library">Step 1: Import the library</a></li>
+<li><a class="reference internal" href="#step-2-model-the-data">Step 2: Model the data</a></li>
+<li><a class="reference internal" href="#step-3-prepare-the-data">Step 3: Prepare the data</a></li>
+<li><a class="reference internal" href="#step-4-set-up-the-prescriptive-model">Step 4: Set up the prescriptive model</a><ul>
+<li><a class="reference internal" href="#create-the-docplex-model">Create the DOcplex model</a></li>
+<li><a class="reference internal" href="#define-the-decision-variables">Define the decision variables</a></li>
+<li><a class="reference internal" href="#express-the-business-constraints">Express the business constraints</a><ul>
+<li><a class="reference internal" href="#each-pair-of-teams-must-play-the-correct-number-of-games">Each pair of teams must play the correct number of games.</a></li>
+<li><a class="reference internal" href="#each-team-must-play-exactly-once-in-a-week">Each team must play exactly once in a week.</a></li>
+<li><a class="reference internal" href="#games-between-the-same-teams-cannot-be-on-successive-weeks">Games between the same teams cannot be on successive weeks.</a></li>
+<li><a class="reference internal" href="#some-intradivisional-games-should-be-in-the-first-half">Some intradivisional games should be in the first half.</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#express-the-objective">Express the objective</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#solve-with-decision-optimization">Solve with Decision Optimization</a></li>
+<li><a class="reference internal" href="#step-5-investigate-the-solution-and-then-run-an-example-analysis">Step 5: Investigate the solution and then run an example analysis</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="oil_blending.html"
+                          title="previous chapter">Maximizing the profit of an oil company</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="ucp_pandas.html"
+                          title="next chapter">The Unit Commitment Problem (UCP)</a></p>
+  </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ucp_pandas.html" title="The Unit Commitment Problem (UCP)"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="oil_blending.html" title="Maximizing the profit of an oil company"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="samples.html" >Examples of mathematical programming</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Use decision optimization to help a sports league schedule its games</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2016-2022, IBM&reg;.
+    </div>
+  </body>
+</html>

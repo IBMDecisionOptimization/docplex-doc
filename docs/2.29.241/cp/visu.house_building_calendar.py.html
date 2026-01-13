@@ -1,0 +1,246 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="iso-8859-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>visu/house_building_calendar.py example &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.29 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=c92c1228" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=588fc259"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.29 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">visu/house_building_calendar.py example</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="visu-house-building-calendar-py-example">
+<h1>visu/house_building_calendar.py example<a class="headerlink" href="#visu-house-building-calendar-py-example" title="Permalink to this heading">&para;</a></h1>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="linenos">  2</span><span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="linenos">  3</span><span class="c1"># http://www.apache.org/licenses/</span>
+<span class="linenos">  4</span><span class="c1"># (c) Copyright IBM Corp. 2015, 2022</span>
+<span class="linenos">  5</span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="linenos">  6</span>
+<span class="linenos">  7</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">  8</span><span class="sd">This is a problem of building five houses. The masonry, roofing,</span>
+<span class="linenos">  9</span><span class="sd">painting, etc. must be scheduled. Some tasks must necessarily take</span>
+<span class="linenos"> 10</span><span class="sd">place before others and these requirements are expressed through</span>
+<span class="linenos"> 11</span><span class="sd">precedence constraints.</span>
+<span class="linenos"> 12</span>
+<span class="linenos"> 13</span><span class="sd">There are two workers and each task requires a specific worker.</span>
+<span class="linenos"> 14</span><span class="sd">The worker has a calendar of days off that must be taken into account.</span>
+<span class="linenos"> 15</span><span class="sd">The objective is to minimize the overall completion date.</span>
+<span class="linenos"> 16</span>
+<span class="linenos"> 17</span><span class="sd">Please refer to documentation for appropriate setup of solving configuration.</span>
+<span class="linenos"> 18</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos"> 19</span>
+<span class="linenos"> 20</span><span class="kn">from</span> <span class="nn">docplex.cp.model</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="linenos"> 21</span>
+<span class="linenos"> 22</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos"> 23</span><span class="c1"># Initialize the problem data</span>
+<span class="linenos"> 24</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos"> 25</span>
+<span class="linenos"> 26</span><span class="c1"># List of available workers together with their holidays as list of tuples (start_day, end_day)</span>
+<span class="linenos"> 27</span><span class="n">WORKERS</span> <span class="o">=</span> <span class="p">{</span>
+<span class="linenos"> 28</span> <span class="s1">&#39;Joe&#39;</span> <span class="p">:</span>  <span class="p">[</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="p">(</span><span class="mi">124</span><span class="p">,</span> <span class="mi">131</span><span class="p">),</span> <span class="p">(</span><span class="mi">215</span><span class="p">,</span> <span class="mi">236</span><span class="p">),</span> <span class="p">(</span><span class="mi">369</span><span class="p">,</span> <span class="mi">376</span><span class="p">),</span> <span class="p">(</span><span class="mi">495</span><span class="p">,</span> <span class="mi">502</span><span class="p">),</span> <span class="p">(</span><span class="mi">579</span><span class="p">,</span> <span class="mi">600</span><span class="p">)</span> <span class="p">],</span>
+<span class="linenos"> 29</span> <span class="s1">&#39;Jim&#39;</span> <span class="p">:</span>  <span class="p">[</span> <span class="p">(</span><span class="mi">26</span><span class="p">,</span> <span class="mi">40</span><span class="p">),</span> <span class="p">(</span><span class="mi">201</span><span class="p">,</span> <span class="mi">225</span><span class="p">),</span> <span class="p">(</span><span class="mi">306</span><span class="p">,</span> <span class="mi">313</span><span class="p">),</span> <span class="p">(</span><span class="mi">397</span><span class="p">,</span> <span class="mi">411</span><span class="p">),</span> <span class="p">(</span><span class="mi">565</span><span class="p">,</span> <span class="mi">579</span><span class="p">)</span> <span class="p">]</span>
+<span class="linenos"> 30</span><span class="p">}</span>
+<span class="linenos"> 31</span>
+<span class="linenos"> 32</span><span class="c1"># List of tasks to be executed for each house</span>
+<span class="linenos"> 33</span><span class="n">TASKS</span> <span class="o">=</span> <span class="p">{</span>
+<span class="linenos"> 34</span>  <span class="s1">&#39;masonry&#39;</span>   <span class="p">:</span> <span class="p">(</span><span class="mi">35</span> <span class="p">,</span> <span class="s1">&#39;Joe&#39;</span><span class="p">,</span>  <span class="mi">1</span><span class="p">),</span>
+<span class="linenos"> 35</span>  <span class="s1">&#39;carpentry&#39;</span> <span class="p">:</span> <span class="p">(</span><span class="mi">15</span> <span class="p">,</span> <span class="s1">&#39;Joe&#39;</span><span class="p">,</span>  <span class="mi">2</span><span class="p">),</span>
+<span class="linenos"> 36</span>  <span class="s1">&#39;plumbing&#39;</span>  <span class="p">:</span> <span class="p">(</span><span class="mi">40</span> <span class="p">,</span> <span class="s1">&#39;Jim&#39;</span><span class="p">,</span>  <span class="mi">3</span><span class="p">),</span>
+<span class="linenos"> 37</span>  <span class="s1">&#39;ceiling&#39;</span>   <span class="p">:</span> <span class="p">(</span><span class="mi">15</span> <span class="p">,</span> <span class="s1">&#39;Jim&#39;</span><span class="p">,</span>  <span class="mi">4</span><span class="p">),</span>
+<span class="linenos"> 38</span>  <span class="s1">&#39;roofing&#39;</span>   <span class="p">:</span> <span class="p">(</span> <span class="mi">5</span> <span class="p">,</span> <span class="s1">&#39;Joe&#39;</span><span class="p">,</span>  <span class="mi">5</span><span class="p">),</span>
+<span class="linenos"> 39</span>  <span class="s1">&#39;painting&#39;</span>  <span class="p">:</span> <span class="p">(</span><span class="mi">10</span> <span class="p">,</span> <span class="s1">&#39;Jim&#39;</span><span class="p">,</span>  <span class="mi">6</span><span class="p">),</span>
+<span class="linenos"> 40</span>  <span class="s1">&#39;windows&#39;</span>   <span class="p">:</span> <span class="p">(</span> <span class="mi">5</span> <span class="p">,</span> <span class="s1">&#39;Jim&#39;</span><span class="p">,</span>  <span class="mi">7</span><span class="p">),</span>
+<span class="linenos"> 41</span>  <span class="s1">&#39;facade&#39;</span>    <span class="p">:</span> <span class="p">(</span><span class="mi">10</span> <span class="p">,</span> <span class="s1">&#39;Joe&#39;</span><span class="p">,</span>  <span class="mi">8</span><span class="p">),</span>
+<span class="linenos"> 42</span>  <span class="s1">&#39;garden&#39;</span>    <span class="p">:</span> <span class="p">(</span> <span class="mi">5</span> <span class="p">,</span> <span class="s1">&#39;Joe&#39;</span><span class="p">,</span>  <span class="mi">9</span><span class="p">),</span>
+<span class="linenos"> 43</span>  <span class="s1">&#39;moving&#39;</span>    <span class="p">:</span> <span class="p">(</span> <span class="mi">5</span> <span class="p">,</span> <span class="s1">&#39;Jim&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="linenos"> 44</span><span class="p">}</span>
+<span class="linenos"> 45</span>
+<span class="linenos"> 46</span><span class="c1"># Tasks precedence constraints (each tuple (X, Y) means X ends before start of Y)</span>
+<span class="linenos"> 47</span><span class="n">PRECEDENCES</span> <span class="o">=</span> <span class="p">[</span>
+<span class="linenos"> 48</span>  <span class="p">(</span><span class="s1">&#39;masonry&#39;</span><span class="p">,</span>   <span class="s1">&#39;carpentry&#39;</span><span class="p">),</span>
+<span class="linenos"> 49</span>  <span class="p">(</span><span class="s1">&#39;masonry&#39;</span><span class="p">,</span>   <span class="s1">&#39;plumbing&#39;</span><span class="p">),</span>
+<span class="linenos"> 50</span>  <span class="p">(</span><span class="s1">&#39;masonry&#39;</span><span class="p">,</span>   <span class="s1">&#39;ceiling&#39;</span><span class="p">),</span>
+<span class="linenos"> 51</span>  <span class="p">(</span><span class="s1">&#39;carpentry&#39;</span><span class="p">,</span> <span class="s1">&#39;roofing&#39;</span><span class="p">),</span>
+<span class="linenos"> 52</span>  <span class="p">(</span><span class="s1">&#39;ceiling&#39;</span><span class="p">,</span>   <span class="s1">&#39;painting&#39;</span><span class="p">),</span>
+<span class="linenos"> 53</span>  <span class="p">(</span><span class="s1">&#39;roofing&#39;</span><span class="p">,</span>   <span class="s1">&#39;windows&#39;</span><span class="p">),</span>
+<span class="linenos"> 54</span>  <span class="p">(</span><span class="s1">&#39;roofing&#39;</span><span class="p">,</span>   <span class="s1">&#39;facade&#39;</span><span class="p">),</span>
+<span class="linenos"> 55</span>  <span class="p">(</span><span class="s1">&#39;plumbing&#39;</span><span class="p">,</span>  <span class="s1">&#39;facade&#39;</span><span class="p">),</span>
+<span class="linenos"> 56</span>  <span class="p">(</span><span class="s1">&#39;roofing&#39;</span><span class="p">,</span>   <span class="s1">&#39;garden&#39;</span><span class="p">),</span>
+<span class="linenos"> 57</span>  <span class="p">(</span><span class="s1">&#39;plumbing&#39;</span><span class="p">,</span>  <span class="s1">&#39;garden&#39;</span><span class="p">),</span>
+<span class="linenos"> 58</span>  <span class="p">(</span><span class="s1">&#39;windows&#39;</span><span class="p">,</span>   <span class="s1">&#39;moving&#39;</span><span class="p">),</span>
+<span class="linenos"> 59</span>  <span class="p">(</span><span class="s1">&#39;facade&#39;</span><span class="p">,</span>    <span class="s1">&#39;moving&#39;</span><span class="p">),</span>
+<span class="linenos"> 60</span>  <span class="p">(</span><span class="s1">&#39;garden&#39;</span><span class="p">,</span>    <span class="s1">&#39;moving&#39;</span><span class="p">),</span>
+<span class="linenos"> 61</span>  <span class="p">(</span><span class="s1">&#39;painting&#39;</span><span class="p">,</span>  <span class="s1">&#39;moving&#39;</span><span class="p">),</span>
+<span class="linenos"> 62</span><span class="p">]</span>
+<span class="linenos"> 63</span>
+<span class="linenos"> 64</span><span class="c1"># Total number of houses to build</span>
+<span class="linenos"> 65</span><span class="n">NUMBER_OF_HOUSES</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="linenos"> 66</span>
+<span class="linenos"> 67</span><span class="c1"># Max number of calendar years</span>
+<span class="linenos"> 68</span><span class="n">MAX_YEARS</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="linenos"> 69</span>
+<span class="linenos"> 70</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos"> 71</span><span class="c1"># Prepare the data for modeling</span>
+<span class="linenos"> 72</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos"> 73</span>
+<span class="linenos"> 74</span><span class="c1"># Initialize availability calendar for workers</span>
+<span class="linenos"> 75</span>
+<span class="linenos"> 76</span><span class="n">calendars</span> <span class="o">=</span> <span class="p">{</span> <span class="n">w</span> <span class="p">:</span> <span class="n">CpoStepFunction</span><span class="p">()</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">WORKERS</span> <span class="p">}</span>
+<span class="linenos"> 77</span><span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">WORKERS</span><span class="p">:</span>
+<span class="linenos"> 78</span>    <span class="n">calendars</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">MAX_YEARS</span> <span class="o">*</span> <span class="mi">365</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="linenos"> 79</span>    <span class="c1"># Remove week ends</span>
+<span class="linenos"> 80</span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">MAX_YEARS</span> <span class="o">*</span> <span class="mi">52</span><span class="p">):</span>
+<span class="linenos"> 81</span>        <span class="n">calendars</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="mi">5</span> <span class="o">+</span> <span class="p">(</span><span class="mi">7</span> <span class="o">*</span> <span class="n">i</span><span class="p">),</span> <span class="mi">7</span> <span class="o">+</span> <span class="p">(</span><span class="mi">7</span> <span class="o">*</span> <span class="n">i</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+<span class="linenos"> 82</span>    <span class="c1"># Remove holidays</span>
+<span class="linenos"> 83</span>    <span class="k">for</span> <span class="n">s</span><span class="p">,</span><span class="n">e</span> <span class="ow">in</span> <span class="n">WORKERS</span><span class="p">[</span><span class="n">w</span><span class="p">]:</span>
+<span class="linenos"> 84</span>        <span class="n">calendars</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="linenos"> 85</span>
+<span class="linenos"> 86</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos"> 87</span><span class="c1"># Build the model</span>
+<span class="linenos"> 88</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos"> 89</span>
+<span class="linenos"> 90</span><span class="c1"># Create model</span>
+<span class="linenos"> 91</span><span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
+<span class="linenos"> 92</span>
+<span class="linenos"> 93</span><span class="c1"># Initialize model variable sets</span>
+<span class="linenos"> 94</span><span class="n">worker_tasks</span> <span class="o">=</span> <span class="p">{</span> <span class="n">w</span> <span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">WORKERS</span><span class="p">}</span>  <span class="c1"># Tasks assigned to workers (key is the worker)</span>
+<span class="linenos"> 95</span><span class="n">house_finish_times</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Array of house finishing times</span>
+<span class="linenos"> 96</span>
+<span class="linenos"> 97</span><span class="c1"># Utility function</span>
+<span class="linenos"> 98</span><span class="k">def</span> <span class="nf">make_house</span><span class="p">(</span><span class="n">loc</span><span class="p">):</span>
+<span class="linenos"> 99</span><span class="w">    </span><span class="sd">&#39;&#39;&#39; Create model elements corresponding to the building of one house</span>
+<span class="linenos">100</span><span class="sd">    loc: Identification (index) of the house to build</span>
+<span class="linenos">101</span><span class="sd">    &#39;&#39;&#39;</span>
+<span class="linenos">102</span>
+<span class="linenos">103</span>    <span class="c1"># Create interval variable for each task for this house</span>
+<span class="linenos">104</span>    <span class="n">tasks</span> <span class="o">=</span> <span class="p">{</span> <span class="n">t</span><span class="p">:</span> <span class="n">interval_var</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">intensity</span><span class="o">=</span><span class="n">calendars</span><span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">1</span><span class="p">]],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;H</span><span class="si">{}</span><span class="s1">-</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loc</span><span class="p">,</span><span class="n">t</span><span class="p">))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">TASKS</span> <span class="p">}</span>
+<span class="linenos">105</span>    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">TASKS</span><span class="p">:</span>
+<span class="linenos">106</span>        <span class="n">mdl</span><span class="o">.</span><span class="n">forbid_start</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">calendars</span><span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">1</span><span class="p">]])</span>
+<span class="linenos">107</span>        <span class="n">mdl</span><span class="o">.</span><span class="n">forbid_end</span>  <span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">calendars</span><span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">1</span><span class="p">]])</span>
+<span class="linenos">108</span>
+<span class="linenos">109</span>    <span class="c1"># Add precedence constraints</span>
+<span class="linenos">110</span>    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">end_before_start</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">p</span><span class="p">],</span> <span class="n">tasks</span><span class="p">[</span><span class="n">s</span><span class="p">])</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span><span class="n">s</span> <span class="ow">in</span> <span class="n">PRECEDENCES</span><span class="p">)</span>
+<span class="linenos">111</span>
+<span class="linenos">112</span>    <span class="c1"># Allocate tasks to workers</span>
+<span class="linenos">113</span>    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">TASKS</span><span class="p">:</span>
+<span class="linenos">114</span>        <span class="n">worker_tasks</span><span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
+<span class="linenos">115</span>
+<span class="linenos">116</span>    <span class="c1"># Update cost</span>
+<span class="linenos">117</span>    <span class="n">house_finish_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">end_of</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="s1">&#39;moving&#39;</span><span class="p">]))</span>
+<span class="linenos">118</span>
+<span class="linenos">119</span>
+<span class="linenos">120</span><span class="c1"># Make houses</span>
+<span class="linenos">121</span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NUMBER_OF_HOUSES</span><span class="p">):</span>
+<span class="linenos">122</span>    <span class="n">make_house</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="linenos">123</span>
+<span class="linenos">124</span><span class="c1"># Avoid each worker tasks overlapping</span>
+<span class="linenos">125</span><span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">no_overlap</span><span class="p">(</span><span class="n">worker_tasks</span><span class="p">[</span><span class="n">w</span><span class="p">])</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">WORKERS</span><span class="p">)</span>
+<span class="linenos">126</span>
+<span class="linenos">127</span><span class="c1"># Add minimization objective</span>
+<span class="linenos">128</span><span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">minimize</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">house_finish_times</span><span class="p">)))</span>
+<span class="linenos">129</span>
+<span class="linenos">130</span>
+<span class="linenos">131</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos">132</span><span class="c1"># Solve the model and display the result</span>
+<span class="linenos">133</span><span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="linenos">134</span>
+<span class="linenos">135</span><span class="k">def</span> <span class="nf">compact</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+<span class="linenos">136</span>    <span class="c1"># Example: H3-garden -&gt; G3</span>
+<span class="linenos">137</span>    <span class="c1">#           ^ ^</span>
+<span class="linenos">138</span>    <span class="n">loc</span><span class="p">,</span> <span class="n">task</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="linenos">139</span>    <span class="c1"># Returns color index and compacted name</span>
+<span class="linenos">140</span>    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">TASKS</span><span class="p">[</span><span class="n">task</span><span class="p">][</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">task</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="n">loc</span><span class="p">)</span>
+<span class="linenos">141</span>
+<span class="linenos">142</span><span class="c1"># Solve model</span>
+<span class="linenos">143</span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Solving model...&#39;</span><span class="p">)</span>
+<span class="linenos">144</span><span class="n">res</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">TimeLimit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="linenos">145</span><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Solution:&#39;</span><span class="p">)</span>
+<span class="linenos">146</span><span class="n">res</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+<span class="linenos">147</span>
+<span class="linenos">148</span><span class="c1"># Display result</span>
+<span class="linenos">149</span><span class="kn">import</span> <span class="nn">docplex.cp.utils_visu</span> <span class="k">as</span> <span class="nn">visu</span>
+<span class="linenos">150</span><span class="k">if</span> <span class="n">res</span> <span class="ow">and</span> <span class="n">visu</span><span class="o">.</span><span class="n">is_visu_enabled</span><span class="p">():</span>
+<span class="linenos">151</span>    <span class="n">visu</span><span class="o">.</span><span class="n">timeline</span><span class="p">(</span><span class="s1">&#39;Solution house building with calendars&#39;</span><span class="p">)</span>
+<span class="linenos">152</span>    <span class="n">visu</span><span class="o">.</span><span class="n">panel</span><span class="p">()</span>
+<span class="linenos">153</span>    <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">WORKERS</span><span class="p">:</span>
+<span class="linenos">154</span>        <span class="n">visu</span><span class="o">.</span><span class="n">pause</span><span class="p">(</span><span class="n">calendars</span><span class="p">[</span><span class="n">w</span><span class="p">])</span>
+<span class="linenos">155</span>        <span class="n">visu</span><span class="o">.</span><span class="n">sequence</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+<span class="linenos">156</span>        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">worker_tasks</span><span class="p">[</span><span class="n">w</span><span class="p">]:</span>
+<span class="linenos">157</span>            <span class="n">visu</span><span class="o">.</span><span class="n">interval</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="o">*</span><span class="n">compact</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">get_name</span><span class="p">()))</span>
+<span class="linenos">158</span>    <span class="n">visu</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.29 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">visu/house_building_calendar.py example</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2022, IBM.
+    </div>
+  </body>
+</html>
