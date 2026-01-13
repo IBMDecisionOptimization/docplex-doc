@@ -1,0 +1,757 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.mp.dvar &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.dvar</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">PY3</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="k">import</span> <span class="n">CplexScope</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.basic</span> <span class="k">import</span> <span class="n">IndexableObject</span><span class="p">,</span> <span class="n">ModelingObjectBase</span><span class="p">,</span> <span class="n">_BendersAnnotatedMixin</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.operand</span> <span class="k">import</span> <span class="n">LinearOperand</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.vartype</span> <span class="k">import</span> <span class="n">BinaryVarType</span><span class="p">,</span> <span class="n">IntegerVarType</span><span class="p">,</span> <span class="n">ContinuousVarType</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">is_number</span><span class="p">,</span> <span class="n">is_quad_expr</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.sttck</span> <span class="k">import</span> <span class="n">StaticTypeChecker</span>
+
+
+<div class="viewcode-block" id="Var"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var">[docs]</a><span class="k">class</span> <span class="nc">Var</span><span class="p">(</span><span class="n">IndexableObject</span><span class="p">,</span> <span class="n">LinearOperand</span><span class="p">,</span> <span class="n">_BendersAnnotatedMixin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Var()</span>
+
+<span class="sd">    This class models decision variables.</span>
+<span class="sd">    Decision variables are instantiated by :class:`docplex.mp.model.Model` methods such as :func:`docplex.mp.model.Model.var`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;_vartype&#39;</span><span class="p">,</span> <span class="s1">&#39;_lb&#39;</span><span class="p">,</span> <span class="s1">&#39;_ub&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">vartype</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+                 <span class="n">lb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">_safe_lb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_safe_ub</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">IndexableObject</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span> <span class="o">=</span> <span class="n">vartype</span>
+
+        <span class="k">if</span> <span class="n">_safe_lb</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span> <span class="o">=</span> <span class="n">lb</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span> <span class="o">=</span> <span class="n">vartype</span><span class="o">.</span><span class="n">_compute_lb</span><span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_safe_ub</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span> <span class="o">=</span> <span class="n">ub</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span> <span class="o">=</span> <span class="n">vartype</span><span class="o">.</span><span class="n">_compute_ub</span><span class="p">(</span><span class="n">ub</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_scope</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CplexScope</span><span class="o">.</span><span class="n">VAR_SCOPE</span>
+
+    <span class="c1"># noinspection PyUnusedLocal</span>
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_model</span><span class="p">,</span> <span class="n">var_mapping</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">var_mapping</span><span class="p">[</span><span class="bp">self</span><span class="p">]</span>
+
+    <span class="n">relaxed_copy</span> <span class="o">=</span> <span class="n">copy</span>
+
+    <span class="c1"># linear operand api</span>
+
+    <span class="k">def</span> <span class="nf">as_variable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">iter_terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="p">,</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">negate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lfactory</span><span class="o">.</span><span class="n">_new_monomial_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">iter_sorted_terms</span> <span class="o">=</span> <span class="n">iter_terms</span>
+
+    <span class="k">def</span> <span class="nf">number_of_terms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">unchecked_get_coef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">dvar</span> <span class="ow">is</span> <span class="bp">self</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">contains_var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dvar</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="ow">is</span> <span class="n">dvar</span>
+
+    <span class="k">def</span> <span class="nf">accepts_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">candidate_value</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">accept_domain_value</span><span class="p">(</span><span class="n">candidate_value</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lb</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ub</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="n">tolerance</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">check_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_lp_name</span><span class="p">(</span><span class="n">qualifier</span><span class="o">=</span><span class="s1">&#39;variable&#39;</span><span class="p">,</span> <span class="n">new_name</span><span class="o">=</span><span class="n">new_name</span><span class="p">,</span> <span class="n">accept_empty</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">accept_none</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_index</span>
+
+    <span class="k">def</span> <span class="nf">set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_name</span><span class="p">(</span><span class="n">new_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">set_var_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_name</span><span class="p">)</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">ModelingObjectBase</span><span class="o">.</span><span class="n">get_name</span><span class="p">,</span> <span class="n">set_name</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">lb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property is used to get or set the lower bound of the variable.</span>
+
+<span class="sd">        Possible values for the lower bound depend on the variable type. Binary variables</span>
+<span class="sd">        accept only 0 or 1 as bounds. An integer variable will convert the lower bound value to the</span>
+<span class="sd">        ceiling integer value of the argument.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span>
+
+    <span class="nd">@lb</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_lb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_lb</span><span class="p">(</span><span class="n">new_lb</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lb</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">lb</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">set_var_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lb</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span>
+
+    <span class="k">def</span> <span class="nf">_internal_set_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lb</span><span class="p">):</span>
+        <span class="c1"># Internal, used only by the model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lb</span> <span class="o">=</span> <span class="n">lb</span>
+
+    <span class="k">def</span> <span class="nf">_internal_set_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ub</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span> <span class="o">=</span> <span class="n">ub</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ub</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property is used to get or set the upper bound of the variable.</span>
+
+<span class="sd">        Possible values for the upper bound depend on the variable type. Binary variables</span>
+<span class="sd">        accept only 0 or 1 as bounds. An integer variable will convert the upper bound value to the</span>
+<span class="sd">        floor integer value of the argument.</span>
+
+<span class="sd">        To reset the upper bound to its default infinity value, use :func:`docplex.mp.model.Model.infinity`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span>
+
+    <span class="nd">@ub</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_ub</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_ub</span><span class="p">(</span><span class="n">new_ub</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ub</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ub</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">set_var_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ub</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ub</span>
+
+    <span class="k">def</span> <span class="nf">has_free_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lb</span> <span class="o">&lt;=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">infinity</span>
+
+    <span class="k">def</span> <span class="nf">has_free_ub</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ub</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">infinity</span>
+
+    <span class="k">def</span> <span class="nf">is_free</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_free_lb</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_free_ub</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_reset_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">vartype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span>
+        <span class="n">vtype_lb</span><span class="p">,</span> <span class="n">vtype_ub</span> <span class="o">=</span> <span class="n">vartype</span><span class="o">.</span><span class="n">default_lb</span><span class="p">,</span> <span class="n">vartype</span><span class="o">.</span><span class="n">default_ub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_lb</span><span class="p">(</span><span class="n">vtype_lb</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_ub</span><span class="p">(</span><span class="n">vtype_ub</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the variable type, an instance of :class:`VarType`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span>
+
+    <span class="k">def</span> <span class="nf">get_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span>
+
+    <span class="k">def</span> <span class="nf">set_vartype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_vartype</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_set_var_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_vartype</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_vartype_internal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_vartype</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span> <span class="o">=</span> <span class="n">new_vartype</span>
+
+    <span class="k">def</span> <span class="nf">has_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vartype</span><span class="p">):</span>
+        <span class="c1"># internal</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="p">)</span> <span class="o">==</span> <span class="n">vartype</span>
+
+<div class="viewcode-block" id="Var.is_binary"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.is_binary">[docs]</a>    <span class="k">def</span> <span class="nf">is_binary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if the variable is binary.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: True if the variable is of type Binary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_type</span><span class="p">(</span><span class="n">BinaryVarType</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Var.is_integer"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.is_integer">[docs]</a>    <span class="k">def</span> <span class="nf">is_integer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if the variable is integer.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: True if the variable is of type Integer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_type</span><span class="p">(</span><span class="n">IntegerVarType</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Var.is_continuous"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.is_continuous">[docs]</a>    <span class="k">def</span> <span class="nf">is_continuous</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Checks if the variable is continuous.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: True if the variable is of type Continuous.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_type</span><span class="p">(</span><span class="n">ContinuousVarType</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Var.is_discrete"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.is_discrete">[docs]</a>    <span class="k">def</span> <span class="nf">is_discrete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  Checks if the variable is discrete.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: True if the variable is of  type Binary or Integer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">()</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">float_precision</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">()</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">float_precision</span>
+
+    <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># for compatibility only: use solution_value instead</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* get_value() is deprecated, use property solution_value instead&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution_value</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the solution value of the variable.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            DOCplexException</span>
+<span class="sd">                if the model has not been solved succesfully.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_model_has_solution</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_solution_value</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">unchecked_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_solution_value</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_solution_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">sol</span> <span class="o">=</span> <span class="n">s</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_get_solution</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">sol</span><span class="o">.</span><span class="n">_get_var_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_container_index</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ctn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span>
+        <span class="k">return</span> <span class="n">ctn</span><span class="o">.</span><span class="n">index</span> <span class="k">if</span> <span class="n">ctn</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span>
+
+<div class="viewcode-block" id="Var.get_key"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.get_key">[docs]</a>    <span class="k">def</span> <span class="nf">get_key</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the key used to create the variable, or None.</span>
+
+<span class="sd">        When the variable is part of a list or dictionary of variables created from a sequence of keys,</span>
+<span class="sd">        returns the key associated with the variable.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            xs = m.continuous_var_dict(keys=[&#39;a&#39;, &#39;b&#39;, &#39;c&#39;])</span>
+<span class="sd">            xa = xs[&#39;a&#39;]</span>
+<span class="sd">            assert xa.get_key() == &#39;a&#39;</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            a Python object, possibly None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ctn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span>
+        <span class="k">return</span> <span class="n">ctn</span><span class="o">.</span><span class="n">get_var_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">if</span> <span class="n">ctn</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_zero_op</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">other</span><span class="o">.</span><span class="n">is_zero</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lfactory</span><span class="o">.</span><span class="n">_new_monomial_expr</span><span class="p">(</span><span class="n">dvar</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">coeff</span><span class="o">=</span><span class="n">e</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_zero_op</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lfactory</span><span class="o">.</span><span class="n">new_zero_expr</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">LinearOperand</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_qfactory</span><span class="o">.</span><span class="n">new_var_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_extract_calling_ct_xhs</span><span class="p">():</span>
+        <span class="n">_searched_patterns</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;lhs&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;left_expr&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;rhs&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;right_expr&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="kn">import</span> <span class="nn">inspect</span>
+        <span class="c1"># need to get 2 steps higher to find caller to add/sub</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">stack</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">code_context</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">code_context</span> <span class="k">if</span> <span class="n">PY3</span> <span class="k">else</span> <span class="n">frame</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">find_in_line</span><span class="p">(</span><span class="n">line_</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">xhs_s</span><span class="p">,</span> <span class="n">xhs_p</span> <span class="ow">in</span> <span class="n">_searched_patterns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">xhs_s</span> <span class="ow">in</span> <span class="n">line_</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">line_</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">xhs_s</span><span class="p">),</span> <span class="n">xhs_p</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">code_context</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">code_context</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                <span class="n">spos</span><span class="p">,</span> <span class="n">lr</span> <span class="o">=</span> <span class="n">find_in_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">spos</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="n">lr</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+                    <span class="c1"># strip whitespace before code...</span>
+                    <span class="n">ct_varname</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="n">spos</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+                    <span class="c1"># evaluate ct in caller locals dict</span>
+                    <span class="n">subframe</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">frame</span> <span class="k">if</span> <span class="n">PY3</span> <span class="k">else</span> <span class="n">frame</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">ct_object</span> <span class="o">=</span> <span class="n">subframe</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ct_varname</span><span class="p">)</span>
+                    <span class="c1"># returns a constraint (or None if that fails), plus 0-1 (0 for lhs, 1 for rhs)</span>
+                    <span class="k">return</span> <span class="n">ct_object</span><span class="p">,</span> <span class="n">lr</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_perform_arithmetic_to_self</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">self_arithmetic_method</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">self_arithmetic_method</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">ct</span><span class="p">,</span> <span class="n">xhs_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_calling_ct_xhs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">set_linear_constraint_expr_from_pos</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="n">xhs_pos</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">ct</span><span class="p">,</span> <span class="n">xhs_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_calling_ct_xhs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">set_linear_constraint_expr_from_pos</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="n">xhs_pos</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">subtract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">ct</span><span class="p">,</span> <span class="n">xhs_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_calling_ct_xhs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">set_linear_constraint_expr_from_pos</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="n">xhs_pos</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">Var</span><span class="p">):</span>
+            <span class="n">expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_linear_expr</span><span class="p">()</span>
+            <span class="n">expr</span><span class="o">.</span><span class="n">_add_term</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">expr</span>
+
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_linear_expr</span><span class="p">(</span><span class="n">constant</span><span class="o">=</span><span class="n">e</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_quad_expr</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_linear_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_linear_expr</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_make_linear_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">constant</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lfactory</span><span class="o">.</span><span class="n">linear_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">constant</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="n">safe</span><span class="p">,</span> <span class="n">transient</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">minus</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">minus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">LinearOperand</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">is_number</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="c1"># v -k -&gt; expression(v,-1) -k</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_linear_expr</span><span class="p">(</span><span class="n">constant</span><span class="o">=-</span><span class="n">e</span><span class="p">,</span> <span class="n">safe</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">is_quad_expr</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">e</span><span class="o">.</span><span class="n">rminus</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+
+        <span class="n">expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">_to_linear_operand</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">force_clone</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># makes a clone.</span>
+        <span class="k">return</span> <span class="n">expr</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">divide</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_linear_expr</span><span class="p">()</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># for py3</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__rtruediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="c1"># for py3</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Variable </span><span class="si">{0!s}</span><span class="s2"> cannot be used as denominator of </span><span class="si">{1!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="k">def</span> <span class="nf">__rdiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Variable </span><span class="si">{0!s}</span><span class="s2"> cannot be used as denominator of </span><span class="si">{1!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># the &quot;+e&quot; unary plus is syntactic sugar</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># the &quot;-e&quot; unary minus returns a linear expression</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">negate</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">power</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">if</span> <span class="mi">0</span> <span class="o">==</span> <span class="n">power</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">power</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">elif</span> <span class="mi">2</span> <span class="o">==</span> <span class="n">power</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">square</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">unsupported_power_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">power</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rshift__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Redefines the right-shift operator to create indicators.</span>
+
+<span class="sd">        This operator allows to create indicators with the `&gt;&gt;` operator.</span>
+<span class="sd">        It expects a linear constraint as second argument.</span>
+
+<span class="sd">        :param other: a linear constraint used to create the indicator</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            an instance of IndicatorConstraint, that is not added to the model.</span>
+<span class="sd">            Use `Model.add()` to add it to the model.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            The variable must be binary, otherwise an exception is raised.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">            &gt;&gt;&gt; m.add(b &gt;&gt; (x &gt;=3)</span>
+
+<span class="sd">            creates an indicator which links the satisfaction of the constraint (x &gt;= 3)</span>
+<span class="sd">            to the value of binary variable b.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">indicator_constraint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">square</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_qfactory</span><span class="o">.</span><span class="n">new_var_square</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__int__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Converts a decision variable to a integer number.</span>
+
+<span class="sd">        This is only possible for discrete variables,</span>
+<span class="sd">        and when the model has been solved successfully.</span>
+<span class="sd">        If the model has been solved, returns the variable&#39;s solution value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The variable&#39;s solution value.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            DOCplexException</span>
+<span class="sd">                if the model has not been solved successfully.</span>
+<span class="sd">            DOCplexException</span>
+<span class="sd">                if the variable is not discrete.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_continuous</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Cannot convert continuous variable value to int: </span><span class="si">{0!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__float__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Converts a decision variable to a floating-point number.</span>
+
+<span class="sd">        This is only possible when the model has been solved successfully,</span>
+<span class="sd">        otherwise an exception is raised.</span>
+<span class="sd">        If the model has been solved, it returns the variable&#39;s solution value.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: The variable&#39;s solution value.</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            DOCplexException</span>
+<span class="sd">                if the model has not been solved successfully.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution_value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Var.to_bool"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.to_bool">[docs]</a>    <span class="k">def</span> <span class="nf">to_bool</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Converts a variable value to True or False.</span>
+
+<span class="sd">        This is only possible for discrete variables and assumes there is a solution.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            DOCplexException</span>
+<span class="sd">                if the model has not been solved successfully.</span>
+<span class="sd">            DOCplexException</span>
+<span class="sd">                if the variable is not discrete.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Boolean: True if the variable value is nonzero, else False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_discrete</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;boolean conversion only for discrete variables, type is </span><span class="si">{0!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vartype</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution_value</span>  <span class="c1"># this property checks for a solution.</span>
+        <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">precision</span></div>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            string: A string representation of the variable.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_name</span>
+
+    <span class="k">def</span> <span class="nf">print_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lp_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">lp_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="ow">or</span> <span class="s2">&quot;x</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">index1</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">lpt_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># &#39;c1&#39;, &#39;b2&#39;, &#39;i3&#39; ... first letter of cplex code + index</span>
+        <span class="n">cpx_typecode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_typecode</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">%s%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cpx_typecode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index1</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_typecode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span>  <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="o">.</span><span class="n">cplex_typecode</span>
+
+    <span class="k">def</span> <span class="nf">_must_print_lb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_typecode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="s1">&#39;SN&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">lb</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="o">.</span><span class="n">default_lb</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">self_vartype</span><span class="p">,</span> <span class="n">self_lb</span><span class="p">,</span> <span class="n">self_ub</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vartype</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lb</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ub</span>
+        <span class="c1"># print lb for semi-xx</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_must_print_lb</span><span class="p">():</span>
+            <span class="n">repr_lb</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">repr_lb</span> <span class="o">=</span> <span class="s1">&#39;,lb=</span><span class="si">{0:g}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">self_lb</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">self_vartype</span><span class="o">.</span><span class="n">default_ub</span> <span class="o">==</span> <span class="n">self_ub</span><span class="p">:</span>
+            <span class="n">repr_ub</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">repr_ub</span> <span class="o">=</span> <span class="s1">&#39;,ub=</span><span class="si">{0:g}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">self_ub</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_name</span><span class="p">():</span>
+            <span class="n">repr_name</span> <span class="o">=</span> <span class="s2">&quot;,name=&#39;</span><span class="si">{0}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">repr_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">cpxc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_typecode</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.Var(type=</span><span class="si">{0}{1}{2}{3}</span><span class="s2">)&quot;</span><span class="o">.</span> \
+            <span class="nb">format</span><span class="p">(</span><span class="n">cpxc</span><span class="p">,</span> <span class="n">repr_name</span><span class="p">,</span> <span class="n">repr_lb</span><span class="p">,</span> <span class="n">repr_ub</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">reduced_cost</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the reduced cost of the variable.</span>
+
+<span class="sd">       This method will raise an exception if the model has not been solved as a LP.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            For a large number of variables (&gt; 100), using the `Model.reduced_costs()` method can be much faster.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The reduced cost of the variable (a float value).</span>
+
+<span class="sd">        See Also:</span>
+
+<span class="sd">            :func:`docplex.mp.model.Model.reduced_costs`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_reduced_cost1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">basis_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the basis status of the variable, if any.</span>
+<span class="sd">        The variable must be continuous, otherwise an exception is raised.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An enumerated value from the enumerated type `docplex.constants.BasisStatus`.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            for the model to hold basis information, the model must have been solved as a LP problem.</span>
+<span class="sd">            In some cases, a model which failed to solve may still have a basis available. Use</span>
+<span class="sd">            `Model.has_basis()` to check whether the model has basis information or not.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            :func:`docplex.mp.model.Model.has_basis`</span>
+<span class="sd">            :class:`docplex.mp.constants.BasisStatus`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_continuous</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Basis status is for continuous variables, </span><span class="si">{0!s}</span><span class="s2"> has type </span><span class="si">{1!s}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">short_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_var_basis_status1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">benders_annotation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This property is used to get or set the Benders annotation of a variable.</span>
+<span class="sd">        The value of the annotation must be a positive integer</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_benders_annotation</span><span class="p">()</span>
+
+    <span class="nd">@benders_annotation</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">benders_annotation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_anno</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_benders_annotation</span><span class="p">(</span><span class="n">new_anno</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Var.iter_constraints"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.iter_constraints">[docs]</a>    <span class="k">def</span> <span class="nf">iter_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an iterator traversing all constraints in which the variable is used.</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            An iterator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">ct</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">iter_constraints</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">ctv</span> <span class="ow">in</span> <span class="n">ct</span><span class="o">.</span><span class="n">iter_variables</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">ctv</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">ct</span>
+                    <span class="k">break</span></div>
+
+<div class="viewcode-block" id="Var.equals"><a class="viewcode-back" href="../../../docplex.mp.dvar.html#docplex.mp.dvar.Var.equals">[docs]</a>    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method is used to test equality to an expression.</span>
+<span class="sd">        Because of the overloading of operator `==` through the redefinition of</span>
+<span class="sd">        the `__eq__` method, you cannot use `==` to test for equality.</span>
+<span class="sd">        In order to test that two decision variables ar ethe same, use th` Python `is` operator;</span>
+<span class="sd">        use the `equals` method to test whether a given expression is equivalent to a variable:</span>
+<span class="sd">        for example, calling `equals` with a linear expression which consists of this variable only,</span>
+<span class="sd">        with a coefficient of 1, returns True.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: an expression or a variable.</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            A boolean value, True if the passed variable is this very variable, or</span>
+<span class="sd">            if the passed expression is equivalent to the variable, else False.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># noinspection PyPep8</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="ow">is</span> <span class="n">other</span> <span class="ow">or</span> \
+               <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">LinearOperand</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="n">other</span><span class="o">.</span><span class="n">get_constant</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span>
+                <span class="n">other</span><span class="o">.</span><span class="n">number_of_terms</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span>
+                <span class="n">other</span><span class="o">.</span><span class="n">unchecked_get_coef</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">as_logical_operand</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_binary</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_check_binary_variable_for_logical_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_binary</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fatal</span><span class="p">(</span><span class="s2">&quot;Logical </span><span class="si">{0}</span><span class="s2"> is available only for binary variables, </span><span class="si">{1}</span><span class="s2"> has type </span><span class="si">{2}</span><span class="s2">&quot;</span><span class="p">,</span>
+                       <span class="n">op_name</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vartype</span><span class="o">.</span><span class="n">short_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">logical_and</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_binary_variable_for_logical_op</span><span class="p">(</span><span class="n">op_name</span><span class="o">=</span><span class="s2">&quot;and&quot;</span><span class="p">)</span>
+        <span class="n">StaticTypeChecker</span><span class="o">.</span><span class="n">typecheck_logical_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">caller</span><span class="o">=</span><span class="s2">&quot;Var.logical_and&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">new_logical_and_expr</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">logical_or</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_binary_variable_for_logical_op</span><span class="p">(</span><span class="n">op_name</span><span class="o">=</span><span class="s2">&quot;or&quot;</span><span class="p">)</span>
+        <span class="n">StaticTypeChecker</span><span class="o">.</span><span class="n">typecheck_logical_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">caller</span><span class="o">=</span><span class="s2">&quot;Var.logical_or&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">new_logical_or_expr</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">logical_not</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_binary_variable_for_logical_op</span><span class="p">(</span><span class="n">op_name</span><span class="o">=</span><span class="s2">&quot;not&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_linear_factory</span><span class="p">()</span><span class="o">.</span><span class="n">new_logical_not_expr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__and__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">other</span><span class="p">)</span></div>
+
+    <span class="c1"># no unary not in magic methods...</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,499 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.mp.sdetails &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.sdetails</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.compat23</span> <span class="k">import</span> <span class="n">StringIO</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">is_almost_equal</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.constants</span> <span class="k">import</span> <span class="n">int_probtype_to_string</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="k">import</span> <span class="n">isnan</span>
+
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">PY2</span> <span class="k">as</span> <span class="n">SIX_PY2</span>
+
+
+<div class="viewcode-block" id="SolveDetails"><a class="viewcode-back" href="../../../docplex.mp.sdetails.html#docplex.mp.sdetails.SolveDetails">[docs]</a><span class="k">class</span> <span class="nc">SolveDetails</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The :class:`SolveDetails` class contains the details of a solve.</span>
+
+<span class="sd">    This class should never be instantiated. You get an instance of this class from</span>
+<span class="sd">    the model by calling the property :data:`docplex.mp.model.Model.solve_details`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_unknown_label</span> <span class="o">=</span> <span class="s2">&quot;*unknown*&quot;</span>
+
+    <span class="n">NOT_A_NUM</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+
+    <span class="n">_NO_GAP</span> <span class="o">=</span> <span class="n">NOT_A_NUM</span>  <span class="c1"># value used when no gap is available</span>
+    <span class="n">_NO_BEST_BOUND</span> <span class="o">=</span> <span class="n">NOT_A_NUM</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">status_code</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">status_string</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">problem_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">ncolumns</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nonzeros</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">miprelgap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">best_bound</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">n_iterations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">n_nodes_processed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status_code</span> <span class="o">=</span> <span class="n">status_code</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span> <span class="o">=</span> <span class="n">status_string</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_label</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_problem_type</span> <span class="o">=</span> <span class="n">problem_type</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unknown_label</span>  <span class="c1"># string</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ncolumns</span> <span class="o">=</span> <span class="n">ncolumns</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_linear_nonzeros</span> <span class="o">=</span> <span class="n">nonzeros</span>
+        <span class="c1"># --</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_NO_GAP</span> <span class="k">if</span> <span class="n">miprelgap</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">miprelgap</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_NO_BEST_BOUND</span> <span class="k">if</span> <span class="n">best_bound</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">best_bound</span>
+        <span class="c1"># -- progress</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_iterations</span> <span class="o">=</span> <span class="n">n_iterations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_nodes_processed</span> <span class="o">=</span> <span class="n">n_nodes_processed</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quality_metrics</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">relative</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">absolute</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">compare_times</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">SolveDetails</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">compare_times</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_almost_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">time</span><span class="p">,</span> <span class="n">relative</span><span class="p">,</span> <span class="n">absolute</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">status_code</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem_type</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">problem_type</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">nb_linear_nonzeros</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">nb_linear_nonzeros</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">is_almost_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mip_relative_gap</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">mip_relative_gap</span><span class="p">,</span> <span class="n">relative</span><span class="p">,</span> <span class="n">absolute</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">as_worker_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="c1"># Converts the solve details to a dictionary for python worker...</span>
+        <span class="c1"># using &quot;legacy&#39; keys from drop-solve</span>
+        <span class="n">worker_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;MODEL_DETAIL_TYPE&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_type</span><span class="p">,</span>
+                       <span class="s2">&quot;MODEL_DETAIL_NONZEROS&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_nonzeros</span>
+                       <span class="p">}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span><span class="p">):</span>
+            <span class="n">worker_dict</span><span class="p">[</span><span class="s2">&quot;PROGRESS_GAP&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isnan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span><span class="p">):</span>
+            <span class="n">worker_dict</span><span class="p">[</span><span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span>
+        <span class="k">return</span> <span class="n">worker_dict</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">to_plain_str</span><span class="p">(</span><span class="n">arg_s</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">SIX_PY2</span><span class="p">:</span>  <span class="c1"># we are in py2: docloud returns unicode.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">arg_s</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>  <span class="c1"># if unicode strings , come from cplex worker</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">arg_s</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">arg_s</span>  <span class="c1"># in py3 do nothing.</span>
+
+    <span class="c1"># ---</span>
+    <span class="c1"># list of fields to be retrieved from the details</span>
+    <span class="c1"># as tuples: (&lt;detail_attribute_name&gt;, &lt;json_attribute_name&gt;, &lt;type_conversion_fn&gt;, &lt;default_value&gt;)</span>
+    <span class="c1"># example:</span>
+    <span class="c1"># _time denotes solve time, a float value, default is 0, to be found in json[&quot;cplex.time&quot;]</span>
+    <span class="c1"># ---</span>
+    <span class="n">_json_fields</span> <span class="o">=</span> <span class="p">((</span><span class="s2">&quot;_time&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.time&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_solve_status_code&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.status&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_solve_status&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.statusstring&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">SolveDetails</span><span class="o">.</span><span class="n">to_plain_str</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_problem_type&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.problemtype&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">int_probtype_to_string</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_ncolumns&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.columns&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_linear_nonzeros&quot;</span><span class="p">,</span> <span class="s2">&quot;MODEL_DETAIL_NON_ZEROS&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_miprelgap&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.miprelgap&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">_NO_GAP</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;_best_bound&#39;</span><span class="p">,</span> <span class="s1">&#39;PROGRESS_BEST_OBJECTIVE&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">_NO_BEST_BOUND</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;_md5&quot;</span><span class="p">,</span> <span class="s2">&quot;cplex.model.md5&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;_n_iterations&#39;</span><span class="p">,</span> <span class="s1">&#39;cplex.itcount&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s1">&#39;_n_nodes_processed&#39;</span><span class="p">,</span> <span class="s1">&#39;cplex.nodes.processed&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="n">json_details</span><span class="p">,</span> <span class="n">all_json_fields</span><span class="o">=</span><span class="n">_json_fields</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">json_details</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">SolveDetails</span><span class="o">.</span><span class="n">make_dummy</span><span class="p">()</span>
+
+        <span class="c1"># for k,v in json_details.iteritems():</span>
+        <span class="c1"># print(&quot;{0}: {1!s}&quot;.format(k, v))</span>
+        <span class="c1"># print(&quot;# -------------------------&quot;)</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="n">SolveDetails</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_conv_fn</span><span class="p">,</span> <span class="n">field_default</span> <span class="ow">in</span> <span class="n">all_json_fields</span><span class="p">:</span>
+            <span class="n">field_val</span> <span class="o">=</span> <span class="n">json_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field_name</span><span class="p">,</span> <span class="n">field_default</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">field_conv_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">field_val</span> <span class="o">=</span> <span class="n">field_conv_fn</span><span class="p">(</span><span class="n">field_val</span><span class="p">)</span>  <span class="c1"># conversion</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">details</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">field_val</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">details</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_dummy</span><span class="p">():</span>
+        <span class="n">dummy_details</span> <span class="o">=</span> <span class="n">SolveDetails</span><span class="p">(</span><span class="n">status_string</span><span class="o">=</span><span class="s2">&quot;dummy&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dummy_details</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_fake_details</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">feasible</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">feasible</span><span class="p">:</span>
+            <span class="n">status_code</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;OPTIMAL&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">status_code</span> <span class="o">=</span> <span class="mi">3</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;infeasible&quot;</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="n">SolveDetails</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+                               <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status_string</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+                               <span class="n">problem_type</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">details</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the solve time in seconds.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">status_code</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This property returns the CPLEX status code as a number.</span>
+<span class="sd">        Possible values for the status code are described in the CPLEX documentation</span>
+<span class="sd">        at:</span>
+<span class="sd">        https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/refcallablelibrary/macros/Solution_status_codes.html</span>
+
+<span class="sd">        :return: an integer number (a CPLEX status code)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status_code</span>
+
+    <span class="c1"># status string</span>
+    <span class="c1"># CPX_STAT_ABORT_DETTIME_LIM =  25</span>
+    <span class="c1"># CPX_STAT_ABORT_DUAL_OBJ_LIM =  22</span>
+    <span class="c1"># CPX_STAT_ABORT_IT_LIM =  10</span>
+    <span class="c1"># CPX_STAT_ABORT_OBJ_LIM =  12</span>
+    <span class="c1"># CPX_STAT_ABORT_PRIM_OBJ_LIM =  21</span>
+    <span class="c1"># CPX_STAT_ABORT_TIME_LIM =  11</span>
+    <span class="c1"># CPX_STAT_ABORT_USER =  13</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_CONTRADICTION =  32</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_DETTIME_LIM =  39</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_IT_LIM =  34</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_MEM_LIM =  37</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_NODE_LIM =  35</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_OBJ_LIM =  36</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_TIME_LIM =  33</span>
+    <span class="c1"># CPX_STAT_CONFLICT_ABORT_USER =  38</span>
+    <span class="c1"># CPX_STAT_CONFLICT_FEASIBLE =  30</span>
+    <span class="c1"># CPX_STAT_CONFLICT_MINIMAL =  31</span>
+    <span class="c1"># CPX_STAT_FEASIBLE =  23</span>
+    <span class="c1"># CPX_STAT_FEASIBLE_RELAXED_INF =  16</span>
+    <span class="c1"># CPX_STAT_FEASIBLE_RELAXED_QUAD =  18</span>
+    <span class="c1"># CPX_STAT_FEASIBLE_RELAXED_SUM =  14</span>
+    <span class="c1"># CPX_STAT_FIRSTORDER =  24</span>
+    <span class="c1"># CPX_STAT_INFEASIBLE =  3</span>
+    <span class="c1"># CPX_STAT_INForUNBD =  4</span>
+    <span class="c1"># CPX_STAT_NUM_BEST =  6</span>
+    <span class="c1"># CPX_STAT_OPTIMAL =  1</span>
+    <span class="c1"># CPX_STAT_OPTIMAL_FACE_UNBOUNDED =  20</span>
+    <span class="c1"># CPX_STAT_OPTIMAL_INFEAS =  5</span>
+    <span class="c1"># CPX_STAT_OPTIMAL_RELAXED_INF =  17</span>
+    <span class="c1"># CPX_STAT_OPTIMAL_RELAXED_QUAD =  19</span>
+    <span class="c1"># CPX_STAT_OPTIMAL_RELAXED_SUM =  15</span>
+    <span class="c1"># CPX_STAT_UNBOUNDED =  2</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the solve status as a string.</span>
+
+<span class="sd">        This string is normally the value returned by the CPLEX callable library method</span>
+<span class="sd">        CPXXgetstatstring,</span>
+<span class="sd">        see https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/refcallablelibrary/cpxapi/getstatstring.html</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            * Returns &quot;optimal&quot; when the solution has been proven optimal.</span>
+<span class="sd">            * Returns &quot;feasible&quot; for a feasible, but not optimal, solution.</span>
+<span class="sd">            * Returns &quot;MIP_time_limit_feasible&quot; for a MIP solution obtained before a time limit.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            In certain cases, status may return a string that is not directly passed from CPLEX</span>
+
+<span class="sd">                * If an exception occurs during the CPLEX solve phase, status contains the text of the exception.</span>
+<span class="sd">                * If solve fails because of a promotional version limitation, the following message is returned</span>
+<span class="sd">                    &quot;Promotional version. Problem size limits exceeded., CPLEX code=1016.&quot;</span>
+<span class="sd">                    The corresponding status  code is 1016.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">problem_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  This property returns the problem type as a string.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_problem_type</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;  This property returns the number of columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncolumns</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nb_linear_nonzeros</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of linear non-zeros in the matrix solved.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_linear_nonzeros</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mip_relative_gap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the MIP relative gap.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            * This property returns NaN when the problem is not a MIP.</span>
+<span class="sd">            * The gap is returned as a floating-point value, not as a percentage.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span>
+
+    <span class="n">gap</span> <span class="o">=</span> <span class="n">mip_relative_gap</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">best_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the MIP best bound at the end of the solve.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            * This property returns NaN when the problem is not a MIP.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_bound</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nb_iterations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of iterations at the end of the solve.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            - The nature of the iterations depend on the algorithm usd to solve the model.</span>
+<span class="sd">            - For multi-objective models, this property returns a tuple of numbers,</span>
+<span class="sd">                one for each objective solved.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_iterations</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nb_nodes_processed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property returns the number of nodes processed at the end of solve.</span>
+
+<span class="sd">        Note: for multi-objective problems, this property returns a tuple of numbers,</span>
+<span class="sd">            one for each objective solved.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_nodes_processed</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;docplex.mp.SolveDetails(time=</span><span class="si">{0:g}</span><span class="s2">,status=</span><span class="si">{1!r}</span><span class="s2">)&quot;</span> \
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;status  = </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;time    = </span><span class="si">{0:g}</span><span class="s2"> s.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;problem = </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_problem_type</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;columns = </span><span class="si">{0:d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ncolumns</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;iterations=</span><span class="si">{0:d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_iterations</span><span class="p">))</span>
+        <span class="c1"># print(&quot;nonzeros= {0}&quot;.format(self._linear_nonzeros))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;gap     = </span><span class="si">{0:g}</span><span class="s2">%&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">oss</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;status  = </span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_solve_status</span><span class="p">))</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;time    = </span><span class="si">{0:g}</span><span class="s2"> s.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_time</span><span class="p">))</span>
+        <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;problem = </span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_problem_type</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">oss</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;gap     = </span><span class="si">{0:g}</span><span class="s2">%</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miprelgap</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">oss</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+
+    <span class="n">_limit_statuses</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="mi">104</span><span class="p">,</span>  <span class="c1"># solution limit</span>
+                                 <span class="mi">107</span><span class="p">,</span> <span class="mi">108</span>  <span class="c1"># time limit</span>
+                                 <span class="p">})</span>
+
+<div class="viewcode-block" id="SolveDetails.has_hit_limit"><a class="viewcode-back" href="../../../docplex.mp.sdetails.html#docplex.mp.sdetails.SolveDetails.has_hit_limit">[docs]</a>    <span class="k">def</span> <span class="nf">has_hit_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the solve details indicate that the solve has hit a limit.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">          Boolean: True if the solve details indicate that the solve has hit a limit.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve_status_code</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit_statuses</span></div>
+
+    <span class="k">def</span> <span class="nf">notify_hit_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_hit_limit</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;solve: </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">quality_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_metrics</span></div>
+
+<span class="c1"># cplex.miprelgap: 0</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_QCSLACK: -1</span>
+<span class="c1"># MODEL_DETAIL_CONSTRAINTS: 78</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_SCALED_PRIMAL_RESIDUAL: 66</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_QCSLACK: 0</span>
+<span class="c1"># cplex.semiintegers: 0</span>
+<span class="c1"># cplex.solution.type: 3</span>
+<span class="c1"># cplex.statusstring: integer optimal solution</span>
+<span class="c1"># cplex.status: 101</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_PRIMAL_RESIDUAL: 2.10942374678779742680490016937255859375E-15</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_INDSLACK_INFEAS: -1</span>
+<span class="c1"># cplex.numquad: 0</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_QCSLACK_INFEAS: 0</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_SLACK: 3</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_SCALED_X: 5.99999999999999911182158029987476766109466552734375</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_QCPRIMAL_RESIDUAL: -1</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_SCALED_SLACK: 10.608333333333337833437326480634510517120361328125</span>
+<span class="c1"># MODEL_DETAIL_CONTINUOUS_VARS: 26</span>
+<span class="c1"># cplex.nodes.processed: 0</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_SCALED_PRIMAL_INFEAS: 1.1102230246251565404236316680908203125E-15</span>
+<span class="c1"># cplex.model.md5: B019A9CEBA436F0A65EAD04B9378517E</span>
+<span class="c1"># MODEL_DETAIL_TYPE: MILP</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_PRIMAL_RESIDUAL: 4.44089209850062616169452667236328125E-16</span>
+<span class="c1"># PROGRESS_CURRENT_OBJECTIVE: 144.266750000000001818989403545856475830078125</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_X: 5.99999999999999911182158029987476766109466552734375</span>
+<span class="c1"># cplex.infeasible: false</span>
+<span class="c1"># MODEL_DETAIL_NON_ZEROS: 189</span>
+<span class="c1"># MODEL_DETAIL_BOOLEAN_VARS: 40</span>
+<span class="c1"># MODEL_DETAIL_LINEAR_CONSTRAINTS: 78</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_SCALED_PRIMAL_RESIDUAL: 2.10942374678779742680490016937255859375E-15</span>
+<span class="c1"># cplex.qpnonzeros: 0</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_PRIMAL_INFEAS: -62</span>
+<span class="c1"># MODEL_DETAIL_INTEGER_VARS: 0</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_INDSLACK_INFEAS: 0</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_PRIMAL_INFEAS: 4.55191440096314181573688983917236328125E-15</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_SCALED_PRIMAL_INFEAS: 4.55191440096314181573688983917236328125E-15</span>
+<span class="c1"># cplex.solution.dfeas: true</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_SCALED_PRIMAL_INFEAS: -62</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_QCSLACK: 0</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_X: 85.18333333333333712289459072053432464599609375</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_QCPRIMAL_RESIDUAL: 0</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_SLACK: 1.875</span>
+<span class="c1"># cplex.indicatorconstraints: 0</span>
+<span class="c1"># cplex.nodes.left: 0</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_QCPRIMAL_RESIDUAL: 0</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_SCALED_PRIMAL_RESIDUAL: 4.44089209850062616169452667236328125E-16</span>
+<span class="c1"># PROGRESS_GAP: 4.930898076512417</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_QCSLACK_INFEAS: 0</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_QCSLACK_INFEAS: -1</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_INDSLACK_INFEAS: 0</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_PRIMAL_INFEAS: 1.1102230246251565404236316680908203125E-15</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_SCALED_X: 85.18333333333333712289459072053432464599609375</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_X: 1</span>
+<span class="c1"># cplex.objective.sense: -1</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_PRIMAL_RESIDUAL: 66</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_INT_INFEAS: 7.7715611723760957829654216766357421875E-16</span>
+<span class="c1"># cplex.solution.method: 12</span>
+<span class="c1"># cplex.parameters.md5: B08B4BE748EC31D8D31294F0EBE7F26D</span>
+<span class="c1"># cplex.time: 0.03053903579711914</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_SCALED_X: 1</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_INT_INFEAS: 1.5543122344752191565930843353271484375E-15</span>
+<span class="c1"># cplex.columns: 66</span>
+<span class="c1"># cplex.sosconstraints: 0</span>
+<span class="c1"># cplex.mipitcount: 5</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_INT_INFEAS: 14</span>
+<span class="c1"># cplex.problemtype: 1</span>
+<span class="c1"># cplex.quality.double.CPX_MAX_SCALED_SLACK: 1.875</span>
+<span class="c1"># cplex.solution.pfeas: true</span>
+<span class="c1"># cplex.semicontinuous: 0</span>
+<span class="c1"># cplex.quality.double.CPX_SUM_SLACK: 10.608333333333337833437326480634510517120361328125</span>
+<span class="c1"># MODEL_DETAIL_QUADRATIC_CONSTRAINTS: 0</span>
+<span class="c1"># cplex.mipabsgap: 0</span>
+<span class="c1"># cplex.quality.int.CPX_MAX_SCALED_SLACK: 3</span>
+<span class="c1"># cplex.dettime: 0.2523078918457031</span>
+<span class="c1"># PROGRESS_BEST_OBJECTIVE: 144.266750000000001818989403545856475830078125</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>
