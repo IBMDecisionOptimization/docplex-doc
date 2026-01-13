@@ -1,0 +1,976 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="iso-8859-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>How to make targeted offers to customers? &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=c92c1228" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=49c2ab22"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Optimizing mining operations" href="mining_pandas.html" />
+    <link rel="prev" title="Finding optimal locations of new stores" href="chicago_coffee_shops.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="mining_pandas.html" title="Optimizing mining operations"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="chicago_coffee_shops.html" title="Finding optimal locations of new stores"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="samples.html" accesskey="U">Examples of mathematical programming</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">How to make targeted offers to customers?</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="how-to-make-targeted-offers-to-customers">
+<h1>How to make targeted offers to customers?<a class="headerlink" href="#how-to-make-targeted-offers-to-customers" title="Permalink to this heading">&para;</a></h1>
+<p>This tutorial includes everything you need to set up IBM Decision
+Optimization CPLEX Modeling for Python (DOcplex), build a Mathematical
+Programming model, and get its solution by solving the model with IBM
+ILOG CPLEX Optimizer.</p>
+<p>When you finish this tutorial, you&#8217;ll have a foundational knowledge of
+<em>Prescriptive Analytics</em>.</p>
+<blockquote>
+<div><p>This notebook is part of <a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/">Prescriptive Analytics for
+Python</a></p>
+<p>It requires either an <a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/getting_started.html">installation of CPLEX
+Optimizers</a>
+or it can be run on <a class="reference external" href="https://www.ibm.com/cloud/watson-studio/">IBM Watson Studio
+Cloud</a> (Sign up for a
+<a class="reference external" href="https://dataplatform.cloud.ibm.com/registration/stepone?context=wdp&amp;apps=all%3E">free IBM Cloud
+account</a>
+and you can start using Watson Studio Cloud right away).</p>
+</div></blockquote>
+<p>Table of contents:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#describe-the-business-problem">Describe the business problem</a></p></li>
+<li><p><a class="reference internal" href="#how-decision-optimization-can-help">How decision optimization can help</a></p></li>
+<li><p><a class="reference internal" href="#prepare-the-data">Prepare the data</a></p></li>
+<li><p><a class="reference internal" href="#use-ibm-decision-optimization-cplex-modeling-for-python">Use IBM Decision Optimization CPLEX Modeling for Python</a></p>
+<ul>
+<li><p><a class="reference internal" href="#step-1-import-the-library">Step 1: Import the library</a></p></li>
+<li><p><a class="reference internal" href="#step-2-set-up-the-prescriptive-model">Step 2: Set up the prescriptive model</a></p>
+<ul>
+<li><p><a class="reference internal" href="#define-the-decision-variables">Define the decision variables</a></p></li>
+<li><p><a class="reference internal" href="#set-up-the-constraints">Set up the constraints</a></p></li>
+<li><p><a class="reference internal" href="#express-the-objective">Express the objective</a></p></li>
+<li><p><a class="reference internal" href="#solve-the-model">Solve the model</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#step-3-analyze-the-solution">Step 3: Analyze the solution</a></p></li>
+</ul>
+</li>
+</ul>
+<section id="describe-the-business-problem">
+<h2>Describe the business problem<a class="headerlink" href="#describe-the-business-problem" title="Permalink to this heading">&para;</a></h2>
+<ul class="simple">
+<li><p>The Self-Learning Response Model (SLRM) node enables you to build a
+model that you can continually update. Such updates are useful in
+building a model that assists with predicting which offers are most
+appropriate for customers and the probability of the offers being
+accepted. These sorts of models are most beneficial in customer
+relationship management, such as marketing applications or call
+centers.</p></li>
+<li><p>This example is based on a fictional banking company.</p></li>
+<li><p>The marketing department wants to achieve more profitable results in
+future campaigns by matching the right offer of financial services to
+each customer.</p></li>
+<li><p>Specifically, the datascience department identified the
+characteristics of customers who are most likely to respond favorably
+based on previous offers and responses and to promote the best
+current offer based on the results and now need to compute the best
+offerig plan.</p></li>
+</ul>
+<p>A set of business constraints have to be respected:</p>
+<ul class="simple">
+<li><p>We have a limited budget to run a marketing campaign based on
+&#8220;gifts&#8221;, &#8220;newsletter&#8221;, &#8220;seminar&#8221;.</p></li>
+<li><p>We want to determine which is the best way to contact the customers.</p></li>
+<li><p>We need to identify which customers to contact.</p></li>
+</ul>
+</section>
+<section id="how-decision-optimization-can-help">
+<h2>How decision optimization can help<a class="headerlink" href="#how-decision-optimization-can-help" title="Permalink to this heading">&para;</a></h2>
+<ul>
+<li><p>Prescriptive analytics technology recommends actions based on desired
+outcomes, taking into account specific scenarios, resources, and
+knowledge of past and current events. This insight can help your
+organization make better decisions and have greater control of
+business outcomes.</p></li>
+<li><p>Prescriptive analytics is the next step on the path to insight-based
+actions. It creates value through synergy with predictive analytics,
+which analyzes data to predict future outcomes.</p></li>
+<li><div class="line-block">
+<div class="line">Prescriptive analytics takes that insight to the next level by
+suggesting the optimal way to handle that future situation.
+Organizations that can act fast in dynamic conditions and make
+superior decisions in uncertain environments gain a strong
+competitive advantage.</div>
+<div class="line"><br /></div>
+</div>
+</li>
+<li><p>For example:</p>
+<ul class="simple">
+<li><p>Automate complex decisions and trade-offs to better manage limited
+resources.</p></li>
+<li><p>Take advantage of a future opportunity or mitigate a future risk.</p></li>
+<li><p>Proactively update recommendations based on changing events.</p></li>
+<li><p>Meet operational goals, increase customer loyalty, prevent threats
+and fraud, and optimize business processes.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="prepare-the-data">
+<h2>Prepare the data<a class="headerlink" href="#prepare-the-data" title="Permalink to this heading">&para;</a></h2>
+<p>The predictions show which offers a customer is most likely to accept,
+and the confidence that they will accept, depending on each customer&#8217;s
+details.</p>
+<p>For example: (139987, &#8220;Pension&#8221;, 0.13221, &#8220;Mortgage&#8221;, 0.10675) indicates
+that customer Id=139987 will certainly not buy a <em>Pension</em> as the level
+is only 13.2%, whereas (140030, &#8220;Savings&#8221;, 0.95678, &#8220;Pension&#8221;, 0.84446)
+is more than likely to buy <em>Savings</em> and a <em>Pension</em> as the rates are
+95.7% and 84.4%.</p>
+<p>This data is taken from a SPSS example, except that the names of the
+customers were modified.</p>
+<p>A Python data analysis library, <a class="reference external" href="http://pandas.pydata.org">pandas</a>,
+is used to store the data. Let&#8217;s set up and declare the data.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import pandas as pd
+
+names = {
+    139987 : &quot;Guadalupe J. Martinez&quot;, 140030 : &quot;Michelle M. Lopez&quot;, 140089 : &quot;Terry L. Ridgley&quot;,
+    140097 : &quot;Miranda B. Roush&quot;, 139068 : &quot;Sandra J. Wynkoop&quot;, 139154 : &quot;Roland Gu&#65533;rette&quot;, 139158 : &quot;Fabien Mailhot&quot;,
+    139169 : &quot;Christian Austerlitz&quot;, 139220 : &quot;Steffen Meister&quot;, 139261 : &quot;Wolfgang Sanger&quot;,
+    139416 : &quot;Lee Tsou&quot;, 139422 : &quot;Sanaa&#39; Hikmah Hakimi&quot;, 139532 : &quot;Miroslav Skaroupka&quot;,
+    139549 : &quot;George Blomqvist&quot;, 139560 : &quot;Will Henderson&quot;, 139577 : &quot;Yuina Ohira&quot;, 139580 : &quot;Vlad Alekseeva&quot;,
+    139636 : &quot;Cassio Lombardo&quot;, 139647 : &quot;Trinity Zelaya Miramontes&quot;, 139649 : &quot;Eldar Muravyov&quot;, 139665 : &quot;Shu T&#39;an&quot;,
+    139667 : &quot;Jameel Abdul-Ghani Gerges&quot;, 139696 : &quot;Zeeb Longoria Marrero&quot;, 139752 : &quot;Matheus Azevedo Melo&quot;,
+    139832 : &quot;Earl B. Wood&quot;, 139859 : &quot;Gabrielly Sousa Martins&quot;, 139881 : &quot;Franca Palermo&quot;}
+
+
+data = [(139987, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (140030, &quot;Savings&quot;, 0.95678, &quot;Pension&quot;, 0.84446), (140089, &quot;Savings&quot;, 0.95678, &quot;Pension&quot;, 0.80233),
+                        (140097, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139068, &quot;Pension&quot;, 0.80506, &quot;Savings&quot;, 0.28391), (139154, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675),
+                        (139158, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675),(139169, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139220, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675),
+                        (139261, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139416, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139422, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675),
+                        (139532, &quot;Savings&quot;, 0.95676, &quot;Mortgage&quot;, 0.82269), (139549, &quot;Savings&quot;, 0.16428, &quot;Pension&quot;, 0.13221), (139560, &quot;Savings&quot;, 0.95678, &quot;Pension&quot;, 0.86779),
+                        (139577, &quot;Pension&quot;, 0.13225, &quot;Mortgage&quot;, 0.10675), (139580, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139636, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675),
+                        (139647, &quot;Savings&quot;, 0.28934, &quot;Pension&quot;, 0.13221), (139649, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139665, &quot;Savings&quot;, 0.95675, &quot;Pension&quot;, 0.27248),
+                        (139667, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675), (139696, &quot;Savings&quot;, 0.16188, &quot;Pension&quot;, 0.13221), (139752, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675),
+                        (139832, &quot;Savings&quot;, 0.95678, &quot;Pension&quot;, 0.83426), (139859, &quot;Savings&quot;, 0.95678, &quot;Pension&quot;, 0.75925), (139881, &quot;Pension&quot;, 0.13221, &quot;Mortgage&quot;, 0.10675)]
+
+products = [&quot;Car loan&quot;, &quot;Savings&quot;, &quot;Mortgage&quot;, &quot;Pension&quot;]
+productValue = [100, 200, 300, 400]
+budgetShare = [0.6, 0.1, 0.2, 0.1]
+
+availableBudget = 500
+channels =  pd.DataFrame(data=[(&quot;gift&quot;, 20.0, 0.20), (&quot;newsletter&quot;, 15.0, 0.05), (&quot;seminar&quot;, 23.0, 0.30)], columns=[&quot;name&quot;, &quot;cost&quot;, &quot;factor&quot;])
+</pre></div>
+</div>
+<p>Offers are stored in a <a class="reference external" href="http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html">pandas
+DataFrame</a>.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>try: # Python 2
+    offers = pd.DataFrame(data=data, index=xrange(0, len(data)), columns=[&quot;customerid&quot;, &quot;Product1&quot;, &quot;Confidence1&quot;, &quot;Product2&quot;, &quot;Confidence2&quot;])
+except: # Python 3
+    offers = pd.DataFrame(data=data, index=range(0, len(data)), columns=[&quot;customerid&quot;, &quot;Product1&quot;, &quot;Confidence1&quot;, &quot;Product2&quot;, &quot;Confidence2&quot;])
+offers.insert(0,&#39;name&#39;,pd.Series(names[i[0]] for i in data))
+</pre></div>
+</div>
+<p>Let&#8217;s customize the display of this data and show the confidence
+forecast for each customer.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>CSS = &quot;&quot;&quot;
+body {
+    margin: 0;
+    font-family: Helvetica;
+}
+table.dataframe {
+    border-collapse: collapse;
+    border: none;
+}
+table.dataframe tr {
+    border: none;
+}
+table.dataframe td, table.dataframe th {
+    margin: 0;
+    border: 1px solid white;
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+}
+table.dataframe th:not(:empty) {
+    background-color: #fec;
+    text-align: left;
+    font-weight: normal;
+}
+table.dataframe tr:nth-child(2) th:empty {
+    border-left: none;
+    border-right: 1px dashed #888;
+}
+table.dataframe td {
+    border: 2px solid #ccf;
+    background-color: #f4f4ff;
+}
+    table.dataframe thead th:first-child {
+        display: none;
+    }
+    table.dataframe tbody th {
+        display: none;
+    }
+&quot;&quot;&quot;
+</pre></div>
+</div>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from IPython.core.display import HTML
+HTML(&#39;&lt;style&gt;{}&lt;/style&gt;&#39;.format(CSS))
+
+from IPython.display import display
+try:
+    display(offers.drop(&#39;customerid&#39;,axis=1).sort_values(by=&#39;name&#39;)) #Pandas &gt;= 0.17
+except:
+    display(offers.drop(&#39;customerid&#39;,axis=1).sort(&#39;name&#39;)) #Pandas &lt; 0.17
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>Product1</th>
+      <th>Confidence1</th>
+      <th>Product2</th>
+      <th>Confidence2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>17</td>
+      <td>Cassio Lombardo</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Christian Austerlitz</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>24</td>
+      <td>Earl B. Wood</td>
+      <td>Savings</td>
+      <td>0.95678</td>
+      <td>Pension</td>
+      <td>0.83426</td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td>Eldar Muravyov</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Fabien Mailhot</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>26</td>
+      <td>Franca Palermo</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>25</td>
+      <td>Gabrielly Sousa Martins</td>
+      <td>Savings</td>
+      <td>0.95678</td>
+      <td>Pension</td>
+      <td>0.75925</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>George Blomqvist</td>
+      <td>Savings</td>
+      <td>0.16428</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>Guadalupe J. Martinez</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>21</td>
+      <td>Jameel Abdul-Ghani Gerges</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Lee Tsou</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>23</td>
+      <td>Matheus Azevedo Melo</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Michelle M. Lopez</td>
+      <td>Savings</td>
+      <td>0.95678</td>
+      <td>Pension</td>
+      <td>0.84446</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Miranda B. Roush</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>Miroslav Skaroupka</td>
+      <td>Savings</td>
+      <td>0.95676</td>
+      <td>Mortgage</td>
+      <td>0.82269</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Roland Gu&#65533;rette</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>Sanaa' Hikmah Hakimi</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Sandra J. Wynkoop</td>
+      <td>Pension</td>
+      <td>0.80506</td>
+      <td>Savings</td>
+      <td>0.28391</td>
+    </tr>
+    <tr>
+      <td>20</td>
+      <td>Shu T'an</td>
+      <td>Savings</td>
+      <td>0.95675</td>
+      <td>Pension</td>
+      <td>0.27248</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Steffen Meister</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Terry L. Ridgley</td>
+      <td>Savings</td>
+      <td>0.95678</td>
+      <td>Pension</td>
+      <td>0.80233</td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td>Trinity Zelaya Miramontes</td>
+      <td>Savings</td>
+      <td>0.28934</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>Vlad Alekseeva</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Will Henderson</td>
+      <td>Savings</td>
+      <td>0.95678</td>
+      <td>Pension</td>
+      <td>0.86779</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Wolfgang Sanger</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>Yuina Ohira</td>
+      <td>Pension</td>
+      <td>0.13225</td>
+      <td>Mortgage</td>
+      <td>0.10675</td>
+    </tr>
+    <tr>
+      <td>22</td>
+      <td>Zeeb Longoria Marrero</td>
+      <td>Savings</td>
+      <td>0.16188</td>
+      <td>Pension</td>
+      <td>0.13221</td>
+    </tr>
+  </tbody>
+</table>
+</div></section>
+<section id="use-ibm-decision-optimization-cplex-modeling-for-python">
+<h2>Use IBM Decision Optimization CPLEX Modeling for Python<a class="headerlink" href="#use-ibm-decision-optimization-cplex-modeling-for-python" title="Permalink to this heading">&para;</a></h2>
+<p>Let&#8217;s create the optimization model to select the best ways to contact
+customers and stay within the limited budget.</p>
+<section id="step-1-import-the-library">
+<h3>Step 1: Import the library<a class="headerlink" href="#step-1-import-the-library" title="Permalink to this heading">&para;</a></h3>
+<p>Run the following code to import the Decision Optimization CPLEX
+Modeling library. The <em>DOcplex</em> library contains the two modeling
+packages, Mathematical Programming (docplex.mp) and Constraint
+Programming (docplex.cp).</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import sys
+try:
+    import docplex.mp
+except:
+    raise Exception(&#39;Please install docplex. See https://pypi.org/project/docplex/&#39;)
+</pre></div>
+</div>
+<p>If <em>cplex</em> is not installed, install CPLEX Community edition.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>try:
+    import cplex
+except:
+    raise Exception(&#39;Please install CPLEX. See https://pypi.org/project/cplex/&#39;)
+</pre></div>
+</div>
+</section>
+<section id="step-2-set-up-the-prescriptive-model">
+<h3>Step 2: Set up the prescriptive model<a class="headerlink" href="#step-2-set-up-the-prescriptive-model" title="Permalink to this heading">&para;</a></h3>
+<section id="create-the-model">
+<h4>Create the model<a class="headerlink" href="#create-the-model" title="Permalink to this heading">&para;</a></h4>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from docplex.mp.model import Model
+
+mdl = Model(name=&quot;marketing_campaign&quot;)
+</pre></div>
+</div>
+</section>
+<section id="define-the-decision-variables">
+<h4>Define the decision variables<a class="headerlink" href="#define-the-decision-variables" title="Permalink to this heading">&para;</a></h4>
+<ul class="simple">
+<li><p>The integer decision variables <code class="docutils literal notranslate"><span class="pre">channelVars</span></code>, represent whether or
+not a customer will be made an offer for a particular product via a
+particular channel.</p></li>
+<li><p>The integer decision variable <code class="docutils literal notranslate"><span class="pre">totaloffers</span></code> represents the total
+number of offers made.</p></li>
+<li><p>The continuous variable <code class="docutils literal notranslate"><span class="pre">budgetSpent</span></code> represents the total cost of
+the offers made.</p></li>
+</ul>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>try: # Python 2
+    offersR = xrange(0, len(offers))
+    productsR = xrange(0, len(products))
+    channelsR = xrange(0, len(channels))
+except: # Python 3
+    offersR = range(0, len(offers))
+    productsR = range(0, len(products))
+    channelsR = range(0, len(channels))
+
+channelVars = mdl.binary_var_cube(offersR, productsR, channelsR)
+totaloffers = mdl.integer_var(lb=0)
+budgetSpent = mdl.continuous_var()
+</pre></div>
+</div>
+</section>
+<section id="set-up-the-constraints">
+<h4>Set up the constraints<a class="headerlink" href="#set-up-the-constraints" title="Permalink to this heading">&para;</a></h4>
+<ul class="simple">
+<li><p>Offer only one product per customer.</p></li>
+<li><p>Compute the budget and set a maximum on it.</p></li>
+<li><p>Compute the number of offers to be made.</p></li>
+</ul>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span># Only 1 product is offered to each customer
+mdl.add_constraints( mdl.sum(channelVars[o,p,c] for p in productsR for c in channelsR) &lt;=1
+                   for o in offersR)
+
+mdl.add_constraint( totaloffers == mdl.sum(channelVars[o,p,c]
+                                           for o in offersR
+                                           for p in productsR
+                                           for c in channelsR) )
+
+mdl.add_constraint( budgetSpent == mdl.sum(channelVars[o,p,c]*channels.at[c, &quot;cost&quot;]
+                                           for o in offersR
+                                           for p in productsR
+                                           for c in channelsR) )
+
+# Balance the offers among products
+for p in productsR:
+    mdl.add_constraint( mdl.sum(channelVars[o,p,c] for o in offersR for c in channelsR)
+                       &lt;= budgetShare[p] * totaloffers )
+
+# Do not exceed the budget
+mdl.add_constraint( mdl.sum(channelVars[o,p,c]*channels.at[c, &quot;cost&quot;]
+                            for o in offersR
+                            for p in productsR
+                            for c in channelsR)  &lt;= availableBudget )
+
+mdl.print_information()
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Model</span><span class="p">:</span> <span class="n">marketing_campaign</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">variables</span><span class="p">:</span> <span class="mi">326</span>
+   <span class="o">-</span> <span class="n">binary</span><span class="o">=</span><span class="mi">324</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">continuous</span><span class="o">=</span><span class="mi">1</span>
+ <span class="o">-</span> <span class="n">number</span> <span class="n">of</span> <span class="n">constraints</span><span class="p">:</span> <span class="mi">34</span>
+   <span class="o">-</span> <span class="n">linear</span><span class="o">=</span><span class="mi">34</span>
+ <span class="o">-</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">defaults</span>
+ <span class="o">-</span> <span class="n">problem</span> <span class="nb">type</span> <span class="ow">is</span><span class="p">:</span> <span class="n">MILP</span>
+</pre></div>
+</div>
+</section>
+<section id="express-the-objective">
+<h4>Express the objective<a class="headerlink" href="#express-the-objective" title="Permalink to this heading">&para;</a></h4>
+<p>We want to maximize the expected revenue.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>mdl.maximize(
+    mdl.sum( channelVars[idx,p,idx2] * c.factor * productValue[p]* o.Confidence1
+            for p in productsR
+            for idx,o in offers[offers[&#39;Product1&#39;] == products[p]].iterrows()
+            for idx2, c in channels.iterrows())
+    +
+    mdl.sum( channelVars[idx,p,idx2] * c.factor * productValue[p]* o.Confidence2
+            for p in productsR
+            for idx,o in offers[offers[&#39;Product2&#39;] == products[p]].iterrows()
+            for idx2, c in channels.iterrows())
+    )
+</pre></div>
+</div>
+</section>
+<section id="solve-the-model">
+<h4>Solve the model<a class="headerlink" href="#solve-the-model" title="Permalink to this heading">&para;</a></h4>
+<p>If you&#8217;re using a Community Edition of CPLEX runtimes, depending on the
+size of the problem, the solve stage may fail and will need a paying
+subscription or product installation.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>s = mdl.solve()
+assert s, &quot;No Solution !!!&quot;
+</pre></div>
+</div>
+</section>
+</section>
+<section id="step-3-analyze-the-solution">
+<h3>Step 3: Analyze the solution<a class="headerlink" href="#step-3-analyze-the-solution" title="Permalink to this heading">&para;</a></h3>
+<p>First, let&#8217;s display the <strong>Optimal Marketing Channel per customer</strong>.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>report = [(channels.at[c, &quot;name&quot;], products[p], names[offers.at[o, &quot;customerid&quot;]])
+          for c in channelsR
+          for p in productsR
+          for o in offersR  if channelVars[o,p,c].solution_value==1]
+
+assert len(report) == totaloffers.solution_value
+
+print(&quot;Marketing plan has {0} offers costing {1}&quot;.format(totaloffers.solution_value, budgetSpent.solution_value))
+
+report_bd = pd.DataFrame(report, columns=[&#39;channel&#39;, &#39;product&#39;, &#39;customer&#39;])
+display(report_bd)
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Marketing</span> <span class="n">plan</span> <span class="n">has</span> <span class="mi">20</span> <span class="n">offers</span> <span class="n">costing</span> <span class="mf">364.0</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>channel</th>
+      <th>product</th>
+      <th>customer</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Fabien Mailhot</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Christian Austerlitz</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Lee Tsou</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Sanaa' Hikmah Hakimi</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>George Blomqvist</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Yuina Ohira</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Vlad Alekseeva</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Cassio Lombardo</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Trinity Zelaya Miramontes</td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Eldar Muravyov</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Jameel Abdul-Ghani Gerges</td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>newsletter</td>
+      <td>Car loan</td>
+      <td>Zeeb Longoria Marrero</td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>seminar</td>
+      <td>Savings</td>
+      <td>Terry L. Ridgley</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>seminar</td>
+      <td>Savings</td>
+      <td>Gabrielly Sousa Martins</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>seminar</td>
+      <td>Mortgage</td>
+      <td>Miranda B. Roush</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>seminar</td>
+      <td>Mortgage</td>
+      <td>Miroslav Skaroupka</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>seminar</td>
+      <td>Mortgage</td>
+      <td>Matheus Azevedo Melo</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>seminar</td>
+      <td>Mortgage</td>
+      <td>Franca Palermo</td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td>seminar</td>
+      <td>Pension</td>
+      <td>Michelle M. Lopez</td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td>seminar</td>
+      <td>Pension</td>
+      <td>Will Henderson</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>Then let&#8217;s <strong>focus on seminar</strong>.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>display(report_bd[report_bd[&#39;channel&#39;] == &quot;seminar&quot;].drop(&#39;channel&#39;,axis=1))
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>product</th>
+      <th>customer</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>12</td>
+      <td>Savings</td>
+      <td>Terry L. Ridgley</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>Savings</td>
+      <td>Gabrielly Sousa Martins</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Mortgage</td>
+      <td>Miranda B. Roush</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>Mortgage</td>
+      <td>Miroslav Skaroupka</td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td>Mortgage</td>
+      <td>Matheus Azevedo Melo</td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td>Mortgage</td>
+      <td>Franca Palermo</td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td>Pension</td>
+      <td>Michelle M. Lopez</td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td>Pension</td>
+      <td>Will Henderson</td>
+    </tr>
+  </tbody>
+</table>
+</div></section>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading">&para;</a></h2>
+<p>You learned how to set up and use IBM Decision Optimization CPLEX
+Modeling for Python to formulate a Mathematical Programming model and
+solve it with CPLEX.</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading">&para;</a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/">CPLEX Modeling for Python
+documentation</a></p></li>
+<li><p><a class="reference external" href="https://www.ibm.com/cloud/decision-optimization-for-watson-studio/">Decision Optimization on
+Cloud</a></p></li>
+<li><p>Need help with DOcplex or to report a bug? Please go
+<a class="reference external" href="https://stackoverflow.com/questions/tagged/docplex">here</a>.</p></li>
+<li><p>Contact us at <a class="reference external" href="mailto:dofeedback&#37;&#52;&#48;wwpdl&#46;vnet&#46;ibm&#46;com">dofeedback<span>&#64;</span>wwpdl<span>&#46;</span>vnet<span>&#46;</span>ibm<span>&#46;</span>com</a>.</p></li>
+</ul>
+<p>Copyright &#65533; 2017-2019 IBM. IPLA licensed Sample Materials.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">How to make targeted offers to customers?</a><ul>
+<li><a class="reference internal" href="#describe-the-business-problem">Describe the business problem</a></li>
+<li><a class="reference internal" href="#how-decision-optimization-can-help">How decision optimization can help</a></li>
+<li><a class="reference internal" href="#prepare-the-data">Prepare the data</a></li>
+<li><a class="reference internal" href="#use-ibm-decision-optimization-cplex-modeling-for-python">Use IBM Decision Optimization CPLEX Modeling for Python</a><ul>
+<li><a class="reference internal" href="#step-1-import-the-library">Step 1: Import the library</a></li>
+<li><a class="reference internal" href="#step-2-set-up-the-prescriptive-model">Step 2: Set up the prescriptive model</a><ul>
+<li><a class="reference internal" href="#create-the-model">Create the model</a></li>
+<li><a class="reference internal" href="#define-the-decision-variables">Define the decision variables</a></li>
+<li><a class="reference internal" href="#set-up-the-constraints">Set up the constraints</a></li>
+<li><a class="reference internal" href="#express-the-objective">Express the objective</a></li>
+<li><a class="reference internal" href="#solve-the-model">Solve the model</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#step-3-analyze-the-solution">Step 3: Analyze the solution</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="chicago_coffee_shops.html"
+                          title="previous chapter">Finding optimal locations of new stores</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="mining_pandas.html"
+                          title="next chapter">Optimizing mining operations</a></p>
+  </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="mining_pandas.html" title="Optimizing mining operations"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="chicago_coffee_shops.html" title="Finding optimal locations of new stores"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.27 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="samples.html" >Examples of mathematical programming</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">How to make targeted offers to customers?</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2016-2022, IBM&reg;.
+    </div>
+  </body>
+</html>
