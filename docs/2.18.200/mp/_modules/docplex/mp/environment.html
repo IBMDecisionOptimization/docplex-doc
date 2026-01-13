@@ -1,0 +1,533 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.mp.environment &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.environment</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2019</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="sd">&#39;&#39;&#39;Provides utility functions about the runtime environment.</span>
+
+<span class="sd">You can display information about your runtime environment using::</span>
+
+<span class="sd">    $ python</span>
+<span class="sd">    &gt;&gt;&gt; from docplex.mp.environment import Environment</span>
+<span class="sd">    &gt;&gt;&gt; Environment().print_information()</span>
+
+<span class="sd">or by invoking the `docplex.mp.environment` package on your shell command line::</span>
+
+<span class="sd">    $ python -m docplex.mp.environment</span>
+<span class="sd">    * system is: Linux 64bit</span>
+<span class="sd">    * Python version 3.6.1, located at: /usr/bin/python</span>
+<span class="sd">    * docplex is present, version is (2, 9, 0)</span>
+<span class="sd">    * CPLEX library is present, version is 12.9.0.0, located at: /usr/local/CPLEX_Studio129/cplex/python/3.6/x86-64_linux</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">importlib.util</span> <span class="k">as</span> <span class="nn">importlib_util</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">importlib_util</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Python 2</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="k">import</span> <span class="n">docplex_fatal</span>
+
+<span class="n">min_cplex_major</span> <span class="o">=</span> <span class="mi">12</span>
+<span class="n">min_cplex_minor</span> <span class="o">=</span> <span class="mi">8</span>
+
+
+<span class="k">def</span> <span class="nf">env_is_64_bit</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="o">**</span> <span class="mi">32</span>
+
+
+<div class="viewcode-block" id="UnsupportedPlatformError"><a class="viewcode-back" href="../../../docplex.mp.environment.html#docplex.mp.environment.UnsupportedPlatformError">[docs]</a><span class="k">class</span> <span class="nc">UnsupportedPlatformError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+
+<span class="c1"># maps paths to modules for already loaded cplexes</span>
+<span class="c1"># for path == None, key is &quot;__NONE__&quot;</span>
+<span class="n">_loaded_cplexes</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="c1"># noinspection PyPep8</span>
+<div class="viewcode-block" id="Environment"><a class="viewcode-back" href="../../../docplex.mp.environment.html#docplex.mp.environment.Environment">[docs]</a><span class="k">class</span> <span class="nc">Environment</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; This class detects and contains information regarding other modules of interest, such as</span>
+<span class="sd">        whether CPLEX, `numpy`, and `matplotlib` are installed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_default_env</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># The default env singleton</span>
+
+    <span class="sd">&quot;&quot;&quot; This class detects and contains information regarding other modules of interest, such as</span>
+<span class="sd">        whether CPLEX, `numpy`, and `matplotlib` are installed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_auto_configure</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_found_cplex</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_location</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_version</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_hook</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_found_pandas</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pandas_version</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_found_matplotlib</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_matplotlib_version</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_python_version</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">python_version</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_system</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_machine</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">machine</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bitness</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">architecture</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_is64bit</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="o">**</span> <span class="mi">32</span>
+
+        <span class="k">if</span> <span class="n">start_auto_configure</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">auto_configure</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+
+    <span class="c1"># class variable</span>
+    <span class="n">env_is_python36</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">python_version</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="s1">&#39;3.6&#39;</span>
+
+    <span class="k">def</span> <span class="nf">_get_numpy_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_hook</span>
+
+    <span class="k">def</span> <span class="nf">_set_numpy_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hook</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_hook</span> <span class="o">=</span> <span class="n">hook</span>
+        <span class="k">if</span> <span class="n">hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_numpy</span><span class="p">:</span>  <span class="c1"># now that we have set a hook, do check for numpy</span>
+                <span class="n">hook</span><span class="p">()</span>          <span class="c1"># if numpy is present, do call the hook</span>
+
+    <span class="n">numpy_hook</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_numpy_hook</span><span class="p">,</span> <span class="n">_set_numpy_hook</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">!=</span> <span class="n">Environment</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_cplex</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">has_cplex</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_version</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">cplex_version</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_numpy</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">has_numpy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_matplotlib</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">has_matplotlib</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_pandas</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">has_pandas</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">has_cplex</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;True if the CPLEX libraries are available.</span>
+
+<span class="sd">        The cplex libraries search order is:</span>
+
+<span class="sd">            - import the module `import cplex` if the import is sucessful</span>
+<span class="sd">            - import the module in location $CPLEX_STUDIO_DIR1210/cplex/python/&lt;python.version&gt;/&lt;platform&gt;</span>
+<span class="sd">            - import the module in location $CPLEX_STUDIO_DIR129/cplex/python/&lt;python.version&gt;/&lt;platform&gt;</span>
+<span class="sd">            - import the module in location $CPLEX_STUDIO_DIR128/cplex/python/&lt;python.version&gt;/&lt;platform&gt;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_cplex</span>
+
+    <span class="k">def</span> <span class="nf">hash_cplex_with_version_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_version</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_cplex</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span> <span class="o">&gt;=</span> <span class="n">min_version</span>
+
+    <span class="k">def</span> <span class="nf">check_cplex_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cpx_version</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_version_as_tuple</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_cplex</span> <span class="ow">and</span> <span class="n">cpx_version</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">min_cplex_major</span><span class="p">,</span> <span class="n">min_cplex_minor</span><span class="p">):</span>
+            <span class="n">s_min_version</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{0}</span><span class="s2">.</span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_cplex_major</span><span class="p">,</span> <span class="n">min_cplex_minor</span><span class="p">)</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s2">&quot;DOcplex supports Cplex from </span><span class="si">{0}</span><span class="s2"> up, unsupported version </span><span class="si">{1}</span><span class="s2"> was found&quot;</span>
+                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">s_min_version</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cplex_version</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">cplex_platform</span><span class="p">():</span>
+        <span class="n">sys_platform</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span>
+        <span class="n">machine</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">machine</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sys_platform</span> <span class="o">==</span> <span class="s1">&#39;Windows&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;x64_win64&#39;</span>
+        <span class="k">elif</span> <span class="n">sys_platform</span> <span class="o">==</span> <span class="s1">&#39;Darwin&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;x86-64osx&#39;</span>
+        <span class="k">elif</span> <span class="n">sys_platform</span> <span class="o">==</span> <span class="s1">&#39;Linux&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">machine</span> <span class="o">==</span> <span class="s1">&#39;x86_64&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s1">&#39;x86-64_linux&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># different flavors of linux (ppc64le_linux, s390x_linux)</span>
+                <span class="k">return</span> <span class="n">machine</span> <span class="o">+</span> <span class="s2">&quot;_linux&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">cplex_distribname</span><span class="p">():</span>
+        <span class="n">distribname</span> <span class="o">=</span> <span class="n">Environment</span><span class="o">.</span><span class="n">cplex_platform</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">distribname</span> <span class="o">==</span> <span class="s1">&#39;x64_win64&#39;</span><span class="p">:</span>
+            <span class="n">distribname</span> <span class="o">=</span> <span class="s1">&#39;x64_windows&#39;</span>
+        <span class="k">return</span> <span class="n">distribname</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_version_as_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cpxv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span>
+        <span class="k">if</span> <span class="n">cpxv</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">cpxv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">has_matplotlib</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;True if the `matplotlib` libraries are available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_matplotlib</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_matplotlib</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_matplotlib</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">has_pandas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;True if the `pandas` libraries are available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_pandas</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_pandas</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pandas_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_pandas</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pandas_version</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cplex_location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The system path where CPLEX is located, if present. Otherwise, returns None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_location</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">has_numpy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;True if the `numpy` libraries are available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_numpy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span>
+
+<div class="viewcode-block" id="Environment.is_64bit"><a class="viewcode-back" href="../../../docplex.mp.environment.html#docplex.mp.environment.Environment.is_64bit">[docs]</a>    <span class="k">def</span> <span class="nf">is_64bit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;True if running on a 64-bit platform.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is64bit</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">python_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the Python version as a string&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">platform</span><span class="o">.</span><span class="n">python_version</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">auto_configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_cplex</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+        <span class="c1"># check for pandas (watson studio)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_pandas</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">check_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_cplex</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_pandas</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_numpy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_matplotlib</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Environment.get_cplex_module"><a class="viewcode-back" href="../../../docplex.mp.environment.html#docplex.mp.environment.Environment.get_cplex_module">[docs]</a>    <span class="k">def</span> <span class="nf">get_cplex_module</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default_location</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Returns the cplex module.</span>
+
+<span class="sd">        If `default_location` is None, this method will try to import the cplex module in the following order:</span>
+
+<span class="sd">            - by importing the module `import cplex` if the import is sucessful</span>
+<span class="sd">            - by importing the module in location $CPLEX_STUDIO_DIR201/cplex/python</span>
+<span class="sd">            - by importing the module in location $CPLEX_STUDIO_DIR1210/cplex/python</span>
+<span class="sd">            - by importing the module in location $CPLEX_STUDIO_DIR129/cplex/python</span>
+<span class="sd">            - by importing the module in location $CPLEX_STUDIO_DIR128/cplex/python</span>
+
+<span class="sd">        If `default_location` is a valid path and contains a valid python package,</span>
+<span class="sd">        `cplex` is imported from the specified location.</span>
+
+<span class="sd">        If `default_location` is a valid path and</span>
+<span class="sd">        `&lt;default_location&gt;/cplex/python/&lt;python_version&gt;/&lt;platform&gt;` exists, `cplex`</span>
+<span class="sd">        is imported from that location</span>
+
+<span class="sd">        If `cplex` could not be found, this method returns `None`</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">cplex</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">def</span> <span class="nf">load_cplex</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+            <span class="c1"># we cache loaded modules as we want to make sure that modules are loaded</span>
+            <span class="c1"># only once (same behaviour than &#39;import&#39;)</span>
+            <span class="c1"># example location: C:\Program Files\IBM\ILOG\CPLEX_Studio1210\cplex\python\3.7\x64_win64\</span>
+            <span class="n">cplex</span> <span class="o">=</span> <span class="n">_loaded_cplexes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cplex</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">absolute_name</span> <span class="o">=</span> <span class="s2">&quot;cplex</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">version</span>
+                <span class="n">module_location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="s2">&quot;cplex&quot;</span><span class="p">,</span> <span class="s2">&quot;__init__.py&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">module_location</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s2">&quot;Could not load module from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">module_location</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">importlib_util</span><span class="p">:</span>
+                    <span class="n">spec</span> <span class="o">=</span> <span class="n">importlib_util</span><span class="o">.</span><span class="n">spec_from_file_location</span><span class="p">(</span><span class="n">absolute_name</span><span class="p">,</span>
+                                                                  <span class="n">module_location</span><span class="p">)</span>
+                    <span class="n">cplex</span> <span class="o">=</span> <span class="n">importlib_util</span><span class="o">.</span><span class="n">module_from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+                    <span class="c1"># TODO: Error out if one was already loaded</span>
+                    <span class="n">previous</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">absolute_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">lo</span> <span class="o">=</span> <span class="n">location</span> <span class="k">if</span> <span class="n">location</span> <span class="k">else</span> <span class="s2">&quot;default sys.path&quot;</span>
+                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Cannot load cplex from </span><span class="si">%s</span><span class="s2">, a previous version has already been loaded from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">previous</span><span class="o">.</span><span class="vm">__file__</span><span class="p">))</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">absolute_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">cplex</span>
+                    <span class="n">spec</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">exec_module</span><span class="p">(</span><span class="n">cplex</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="kn">import</span> <span class="nn">imp</span>
+                    <span class="n">cplex</span> <span class="o">=</span> <span class="n">imp</span><span class="o">.</span><span class="n">load_source</span><span class="p">(</span><span class="n">absolute_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">module_location</span><span class="p">)</span>
+                <span class="n">_loaded_cplexes</span><span class="p">[</span><span class="n">location</span><span class="p">]</span> <span class="o">=</span> <span class="n">cplex</span>
+            <span class="k">return</span> <span class="n">cplex</span>
+
+        <span class="k">def</span> <span class="nf">load_cplex_from_cos_root</span><span class="p">(</span><span class="n">cos_root</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+            <span class="n">platform</span> <span class="o">=</span> <span class="n">Environment</span><span class="o">.</span><span class="n">cplex_platform</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">platform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">UnsupportedPlatformError</span><span class="p">(</span><span class="s2">&quot;Platform not supported, please install cplex python module&quot;</span><span class="p">)</span>
+            <span class="n">python_version</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                        <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cos_root</span><span class="p">,</span> <span class="s1">&#39;cplex&#39;</span><span class="p">,</span> <span class="s1">&#39;python&#39;</span><span class="p">,</span> <span class="n">python_version</span><span class="p">,</span> <span class="n">platform</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">load_cplex</span><span class="p">(</span><span class="n">full_path</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="n">version</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">default_location</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">cplex</span>  <span class="c1">#@UnresolvedImport</span>
+                <span class="k">if</span> <span class="n">logger</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Found cplex with &#39;import cplex&#39;&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="n">ModuleNotFoundError</span><span class="p">):</span>
+                <span class="c1"># in py3.7, ModuleNotFoundError is raised</span>
+                <span class="n">user_cos_location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DOCPLEX_COS_LOCATION&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">user_cos_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">cplex</span> <span class="o">=</span> <span class="n">load_cplex_from_cos_root</span><span class="p">(</span><span class="n">user_cos_location</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cplex</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="c1"># user provided a cos location that was not right, raise warning</span>
+                        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Could not load CPLEX from Location provided by DOCPLEX_COS_LOCATION=</span><span class="si">%s</span><span class="s2">. Using default locations.&quot;</span> <span class="o">%</span> <span class="n">user_cos_location</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cplex</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">try_environs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CPLEX_STUDIO_DIR201&#39;</span><span class="p">,</span>
+                                    <span class="s1">&#39;CPLEX_STUDIO_DIR1210&#39;</span><span class="p">,</span>
+                                    <span class="s1">&#39;CPLEX_STUDIO_DIR129&#39;</span><span class="p">,</span>
+                                    <span class="s1">&#39;CPLEX_STUDIO_DIR128&#39;</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">try_environs</span><span class="p">:</span>
+                        <span class="n">loc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                        <span class="c1"># version = t[len(&#39;CPLEX_STUDIO_DIR&#39;):] if loc else &quot;&quot;</span>
+                        <span class="c1"># currently, there are some import in CPLEX, like:</span>
+                        <span class="c1">#   File &quot;C:\Program Files\IBM\ILOG\CPLEX_Studio1210\cplex\python\3.7\x64_win64\cplex\_internal\_pycplex_platform.py&quot;, line 24, in &lt;module&gt;</span>
+                        <span class="c1">#     from cplex._internal.py37_cplex12100 import *</span>
+                        <span class="c1"># that prevent us from loading multiples instances of cplex</span>
+                        <span class="c1"># so for now, let&#39;s just ignore this version</span>
+                        <span class="n">cplex</span> <span class="o">=</span> <span class="n">load_cplex_from_cos_root</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="k">if</span> <span class="n">loc</span> <span class="k">else</span> <span class="kc">None</span>
+                        <span class="k">if</span> <span class="n">logger</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Looking into location </span><span class="si">%s</span><span class="s2">, found = </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">loc</span><span class="p">,</span> <span class="p">(</span><span class="n">cplex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)))</span>
+                        <span class="k">if</span> <span class="n">cplex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">return</span> <span class="n">cplex</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">default_location</span><span class="p">,</span> <span class="s2">&quot;__init__.py&quot;</span><span class="p">)):</span>
+                <span class="n">cplex</span> <span class="o">=</span> <span class="n">load_cplex</span><span class="p">(</span><span class="n">default_location</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cplex</span> <span class="o">=</span> <span class="n">load_cplex_from_cos_root</span><span class="p">(</span><span class="n">default_location</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cplex</span></div>
+
+    <span class="k">def</span> <span class="nf">check_cplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># detecting CPLEX using default search location</span>
+        <span class="n">cplex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cplex_module</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_found_cplex</span> <span class="o">=</span> <span class="p">(</span><span class="n">cplex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">has_cplex</span><span class="p">):</span>
+            <span class="n">cplex_module_file</span> <span class="o">=</span> <span class="n">cplex</span><span class="o">.</span><span class="vm">__file__</span>
+            <span class="k">if</span> <span class="n">cplex_module_file</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">cplex_module_file</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span> <span class="o">=</span> <span class="n">cplex</span><span class="o">.</span><span class="n">__version__</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="c1"># older version: use an instance</span>
+                <span class="n">cpx</span> <span class="o">=</span> <span class="n">cplex</span><span class="o">.</span><span class="n">Cplex</span><span class="p">()</span>
+                <span class="c1"># format: MM.mm.rr.ff e.g.e 12.6.2.0</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span> <span class="o">=</span> <span class="n">cpx</span><span class="o">.</span><span class="n">get_version</span><span class="p">()</span>
+                <span class="c1"># terminate the dummy instance...</span>
+                <span class="k">del</span> <span class="n">cpx</span>
+
+    <span class="k">def</span> <span class="nf">check_numpy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">numpy.version</span> <span class="k">as</span> <span class="nn">npv</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_version</span> <span class="o">=</span> <span class="n">npv</span><span class="o">.</span><span class="n">version</span>
+
+                <span class="n">self_numpy_hook</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_hook</span>
+                <span class="k">if</span> <span class="n">self_numpy_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="c1"># lazy call the hook once at first check time.</span>
+                    <span class="n">self_numpy_hook</span><span class="p">()</span>
+
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_version</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span>
+
+    <span class="k">def</span> <span class="nf">check_matplotlib</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="k">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">matplotlib_version</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_found_matplotlib</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_matplotlib_version</span> <span class="o">=</span> <span class="n">matplotlib_version</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_found_matplotlib</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">check_pandas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_found_pandas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">pandas</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_found_pandas</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pandas_version</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">__version__</span>
+            <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_found_pandas</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_display_feature</span><span class="p">(</span><span class="n">is_present</span><span class="p">,</span> <span class="n">feature_name</span><span class="p">,</span> <span class="n">feature_version</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">safe_feature_version</span> <span class="o">=</span> <span class="n">feature_version</span> <span class="ow">or</span> <span class="s2">&quot;?&quot;</span>
+        <span class="k">if</span> <span class="n">is_present</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># we dont know yet</span>
+        <span class="k">elif</span> <span class="n">is_present</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">location</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* </span><span class="si">{0}</span><span class="s2"> is present, version is </span><span class="si">{1}</span><span class="s2">, located at: </span><span class="si">{2}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">feature_name</span><span class="p">,</span> <span class="n">safe_feature_version</span><span class="p">,</span>
+                                                                                 <span class="n">location</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* </span><span class="si">{0}</span><span class="s2"> is present, version is </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">feature_name</span><span class="p">,</span> <span class="n">safe_feature_version</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* </span><span class="si">{0}</span><span class="s2"> is not available&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">feature_name</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">max_nb_digits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># source: https://en.wikipedia.org/wiki/IEEE_floating_point</span>
+        <span class="k">return</span> <span class="mi">17</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_64bit</span><span class="p">()</span> <span class="k">else</span> <span class="mi">9</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">bitness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">64</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_64bit</span><span class="p">()</span> <span class="k">else</span> <span class="mi">32</span>
+
+    <span class="k">def</span> <span class="nf">print_information</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* system is: </span><span class="si">{0}</span><span class="s2"> </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bitness</span><span class="p">))</span>
+        <span class="kn">from</span> <span class="nn">sys</span> <span class="k">import</span> <span class="n">version_info</span>
+        <span class="kn">from</span> <span class="nn">docplex.mp</span> <span class="k">import</span> <span class="n">__version_info__</span>
+
+        <span class="n">python_version</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">version_info</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">version_info</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;* Python version </span><span class="si">%s</span><span class="s2">, located at: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">python_version</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_display_feature</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;docplex&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">.</span><span class="si">%d</span><span class="s2">.</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">__version_info__</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_display_feature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">has_cplex</span><span class="p">,</span> <span class="s2">&quot;CPLEX library&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_version</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cplex_location</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_display_feature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_found_pandas</span><span class="p">,</span> <span class="s2">&quot;pandas&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pandas_version</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_display_feature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_found_numpy</span><span class="p">,</span> <span class="s2">&quot;numpy&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numpy_version</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_display_feature</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_found_matplotlib</span><span class="p">,</span> <span class="s2">&quot;matplotlib&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_matplotlib_version</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">closed_env</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">Environment</span><span class="p">(</span><span class="n">start_auto_configure</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">make_new_configured_env</span><span class="p">():</span>
+        <span class="c1"># returns a fresh new environment</span>
+        <span class="k">return</span> <span class="n">Environment</span><span class="p">(</span><span class="n">start_auto_configure</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_default_env</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">Environment</span><span class="o">.</span><span class="n">_default_env</span><span class="p">:</span>
+            <span class="n">Environment</span><span class="o">.</span><span class="n">_default_env</span> <span class="o">=</span> <span class="n">Environment</span><span class="o">.</span><span class="n">make_new_configured_env</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">Environment</span><span class="o">.</span><span class="n">_default_env</span>
+
+    <span class="c1"># for pickling: recreate a fresh environment at the other end of pickle.</span>
+    <span class="k">def</span> <span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Environment</span><span class="o">.</span><span class="n">make_new_configured_env</span><span class="p">,</span> <span class="p">()</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_closed_environment</span><span class="p">():</span>
+    <span class="c1"># This instance assumes nothing is found, CPLEX, numpy, etc, to be used for tests</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">start_auto_configure</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1"># force matplotlib absent</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">_found_matplotlib</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">_found_numpy</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">_found_pandas</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">env</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">Environment</span><span class="p">()</span><span class="o">.</span><span class="n">print_information</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>

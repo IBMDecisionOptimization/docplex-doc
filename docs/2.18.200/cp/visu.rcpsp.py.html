@@ -1,0 +1,311 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>visu/rcpsp.py example &#8212; DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script type="text/javascript" src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="visu-rcpsp-py-example">
+<h1>visu/rcpsp.py example<a class="headerlink" href="#visu-rcpsp-py-example" title="Permalink to this headline">&para;</a></h1>
+<div class="highlight-python notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2016</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The RCPSP (Resource-Constrained Project Scheduling Problem) is a generalization</span>
+<span class="sd">of the production-specific Job-Shop (see job_shop_basic.py), Flow-Shop</span>
+<span class="sd">(see flow_shop.py) and Open-Shop(see open_shop.py) scheduling problems.</span>
+
+<span class="sd">Given:</span>
+<span class="sd">- a set of q resources with given capacities,</span>
+<span class="sd">- a network of precedence constraints between the activities, and</span>
+<span class="sd">- for each activity and each resource the amount of the resource</span>
+<span class="sd">  required by the activity over its execution,</span>
+<span class="sd">the goal of the RCPSP is to find a schedule meeting all the</span>
+<span class="sd">constraints whose makespan (i.e., the time at which all activities are</span>
+<span class="sd">finished) is minimal.</span>
+
+<span class="sd">Please refer to documentation for appropriate setup of solving configuration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">docplex.cp.model</span> <span class="kn">import</span> <span class="n">CpoModel</span><span class="p">,</span> <span class="n">CpoStepFunction</span><span class="p">,</span> <span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span>
+<span class="kn">import</span> <span class="nn">docplex.cp.utils_visu</span> <span class="kn">as</span> <span class="nn">visu</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Initialize the problem data</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># Read the input data file.</span>
+<span class="c1"># Available files are rcpsp_default, and different rcpsp_XXXXXX.</span>
+<span class="c1"># First line contains the number of tasks, and the number of resources.</span>
+<span class="c1"># Second line contains the capacities of the resources.</span>
+<span class="c1"># The rest of the file consists of one line per task, organized as follows:</span>
+<span class="c1"># - duration of the task</span>
+<span class="c1"># - the demand on each resource (one integer per resource)</span>
+<span class="c1"># - the number of successors followed by the list of successor numbers</span>
+
+<span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/data/rcpsp_default.data&quot;</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="nb">file</span><span class="p">:</span>
+    <span class="n">NB_TASKS</span><span class="p">,</span> <span class="n">NB_RESOURCES</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+    <span class="n">CAPACITIES</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+    <span class="n">TASKS</span> <span class="o">=</span> <span class="p">[[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">file</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">)]</span>
+
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Prepare the data for modeling</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># Extract duration of each task</span>
+<span class="n">DURATIONS</span> <span class="o">=</span> <span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">)]</span>
+
+<span class="c1"># Extract demand of each task</span>
+<span class="n">DEMANDS</span> <span class="o">=</span> <span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">1</span><span class="p">:</span><span class="n">NB_RESOURCES</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">)]</span>
+
+<span class="c1"># Extract successors of each task</span>
+<span class="n">SUCCESSORS</span> <span class="o">=</span> <span class="p">[</span><span class="n">TASKS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">NB_RESOURCES</span> <span class="o">+</span> <span class="mi">2</span><span class="p">:]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">)]</span>
+
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Build the model</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># Create model</span>
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
+
+<span class="c1"># Create task interval variables</span>
+<span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">interval_var</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;T{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">DURATIONS</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">)]</span>
+
+<span class="c1"># Add precedence constraints</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">SUCCESSORS</span><span class="p">[</span><span class="n">t</span><span class="p">]:</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">end_before_start</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">tasks</span><span class="p">[</span><span class="n">s</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]))</span>
+
+<span class="c1"># Constrain capacity of resources</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_RESOURCES</span><span class="p">):</span>
+    <span class="n">resources</span> <span class="o">=</span> <span class="p">[</span><span class="n">mdl</span><span class="o">.</span><span class="n">pulse</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">DEMANDS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">r</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">)</span> <span class="k">if</span> <span class="n">DEMANDS</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">r</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">resources</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">CAPACITIES</span><span class="p">[</span><span class="n">r</span><span class="p">])</span>
+
+<span class="c1"># Minimize end of all tasks</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span><span class="n">mdl</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">mdl</span><span class="o">.</span><span class="n">end_of</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">])))</span>
+
+
+<span class="c1">#-----------------------------------------------------------------------------</span>
+<span class="c1"># Solve the model and display the result</span>
+<span class="c1">#-----------------------------------------------------------------------------</span>
+
+<span class="c1"># Solve model</span>
+<span class="k">print</span><span class="p">(</span><span class="s2">&quot;Solving model....&quot;</span><span class="p">)</span>
+<span class="n">msol</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">FailLimit</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span> <span class="n">TimeLimit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">print</span><span class="p">(</span><span class="s2">&quot;Solution: &quot;</span><span class="p">)</span>
+<span class="n">msol</span><span class="o">.</span><span class="n">print_solution</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">msol</span> <span class="ow">and</span> <span class="n">visu</span><span class="o">.</span><span class="n">is_visu_enabled</span><span class="p">():</span>
+    <span class="n">load</span> <span class="o">=</span> <span class="p">[</span><span class="n">CpoStepFunction</span><span class="p">()</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_RESOURCES</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">):</span>
+        <span class="n">itv</span> <span class="o">=</span> <span class="n">msol</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_RESOURCES</span><span class="p">):</span>
+            <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">DEMANDS</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]:</span>
+                <span class="n">load</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">add_value</span><span class="p">(</span><span class="n">itv</span><span class="o">.</span><span class="n">get_start</span><span class="p">(),</span> <span class="n">itv</span><span class="o">.</span><span class="n">get_end</span><span class="p">(),</span> <span class="n">DEMANDS</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">])</span>
+
+    <span class="n">visu</span><span class="o">.</span><span class="n">timeline</span><span class="p">(</span><span class="s2">&quot;Solution for RCPSP &quot;</span> <span class="o">+</span> <span class="n">filename</span><span class="p">)</span>
+    <span class="n">visu</span><span class="o">.</span><span class="n">panel</span><span class="p">(</span><span class="s2">&quot;Tasks&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_TASKS</span><span class="p">):</span>
+        <span class="n">visu</span><span class="o">.</span><span class="n">interval</span><span class="p">(</span><span class="n">msol</span><span class="o">.</span><span class="n">get_var_solution</span><span class="p">(</span><span class="n">tasks</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">i</span><span class="p">,</span> <span class="n">tasks</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">get_name</span><span class="p">())</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_RESOURCES</span><span class="p">):</span>
+        <span class="n">visu</span><span class="o">.</span><span class="n">panel</span><span class="p">(</span><span class="s2">&quot;R &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">visu</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">segments</span><span class="o">=</span><span class="p">[(</span><span class="n">INTERVAL_MIN</span><span class="p">,</span> <span class="n">INTERVAL_MAX</span><span class="p">,</span> <span class="n">CAPACITIES</span><span class="p">[</span><span class="n">j</span><span class="p">])],</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;lightgrey&#39;</span><span class="p">)</span>
+        <span class="n">visu</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">segments</span><span class="o">=</span><span class="n">load</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">j</span><span class="p">)</span>
+    <span class="n">visu</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">DOcplex.CP: Constraint Programming Modeling for Python V2.18 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, IBM.
+    </div>
+  </body>
+</html>

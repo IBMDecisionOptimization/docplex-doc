@@ -1,0 +1,745 @@
+
+
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <title>docplex.mp.progress &#8212; DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</title>
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for docplex.mp.progress</h1><div class="highlight"><pre>
+<span></span><span class="c1"># --------------------------------------------------------------------------</span>
+<span class="c1"># Source file provided under Apache License, Version 2.0, January 2004,</span>
+<span class="c1"># http://www.apache.org/licenses/</span>
+<span class="c1"># (c) Copyright IBM Corp. 2015, 2019</span>
+<span class="c1"># --------------------------------------------------------------------------</span>
+<span class="sd">&#39;&#39;&#39;This package contains classes to monitor the progress of a MIP solve.</span>
+
+<span class="sd">This abstract class defines protocol methods, which are called from within CPLEX&#39;s MIP search algorithm.</span>
+
+<span class="sd">Progress listeners are based on CPLEX&#39;s MIPInfoCallback, and work only with a</span>
+<span class="sd">local installation of CPLEX, not on Cplexcloud.</span>
+
+<span class="sd">At each node, all progress listeners attached to the model receive progress data</span>
+<span class="sd">through a `notify_progress` method, with an instance of :class:`~ProgressData`.</span>
+<span class="sd">This named tuple class contains information about solve time, objective value,</span>
+<span class="sd">best bound, gap and nodes, but no variable values.</span>
+
+<span class="sd">The base class for progress listeners is :class:`~ProgressListener`.</span>
+<span class="sd">DOcplex provides concrete sub-classes to handle basic cases, but</span>
+<span class="sd">you may also create your own sub-class of :class:`~ProgressListener` to suit your needs.</span>
+<span class="sd">Each instance of :class:`~ProgressListener` must be attached to a model to receive events during</span>
+<span class="sd">a MIP solve., using `Model.add_progress_listener`.</span>
+
+<span class="sd">An example of such a progress listener is :class:`TextProgressListener`,</span>
+<span class="sd">which prints a message to stdout in a format similar to CPLEX log, each time it receives a progress data.</span>
+
+<span class="sd">If you need to get the values of variables in an intermediate solution,</span>
+<span class="sd">you should sub-class from class :class:`~SolutionListener`.</span>
+<span class="sd">In this case, the :func:`~ProgressListener.notify_solution` method will be called</span>
+<span class="sd">each time CPLEX finds a valid intermediate solution, with an instance of :class:`docplex.mp.solution.SolveSolution`.</span>
+
+<span class="sd">Listeners are called from within CPLEX code, with its own frequency. It may occur that listeners are</span>
+<span class="sd">called with no real progress in either the objective or the best bound. To help you chose what kind</span>
+<span class="sd">of calls you are really interested in, DOcplex uses the enumerated class :class:`~ProgressClock&#39;.</span>
+<span class="sd">The baseline clock is the CPLEX clock, but you can refine this clock: for example,</span>
+<span class="sd">`ProgressClock.Objective` filters all calls but those where the objective has improved.</span>
+
+<span class="sd">To summarize, listeners are called from within CPLEX&#39;s MIP search algorithm, when the clock</span>
+<span class="sd">you have chosen accepts the call. All listeners are created with a clock argument that controls which</span>
+<span class="sd">calls they accept.</span>
+
+<span class="sd">When a listener accepts a call, its method :func:`~ProgressListener.notify_progress` is called with the current progress data.</span>
+<span class="sd">See :class:`~TextProgressListener` as an example of a simple progress listener.</span>
+
+<span class="sd">In addition, if the listener derives from :class:`~SolutionListener`, its method :func:`~ProgressListener.notify_solution` is also called</span>
+<span class="sd">with the intermediate solution, passed as an instance of :class:`docplex.mp.solution.SolveSolution`.</span>
+<span class="sd">See :class:`~SolutionRecorder` as an example of solution listener</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="k">import</span> <span class="n">iteritems</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+
+
+<span class="kn">from</span> <span class="nn">docplex.mp.utils</span> <span class="k">import</span> <span class="n">is_string</span><span class="p">,</span> <span class="n">is_number</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.error_handler</span> <span class="k">import</span> <span class="n">docplex_fatal</span>
+
+<span class="n">_TProgressData_</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;_TProgressData&#39;</span><span class="p">,</span>
+                             <span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;has_incumbent&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;current_objective&#39;</span><span class="p">,</span> <span class="s1">&#39;best_bound&#39;</span><span class="p">,</span> <span class="s1">&#39;mip_gap&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;current_nb_iterations&#39;</span><span class="p">,</span> <span class="s1">&#39;current_nb_nodes&#39;</span><span class="p">,</span> <span class="s1">&#39;remaining_nb_nodes&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;det_time&#39;</span><span class="p">])</span>
+
+
+<span class="c1"># noinspection PyUnresolvedReferences</span>
+<div class="viewcode-block" id="ProgressData"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressData">[docs]</a><span class="k">class</span> <span class="nc">ProgressData</span><span class="p">(</span><span class="n">_TProgressData_</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A named tuple class to hold progress data, as reeived from CPLEX.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        has_incumbent: a boolean, indicating whether an incumbent solution is available (or not),</span>
+<span class="sd">            at the moment the listener is called.</span>
+<span class="sd">        current_objective: contains the current objective, if an incumbent is available, else None.</span>
+<span class="sd">        best_bound: The current best bound as reported by the solver.</span>
+<span class="sd">        mip_gap: the gap between the best integer objective and the objective of the best node remaining;</span>
+<span class="sd">            available if an incumbent is available.</span>
+<span class="sd">        current_nb_nodes: the current number of nodes.</span>
+<span class="sd">        current_nb_iterations: the current number of iterations.</span>
+<span class="sd">        remaining_nb_nodes: the remaining number of nodes.</span>
+<span class="sd">        time: the elapsed time since solve started.</span>
+<span class="sd">        det_time: the deterministic time since solve started.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;ProgressData(</span><span class="si">{0}</span><span class="s1">, </span><span class="si">{1}</span><span class="s1">, obj=</span><span class="si">{2}</span><span class="s1">, bbound=</span><span class="si">{3}</span><span class="s1">, #nodes=</span><span class="si">{4}</span><span class="s1">)&#39;</span><span class="o">.</span> \
+            <span class="nb">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_incumbent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_objective</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_bound</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_nb_nodes</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fmt</span></div>
+
+
+<div class="viewcode-block" id="ProgressClock"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressClock">[docs]</a><span class="k">class</span> <span class="nc">ProgressClock</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This enumerated class controls the type of events a listener listens to.</span>
+
+<span class="sd">    The possible values are (in order of decreasing call frequency).</span>
+
+<span class="sd">        - All: the listener listens to all calls from CPLEX.</span>
+<span class="sd">        - BestBound: listen to changes in best bound, not necessarily with a solution present.</span>
+<span class="sd">        - Solutions: listen to all intermediate solutions, not necessarily impriving.</span>
+<span class="sd">            Nothing prevents being called several times with an identical solution.</span>
+
+<span class="sd">        - Gap: listen to intermediate solutions, where either objective or best bound has improved.</span>
+<span class="sd">        - Objective: listen to intermediate solutions, where the solution objective has improved.</span>
+
+<span class="sd">    To determine whether objective or best bound have improved (or not), see the numerical parameters</span>
+<span class="sd">    `absdiff` and `reldiff` in `:class:ProgressListener` and all its descendant classes.</span>
+
+<span class="sd">    *New in version 2.10*</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#</span>
+    <span class="c1"># An enumeration of filtering levels for listeners.</span>
+    <span class="c1">#</span>
+    <span class="n">All</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">Solutions</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">BestBound</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># best bound clock is indepedent from solution clock</span>
+    <span class="n">Objective</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># b101</span>
+    <span class="n">Gap</span> <span class="o">=</span> <span class="mi">7</span>  <span class="c1"># the gap clock changes when there is a solution, and either bound or objective has changed</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">listens_to_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># returns true if the enum listens to solutions</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&amp;</span> <span class="mi">1</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">ProgressClock</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">arg</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># int value</span>
+            <span class="k">for</span> <span class="n">fl</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">arg</span> <span class="o">==</span> <span class="n">fl</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">fl</span>
+                <span class="k">elif</span> <span class="n">is_string</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">and</span> <span class="n">arg</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="n">fl</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="k">return</span> <span class="n">fl</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># pragma: no cover</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Expecting filter level, </span><span class="si">{0!r}</span><span class="s1"> was passed&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<span class="n">default_absdiff</span> <span class="o">=</span> <span class="mf">1e-1</span>
+<span class="n">default_reldiff</span> <span class="o">=</span> <span class="mf">1e-2</span>
+
+
+<div class="viewcode-block" id="ProgressListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener">[docs]</a><span class="k">class</span> <span class="nc">ProgressListener</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;  The base class for progress listeners.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock_arg</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">All</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">clock</span> <span class="o">=</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">clock_arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clock</span> <span class="o">=</span> <span class="n">clock</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_absdiff</span> <span class="o">=</span> <span class="n">absdiff</span> <span class="k">if</span> <span class="n">absdiff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_absdiff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reldiff</span> <span class="o">=</span> <span class="n">reldiff</span> <span class="k">if</span> <span class="n">reldiff</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default_reldiff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span> <span class="o">=</span> <span class="n">make_clock_filter</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ccb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span>
+        <span class="k">return</span> <span class="n">ccb</span><span class="o">.</span><span class="n">_model</span> <span class="k">if</span> <span class="n">ccb</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">clock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the clock of the listener.</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">            an instance of :class:`~ProgressClock`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clock</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">abs_diff</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_absdiff</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">relative_diff</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reldiff</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">current_progress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This property return the current progress data, if any.</span>
+
+<span class="sd">        Returns the latest progress data, if at least one has been received.</span>
+
+<span class="sd">        :return: an instance of :class:~ProgressData` or None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span>
+
+    <span class="k">def</span> <span class="nf">_set_current_progress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="n">pdata</span>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">pdata</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_connect_cb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+        <span class="c1"># INTERNAL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span> <span class="o">=</span> <span class="n">cb</span>
+
+    <span class="k">def</span> <span class="nf">requires_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="ProgressListener.notify_solution"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener.notify_solution">[docs]</a>    <span class="k">def</span> <span class="nf">notify_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Redefine this method to handle an intermediate solution from the callback.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            s: solution</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            if you need to access runtime information (time, gap, number of nodes), use</span>
+<span class="sd">            :function:`SolutionListener.current_progress_data`, which contains the latest</span>
+<span class="sd">            priogress information as a tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span></div>
+
+<div class="viewcode-block" id="ProgressListener.notify_start"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener.notify_start">[docs]</a>    <span class="k">def</span> <span class="nf">notify_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This methods  is called on all attached listeners at the beginning of a solve().</span>
+
+<span class="sd">        When writing a custom listener, this method is used to restore</span>
+<span class="sd">        internal data which can be modified during solve.</span>
+<span class="sd">        Always call the superclass `notify_start` before adding specific code in a sub-class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_progress_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filter</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">notify_jobid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobid</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+
+<div class="viewcode-block" id="ProgressListener.notify_end"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener.notify_end">[docs]</a>    <span class="k">def</span> <span class="nf">notify_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">objective</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The method called when solve is finished on a model.</span>
+
+<span class="sd">        The status is the solve status from the</span>
+<span class="sd">        solve() method</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span></div>
+
+<div class="viewcode-block" id="ProgressListener.notify_progress"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener.notify_progress">[docs]</a>    <span class="k">def</span> <span class="nf">notify_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This method is called from within the solve with a ProgressData instance.</span>
+
+<span class="sd">        :param progress_data: an instance of :class:`ProgressData` containing data about the</span>
+<span class="sd">            current point in the search tree.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span></div>
+
+<div class="viewcode-block" id="ProgressListener.abort"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressListener.abort">[docs]</a>    <span class="k">def</span> <span class="nf">abort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Aborts the CPLEX search.</span>
+
+<span class="sd">        This method tells CPLEX to stop the MIP search.</span>
+<span class="sd">        You may use this method in a custom progress listener to stop the search based on your own</span>
+<span class="sd">        criteria (for example, when improvements in gap is consistently below a minimum threshold).</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This method should be called from within a :func:`notify_progress` method call, otherwise it will have</span>
+<span class="sd">            no effect.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">ccb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cb</span>
+        <span class="k">if</span> <span class="n">ccb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ccb</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;!!! callback is not connected - abort() ignored&#39;</span><span class="p">)</span></div></div>
+
+
+<span class="c1"># noinspection PyUnusedLocal,PyMethodMayBeStatic</span>
+<span class="k">class</span> <span class="nc">FilterAcceptAll</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+<span class="c1"># noinspection PyMethodMayBeStatic</span>
+<span class="k">class</span> <span class="nc">FilterAcceptAllSolutions</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pdata</span><span class="o">.</span><span class="n">has_incumbent</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">Watcher</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">,</span> <span class="n">update_fn</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">absdiff</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">reldiff</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_old</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_absdiff</span> <span class="o">=</span> <span class="n">absdiff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reldiff</span> <span class="o">=</span> <span class="n">reldiff</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_fn</span> <span class="o">=</span> <span class="n">update_fn</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_old</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">):</span>
+        <span class="n">accepted</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span>
+        <span class="n">new_watched</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_fn</span><span class="p">(</span><span class="n">progress_data</span><span class="p">)</span>
+        <span class="c1"># if new_watched is None, then it is not available (e.g. objective)</span>
+        <span class="k">if</span> <span class="n">new_watched</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">old</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">accepted</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># assert is a number</span>
+                <span class="n">delta</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_watched</span> <span class="o">-</span> <span class="n">old</span><span class="p">)</span>
+                <span class="n">reldiff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reldiff</span>
+                <span class="n">absdiff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_absdiff</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">absdiff</span> <span class="o">&lt;=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_watched</span> <span class="o">-</span> <span class="n">old</span><span class="p">):</span>
+                    <span class="n">accepted</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">elif</span> <span class="n">reldiff</span> <span class="ow">and</span> <span class="n">delta</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">old</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">reldiff</span><span class="p">:</span>
+                    <span class="n">accepted</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">accepted</span>
+
+    <span class="k">def</span> <span class="nf">sync</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_fn</span><span class="p">(</span><span class="n">pdata</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_old</span> <span class="o">=</span> <span class="n">cur</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+        <span class="n">ws</span> <span class="o">=</span> <span class="s1">&#39;--&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watched</span>
+        <span class="k">return</span> <span class="s1">&#39;W_</span><span class="si">{0}</span><span class="s1">[</span><span class="si">{1}</span><span class="s1">]&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ws</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">clock_filter_accept_stop_here</span><span class="p">(</span><span class="n">watcher</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">ClockFilter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">obj_absdiff</span><span class="p">,</span> <span class="n">bbound_absdiff</span><span class="p">,</span> <span class="n">obj_reldiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bbound_reldiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">node_delta</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">watchers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">obj_absdiff</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">obj_reldiff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">def</span> <span class="nf">update_obj</span><span class="p">(</span><span class="n">pdata</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">pdata</span><span class="o">.</span><span class="n">current_objective</span> <span class="k">if</span> <span class="n">pdata</span><span class="o">.</span><span class="n">has_incumbent</span> <span class="k">else</span> <span class="kc">None</span>
+
+            <span class="n">obj_watcher</span> <span class="o">=</span> <span class="n">Watcher</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;obj&#39;</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="n">obj_absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="n">obj_reldiff</span><span class="p">,</span> <span class="n">update_fn</span><span class="o">=</span><span class="n">update_obj</span><span class="p">)</span>
+            <span class="n">watchers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj_watcher</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bbound_absdiff</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">bbound_reldiff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">def</span> <span class="nf">update_bbound</span><span class="p">(</span><span class="n">pdata</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">pdata</span><span class="o">.</span><span class="n">best_bound</span>
+
+            <span class="n">watchers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Watcher</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;gap_bound&#39;</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="n">bbound_absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="n">bbound_reldiff</span><span class="p">,</span>
+                                    <span class="n">update_fn</span><span class="o">=</span><span class="n">update_bbound</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">node_delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">used_node_delta</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">node_delta</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">update_nodes</span><span class="p">(</span><span class="n">pdata</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">pdata</span><span class="o">.</span><span class="n">current_nb_nodes</span>
+
+            <span class="n">watchers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Watcher</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;nodes&#39;</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="n">used_node_delta</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">update_fn</span><span class="o">=</span><span class="n">update_nodes</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span> <span class="o">=</span> <span class="n">watchers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clock</span> <span class="o">=</span> <span class="n">level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listens_to_solution</span> <span class="o">=</span> <span class="n">level</span><span class="o">.</span><span class="n">listens_to_solution</span>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">has_incumbent</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listens_to_solution</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># the filter accepts data as soon as one of its cells accepts it.</span>
+        <span class="n">poke</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">progress_data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">poke</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">clock_filter_accept_stop_here</span><span class="p">(</span><span class="n">poke</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">)</span>
+            <span class="c1"># print(&quot;- accepting event #{0}, reason: {1}&quot;.format(progress_data.id, poke.name))</span>
+            <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">:</span>
+                <span class="n">w</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">progress_data</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">peek</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">progress_data</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">w</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_watchers</span><span class="p">:</span>
+            <span class="n">w</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+
+<span class="c1"># noinspection PyArgumentEqualDefault</span>
+<span class="k">def</span> <span class="nf">make_clock_filter</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">,</span> <span class="n">nodediff</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">absdiff_</span> <span class="o">=</span> <span class="mf">1e-1</span> <span class="k">if</span> <span class="n">absdiff</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">absdiff</span>
+    <span class="n">reldiff_</span> <span class="o">=</span> <span class="mf">1e-2</span> <span class="k">if</span> <span class="n">reldiff</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">reldiff</span>
+    <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">All</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">FilterAcceptAll</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">level</span> <span class="o">==</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">Solutions</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">FilterAcceptAllSolutions</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">level</span> <span class="o">==</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ClockFilter</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">obj_absdiff</span><span class="o">=</span><span class="n">absdiff_</span><span class="p">,</span> <span class="n">obj_reldiff</span><span class="o">=</span><span class="n">reldiff_</span><span class="p">,</span>
+                           <span class="n">bbound_absdiff</span><span class="o">=</span><span class="n">absdiff_</span><span class="p">,</span> <span class="n">bbound_reldiff</span><span class="o">=</span><span class="n">reldiff_</span><span class="p">,</span> <span class="n">node_delta</span><span class="o">=</span><span class="n">nodediff</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">level</span> <span class="o">==</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">Objective</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ClockFilter</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">obj_absdiff</span><span class="o">=</span><span class="n">absdiff_</span><span class="p">,</span> <span class="n">obj_reldiff</span><span class="o">=</span><span class="n">reldiff_</span><span class="p">,</span>
+                           <span class="n">bbound_absdiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">bbound_reldiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">node_delta</span><span class="o">=</span><span class="n">nodediff</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">level</span> <span class="o">==</span> <span class="n">ProgressClock</span><span class="o">.</span><span class="n">BestBound</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ClockFilter</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">obj_absdiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">obj_reldiff</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                           <span class="n">bbound_absdiff</span><span class="o">=</span><span class="n">absdiff_</span><span class="p">,</span> <span class="n">bbound_reldiff</span><span class="o">=</span><span class="n">reldiff_</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># pragma: no cover</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;unexpected level: </span><span class="si">{0!r}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">level</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="TextProgressListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.TextProgressListener">[docs]</a><span class="k">class</span> <span class="nc">TextProgressListener</span><span class="p">(</span><span class="n">ProgressListener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A simple implementation of Progress Listener, which prints messages to stdout,</span>
+<span class="sd">        in the manner of the CPLEX log.</span>
+
+<span class="sd">    :param clock: an enumerated value of type `:class:ProgressClock` which defines the frequency of the listener.</span>
+<span class="sd">    :param absdiff: a float value which controls the minimum absolute change for objective or best bound values</span>
+<span class="sd">    :param reldiff: a float value which controls the minimum absolute change for objective or best bound values.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        The default behavior is to listen to an improvement in either the objective or best bound,</span>
+<span class="sd">        each being improved by either an absolute value change of at least `absdiff`,</span>
+<span class="sd">        or a relative change of at least `reldiff`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">,</span> <span class="n">gap_fmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">obj_fmt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">ProgressListener</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gap_fmt</span> <span class="o">=</span> <span class="n">gap_fmt</span> <span class="ow">or</span> <span class="s2">&quot;</span><span class="si">{:.2%}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_obj_fmt</span> <span class="o">=</span> <span class="n">obj_fmt</span> <span class="ow">or</span> <span class="s2">&quot;</span><span class="si">{:.4f}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="TextProgressListener.notify_start"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.TextProgressListener.notify_start">[docs]</a>    <span class="k">def</span> <span class="nf">notify_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TextProgressListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_count</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="TextProgressListener.notify_progress"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.TextProgressListener.notify_progress">[docs]</a>    <span class="k">def</span> <span class="nf">notify_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">pdata_has_incumbent</span> <span class="o">=</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">has_incumbent</span>
+        <span class="n">incumbent_symbol</span> <span class="o">=</span> <span class="s1">&#39;+&#39;</span> <span class="k">if</span> <span class="n">pdata_has_incumbent</span> <span class="k">else</span> <span class="s1">&#39; &#39;</span>
+        <span class="c1"># if pdata_has_incumbent:</span>
+        <span class="c1">#     self._incumbent_count += 1</span>
+        <span class="n">current_obj</span> <span class="o">=</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">current_objective</span>
+        <span class="k">if</span> <span class="n">pdata_has_incumbent</span><span class="p">:</span>
+            <span class="n">objs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">current_obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">objs</span> <span class="o">=</span> <span class="s2">&quot;N/A&quot;</span>  <span class="c1"># pragma: no cover</span>
+        <span class="n">best_bound</span> <span class="o">=</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">best_bound</span>
+        <span class="n">nb_nodes</span> <span class="o">=</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">current_nb_nodes</span>
+        <span class="n">remaining_nodes</span> <span class="o">=</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">remaining_nb_nodes</span>
+        <span class="k">if</span> <span class="n">pdata_has_incumbent</span><span class="p">:</span>
+            <span class="n">gap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gap_fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">progress_data</span><span class="o">.</span><span class="n">mip_gap</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">gap</span> <span class="o">=</span> <span class="s2">&quot;N/A&quot;</span>  <span class="c1"># pragma: no cover</span>
+        <span class="n">raw_time</span> <span class="o">=</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">time</span>
+        <span class="n">rounded_time</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">raw_time</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{0:&gt;3}{7}</span><span class="s2">: Node=</span><span class="si">{4}</span><span class="s2"> Left=</span><span class="si">{5}</span><span class="s2"> Best Integer=</span><span class="si">{1}</span><span class="s2">, Best Bound=</span><span class="si">{2:.4f}</span><span class="s2">, gap=</span><span class="si">{3}</span><span class="s2">, ItCnt=</span><span class="si">{8}</span><span class="s2"> [</span><span class="si">{6}</span><span class="s2">s]&quot;</span>
+              <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count</span><span class="p">,</span> <span class="n">objs</span><span class="p">,</span> <span class="n">best_bound</span><span class="p">,</span> <span class="n">gap</span><span class="p">,</span> <span class="n">nb_nodes</span><span class="p">,</span> <span class="n">remaining_nodes</span><span class="p">,</span> <span class="n">rounded_time</span><span class="p">,</span>
+                      <span class="n">incumbent_symbol</span><span class="p">,</span> <span class="n">progress_data</span><span class="o">.</span><span class="n">current_nb_iterations</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="ProgressDataRecorder"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressDataRecorder">[docs]</a><span class="k">class</span> <span class="nc">ProgressDataRecorder</span><span class="p">(</span><span class="n">ProgressListener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A specialized class of ProgressListener, which collects all ProgressData it receives.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ProgressDataRecorder</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_recorded</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="ProgressDataRecorder.notify_start"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressDataRecorder.notify_start">[docs]</a>    <span class="k">def</span> <span class="nf">notify_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ProgressDataRecorder</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start</span><span class="p">()</span>
+        <span class="c1"># clear recorded data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_recorded</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+<div class="viewcode-block" id="ProgressDataRecorder.notify_progress"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.ProgressDataRecorder.notify_progress">[docs]</a>    <span class="k">def</span> <span class="nf">notify_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_recorded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">progress_data</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_records</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_recorded</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">iter_recorded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an iterator on stored progress data</span>
+
+<span class="sd">        :return: an iterator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_recorded</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">recorded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a copy of the recorded data.</span>
+
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recorded</span><span class="p">[:]</span></div>
+
+
+<div class="viewcode-block" id="SolutionListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionListener">[docs]</a><span class="k">class</span> <span class="nc">SolutionListener</span><span class="p">(</span><span class="n">ProgressListener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The base class for listeners that work on intermediate solutions.</span>
+
+<span class="sd">    To define a custom behavior for a subclass of this class, you need to redefine `notify_solution`.</span>
+<span class="sd">    The current progress data is available from the `current_progress_data` property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># noinspection PyMethodMayBeStatic</span>
+    <span class="k">def</span> <span class="nf">check_solution_clock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="o">.</span><span class="n">listens_to_solution</span><span class="p">:</span>
+            <span class="n">docplex_fatal</span><span class="p">(</span><span class="s1">&#39;Solution listener requires a solution clock among (Solutions,Objective|Gap), </span><span class="si">{0}</span><span class="s1"> was passed&#39;</span><span class="p">,</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Solutions</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_solution_clock</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">requires_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="SolutionListener.notify_solution"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionListener.notify_solution">[docs]</a>    <span class="k">def</span> <span class="nf">notify_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sol</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Generic method to be redefined by custom listeners to</span>
+<span class="sd">        handle intermediate solutions. This method is called by the</span>
+<span class="sd">        CPLEX search with an intermediate solution.</span>
+
+<span class="sd">        :param sol: an instance of :class:`docplex.mp.solution.SolveSolution`</span>
+
+<span class="sd">        Note: as this method is called at each node of the MIP search, it may happen</span>
+<span class="sd">        that several calls are made with an identical solution, that is, different object</span>
+<span class="sd">        instances, but sharing the same variable values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>  <span class="c1"># pragma: no cover</span></div>
+
+<div class="viewcode-block" id="SolutionListener.notify_start"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionListener.notify_start">[docs]</a>    <span class="k">def</span> <span class="nf">notify_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdata</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pdata</span><span class="o">.</span><span class="n">has_incumbent</span> <span class="ow">and</span> <span class="nb">super</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">pdata</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SolutionRecorder"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionRecorder">[docs]</a><span class="k">class</span> <span class="nc">SolutionRecorder</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A specialized implementation of :class:`SolutionListener`,</span>
+<span class="sd">    which stores --all-- intermediate solutions.</span>
+
+<span class="sd">    As  the listener might be called at different times with identical incumbent</span>
+<span class="sd">    values, thus the list of solutions list might well contain identical solutions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SolutionRecorder</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="SolutionRecorder.notify_start"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionRecorder.notify_start">[docs]</a>    <span class="k">def</span> <span class="nf">notify_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Redefinition of the generic notify_start() method to clear all data modified by solve().</span>
+<span class="sd">        In this case, clears the list of solutions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">notify_start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+<div class="viewcode-block" id="SolutionRecorder.notify_solution"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionRecorder.notify_solution">[docs]</a>    <span class="k">def</span> <span class="nf">notify_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sol</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Redefintion of the generic `notify_solution` method, called by CPLEX.</span>
+<span class="sd">         For this class, appends the intermediate solution to the list of stored solutions.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SolutionRecorder.iter_solutions"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.SolutionRecorder.iter_solutions">[docs]</a>    <span class="k">def</span> <span class="nf">iter_solutions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an iterator on the stored solutions&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span><span class="p">)</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">number_of_solutions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the number of stored solutions. &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">current_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># redefinition of generic method `notify_solution`, called by CPLEX.</span>
+        <span class="n">sols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solutions</span>
+        <span class="k">return</span> <span class="n">sols</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">sols</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="FunctionalSolutionListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.FunctionalSolutionListener">[docs]</a><span class="k">class</span> <span class="nc">FunctionalSolutionListener</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A subclass of SolutionListener, which calls a function at each intermediate solution.</span>
+
+<span class="sd">        No exception is caught.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution_fn</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">SolutionListener</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sol_fn</span> <span class="o">=</span> <span class="n">solution_fn</span>
+
+<div class="viewcode-block" id="FunctionalSolutionListener.notify_solution"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.FunctionalSolutionListener.notify_solution">[docs]</a>    <span class="k">def</span> <span class="nf">notify_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sol</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sol_fn</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="KpiListener"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.KpiListener">[docs]</a><span class="k">class</span> <span class="nc">KpiListener</span><span class="p">(</span><span class="n">SolutionListener</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A refinement of SolutionListener, which computes KPIs at each intermediate solution.</span>
+
+<span class="sd">    Calls the `publish` method with a dicitonary of KPIs. Defaul tis to do nothing.</span>
+
+<span class="sd">    This listener listens to the `Gap` clock.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">objective_kpi_name</span> <span class="o">=</span> <span class="s1">&#39;_current_objective&#39;</span>
+    <span class="n">time_kpi_name</span> <span class="o">=</span> <span class="s1">&#39;_current_time&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">KpiListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+
+<div class="viewcode-block" id="KpiListener.publish"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.KpiListener.publish">[docs]</a>    <span class="k">def</span> <span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kpi_dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This method is called at each improving solution, with a dictionay of name, values.</span>
+
+<span class="sd">        :param kpi_dict: a dicitonary of names and KPi values, computed on the intermediate solution.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="KpiListener.notify_solution"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.KpiListener.notify_solution">[docs]</a>    <span class="k">def</span> <span class="nf">notify_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sol</span><span class="p">):</span>
+        <span class="n">pdata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_progress_data</span>
+
+        <span class="c1"># 1. build a dict from formatted names to kpi values.</span>
+        <span class="n">kpis_as_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">kp</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">kp</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span> <span class="k">for</span> <span class="n">kp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">iter_kpis</span><span class="p">()}</span>
+        <span class="c1"># 2. add predefined keys for obj, time.</span>
+        <span class="n">kpis_as_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">objective_kpi_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">sol</span><span class="o">.</span><span class="n">objective_value</span>
+        <span class="n">kpis_as_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_kpi_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">pdata</span><span class="o">.</span><span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">kpis_as_dict</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="KpiPrinter"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.KpiPrinter">[docs]</a><span class="k">class</span> <span class="nc">KpiPrinter</span><span class="p">(</span><span class="n">KpiListener</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">ProgressClock</span><span class="o">.</span><span class="n">Gap</span><span class="p">,</span> <span class="n">absdiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reldiff</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">kpi_format</span><span class="o">=</span><span class="s1">&#39;* ItCnt=</span><span class="si">{3:d}</span><span class="s1">  KPI: {1:&lt;</span><span class="si">{0}</span><span class="s1">} = &#39;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">KpiPrinter</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">clock</span><span class="p">,</span> <span class="n">absdiff</span><span class="p">,</span> <span class="n">reldiff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpi_format</span> <span class="o">=</span> <span class="n">kpi_format</span>
+
+<div class="viewcode-block" id="KpiPrinter.publish"><a class="viewcode-back" href="../../../docplex.mp.progress.html#docplex.mp.progress.KpiPrinter.publish">[docs]</a>    <span class="k">def</span> <span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kpi_dict</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">max_kpi_name_len</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">kn</span><span class="p">)</span> <span class="k">for</span> <span class="n">kn</span> <span class="ow">in</span> <span class="n">kpi_dict</span><span class="p">)</span>  <span class="c1"># max() raises ValueError on empty</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">max_kpi_name_len</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">kpi_num_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kpi_format</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="si">{2:.3f}</span><span class="s1">&#39;</span>
+        <span class="n">kpi_str_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kpi_format</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="si">{2!s}</span><span class="s1">&#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="p">(</span><span class="n">max_kpi_name_len</span> <span class="o">+</span> <span class="mi">15</span><span class="p">))</span>
+        <span class="n">itcnt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_progress_data</span><span class="o">.</span><span class="n">current_nb_iterations</span>
+        <span class="k">for</span> <span class="n">kn</span><span class="p">,</span> <span class="n">kv</span> <span class="ow">in</span> <span class="n">iteritems</span><span class="p">(</span><span class="n">kpi_dict</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">is_number</span><span class="p">(</span><span class="n">kv</span><span class="p">):</span>
+                <span class="n">k_format</span> <span class="o">=</span> <span class="n">kpi_num_format</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">k_format</span> <span class="o">=</span> <span class="n">kpi_str_format</span>
+            <span class="n">kps</span> <span class="o">=</span> <span class="n">k_format</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">max_kpi_name_len</span><span class="p">,</span> <span class="n">kn</span><span class="p">,</span> <span class="n">kv</span><span class="p">,</span> <span class="n">itcnt</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">kps</span><span class="p">)</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">DOcplex.MP: Mathematical Programming Modeling for Python V2.18 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2019, IBM&reg;.
+    </div>
+  </body>
+</html>
