@@ -1,0 +1,321 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="iso-8859-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Supporting OPL Models in Python &#8212; IBM&reg; Decision Optimization CPLEX&reg; Modeling for Python (DOcplex) V2.32 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=c92c1228" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=1496766e"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="index.html">IBM&reg; Decision Optimization CPLEX&reg; Modeling for Python (DOcplex) V2.32 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Supporting OPL Models in Python</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="supporting-opl-models-in-python">
+<h1>Supporting OPL Models in Python<a class="headerlink" href="#supporting-opl-models-in-python" title="Permalink to this heading">&para;</a></h1>
+<p>This tutorial is intended for users who want to integrate OPL models into their Python-based optimization workflows using <code class="docutils literal notranslate"><span class="pre">docplex.mp</span></code> (for CPLEX Mathematical Programming) and <code class="docutils literal notranslate"><span class="pre">docplex.cp</span></code> (for CP Optimizer Constraint Programming). It explains how the extended APIs enable native support for OPL models within Python applications.</p>
+<p>Through this API, users can build, load, and solve OPL models directly from Python. The tutorial demonstrates how OPL models can interact seamlessly with Python data structures&#8212;such as dictionaries, lists, and pandas DataFrames&#8212;thereby eliminating the need to manage external <code class="docutils literal notranslate"><span class="pre">.dat</span></code> files. It also shows how to extract OPL decision variables and solution results in structured, Python-friendly formats for analysis and integration into downstream applications.</p>
+<p>By following this tutorial, users will learn a flexible, automated, and efficient approach to executing and managing OPL models programmatically. The subsequent sections provide a step-by-step guide to creating and running CPLEX or CP Optimizer models using OPL models with data supplied directly from Python.</p>
+<section id="what-is-opl-mod-and-dat">
+<h2>1. What is OPL <code class="docutils literal notranslate"><span class="pre">.mod</span></code> and <code class="docutils literal notranslate"><span class="pre">.dat</span></code>?<a class="headerlink" href="#what-is-opl-mod-and-dat" title="Permalink to this heading">&para;</a></h2>
+<p>OPL (Optimization Programming Language) is a high-level modeling language used with IBM CPLEX and CP Optimizer to describe and solve optimization problems.</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.mod</span></code> <strong>File</strong>: Contains the mathematical formulation of the problem, including decision variables, constraints, and the objective function.</p></li>
+</ol>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">int</span> <span class="n">MAXVAL</span> <span class="o">=</span> <span class="o">...</span><span class="p">;</span>
+<span class="nb">int</span> <span class="n">LIMIT</span>  <span class="o">=</span> <span class="o">...</span><span class="p">;</span>
+<span class="n">dvar</span> <span class="nb">int</span> <span class="n">x</span> <span class="ow">in</span> <span class="mf">0.</span><span class="o">.</span><span class="n">MAXVAL</span><span class="p">;</span>
+<span class="n">maximize</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+<span class="n">subject</span> <span class="n">to</span> <span class="p">{</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span> <span class="o">&lt;=</span> <span class="n">LIMIT</span><span class="p">;</span> <span class="p">}</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p><code class="docutils literal notranslate"><span class="pre">.dat</span></code> <strong>File</strong>: Provides data values used by the model, such as parameters, sets, or arrays.</p></li>
+</ol>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+<span class="n">LIMIT</span> <span class="o">=</span> <span class="mi">12</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-a-cpo-or-cplex-model-from-opl">
+<h2>2. Creating a CPO or CPLEX Model from OPL<a class="headerlink" href="#creating-a-cpo-or-cplex-model-from-opl" title="Permalink to this heading">&para;</a></h2>
+<p>User can create a CPO or CPLEX model directly from OPL .mod and .dat content using docplex. The API provides flexible options for supplying data from Python.</p>
+<section id="creating-a-cpo-model">
+<h3>2.1. Creating a CPO Model<a class="headerlink" href="#creating-a-cpo-model" title="Permalink to this heading">&para;</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">docplex.cp.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">CpoModel</span>
+
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">build_opl_model</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">Var1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">Var2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Parameters:</p>
+<ol class="arabic">
+<li><p><code class="docutils literal notranslate"><span class="pre">mod</span></code> (<strong>required</strong>): The OPL model, either as a <code class="docutils literal notranslate"><span class="pre">.mod</span></code> file path or a string containing the model content.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (<strong>optional</strong>): Can be provided in any of the following forms:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>A dictionary of variable&#8211;value pairs</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">.dat</span></code> file path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.dat</span></code> file content as a string</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Var1</span></code>, <code class="docutils literal notranslate"><span class="pre">Var2</span></code>, &#8230; (<strong>optional</strong>): Individual data variables passed as keyword arguments.</p></li>
+</ol>
+<p>Data Flexibility: Users can supply -</p>
+<ul class="simple">
+<li><p>Only <code class="docutils literal notranslate"><span class="pre">data</span></code>,</p></li>
+<li><p>Only individual variables, or</p></li>
+<li><p>A mix of both; the function will merge them automatically.</p></li>
+</ul>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">docplex.cp.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">CpoModel</span>
+
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">CpoModel</span><span class="p">()</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">build_opl_model</span><span class="p">(</span><span class="n">mod</span> <span class="o">=</span> <span class="s1">&#39;./problem.mod&#39;</span><span class="p">,</span><span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;LIMIT&#39;</span>  <span class="p">:</span> <span class="mi">12</span><span class="p">},</span> <span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-a-cplex-model">
+<h3>2.2. Creating a CPLEX Model<a class="headerlink" href="#creating-a-cplex-model" title="Permalink to this heading">&para;</a></h3>
+<p>For CPLEX mathematical programming models, the API provides:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">docplex.mp.model_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelReader</span>
+
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">ModelReader</span><span class="o">.</span><span class="n">build_opl_model</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Note</strong>: The parameters for building a CPLEX model are the same as those for a CPO model, allowing the same flexibility in providing .dat files, Python dictionaries, or individual variables.</p>
+</section>
+</section>
+<section id="creating-opl-data-using-python-data-structures">
+<h2>3. Creating OPL Data Using Python Data Structures<a class="headerlink" href="#creating-opl-data-using-python-data-structures" title="Permalink to this heading">&para;</a></h2>
+<p>When building OPL models from Python, the data provided must be compatible with the variable declarations in the <code class="docutils literal notranslate"><span class="pre">.mod</span></code> file. The <code class="docutils literal notranslate"><span class="pre">build_opl_model</span></code> API automatically translates Python data types to OPL data types, so the data supplied must follow specific rules to ensure compatibility with the corresponding OPL types.</p>
+ <table>
+   <tr>
+     <th>Sl No</th><th>OPL Datatype</th><th><code>mod</code> declaration</th><th>Python data</th><th>Remarks</th>
+   </tr>
+   <tr>
+     <td>1</td><td>int</td><td><code>int var = ...; </code></td><td><code>var = 3</code></td><td>Simple integer mapping</td>
+   </tr>
+   <tr>
+     <td>2</td><td>float</td><td><code>float var = ...; </code></td><td><code>var = 3.35</code></td><td>Simple float mapping</td>
+   </tr>
+
+   <tr>
+     <td>3</td><td>set</td><td>set of strings: <br><code>{string} var = ...;</code> </td><td><code>var = OrderedSet(["P1","P2","P3"])</td><td>Use OrderedSet instead of standard set {} to preserve order</td>
+   </tr>
+   <tr>
+     <td rowspan="3">4</td><td rowspan="3">array</td><td valign="top"><b>Example 1:</b> <br><code>int a[1..2][1..3] = ...;</code> </td><td valign="top"><b>by listing values:</b> <br><code>a = HashableList([
+              [10, 20, 30],
+              [40, 50, 60]
+              ])</code> <br>or<br><code>a = [[10, 20, 30],
+      [40, 50, 60]]</code> </td><td valign="top">can use either <code>HashableList</code> (hashable & frozen) or standard list <code>[]</code> (forzen)<br><br><b>Note:</b> Use <code>HashableList</code> whenever a list is placed inside a set to maintain hashability.</td>
+   </tr>
+   <tr>
+     <td valign="top"><b>Example 2:</b> <br><code>{string} Days = {"M","T","W"};</code><br><code>int a[Days] = ...;</code> </td><td valign="top"><b>by specifying as key-value pairs:</b><br><code>a = {
+  "M" : 10,
+  "T" : 20,
+  "W" : 30
+      }</code><td></td>
+   </tr>
+   <tr>
+     <td valign="top"><b>Example 3:</b> <br><code>int a[1..2][1..3] = ...;</code> </td><td valign="top"><b>two forms combined:</b><br><code>a = {
+  2: [40, 50, 60],
+  1: [10, 20, 30]
+      }</code><td></td>
+   </tr>
+   <tr>
+     <td rowspan="2">5</td><td rowspan="3">tuple</td><td valign="top"><b>Example 1:</b> <br><code>tuple point
+{
+int x;
+int y;
+}
+point p=...;</code> </td><td valign="top"><b>tuple of integers:</b> <br><code>p = (1,2) </code> </td><td></td>
+   </tr>
+   <tr>
+     <td valign="top"><b>Example 2:</b> <br><code>tuple Resource {
+   string name;
+   float capacity;
+ }
+ {Resource} Resources = ...;</code> </td><td valign="top"><b>set of tuple:</b><br><code>Resources  = OrderedSet([
+         ("Labor",1000.0),
+         ("Machine", 500.0)
+     ])</code><td></td>
+   </tr>
+ </table><p>The user can either create a Python dictionary named <code class="docutils literal notranslate"><span class="pre">data</span></code>, where the keys are OPL variable names and the values are their corresponding data, or pass the variables and their values directly as arguments to <code class="docutils literal notranslate"><span class="pre">build_opl_model</span></code>.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mdl</span><span class="o">.</span><span class="n">build_opl_model</span><span class="p">(</span><span class="n">mod</span><span class="o">=</span><span class="s1">&#39;./problem.mod&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;LIMIT&#39;</span><span class="p">:</span> <span class="mi">12</span><span class="p">},</span> <span class="n">MAXVAL</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, the dictionary <code class="docutils literal notranslate"><span class="pre">data</span></code> includes the variable <code class="docutils literal notranslate"><span class="pre">LIMIT</span></code> with the value <code class="docutils literal notranslate"><span class="pre">12</span></code>, and the variable <code class="docutils literal notranslate"><span class="pre">MAXVAL</span></code> is passed separately with the value <code class="docutils literal notranslate"><span class="pre">10</span></code>. The <code class="docutils literal notranslate"><span class="pre">build_opl_model</span></code> function combines these variables and supplies them for creating the CPLEX/CPO model.</p>
+<p><strong>Note:</strong> When passing data as variables, use the format variable = value, not just the variable name.</p>
+<p>&#10004;&#65039;</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mdl</span><span class="o">.</span><span class="n">build_opl_model</span><span class="p">(</span><span class="n">mod</span><span class="o">=</span><span class="s1">&#39;./problem.mod&#39;</span><span class="p">,</span> <span class="n">MAXVAL</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="c1"># or</span>
+<span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">mdl</span><span class="o">.</span><span class="n">build_opl_model</span><span class="p">(</span><span class="n">mod</span><span class="o">=</span><span class="s1">&#39;./problem.mod&#39;</span><span class="p">,</span> <span class="n">MAXVAL</span><span class="o">=</span><span class="n">MAXVAL</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>&#10006;&#65039; <code class="docutils literal notranslate"><span class="pre">mdl.build_opl_model(mod='./problem.mod',</span> <span class="pre">MAXVAL)</span></code></p>
+<p>This ensures OPL variables and their values are correctly mapped for model creation.</p>
+</section>
+<section id="exporting-data-to-a-dat-file">
+<h2>4. Exporting Data to a <code class="docutils literal notranslate"><span class="pre">.dat</span></code> File<a class="headerlink" href="#exporting-data-to-a-dat-file" title="Permalink to this heading">&para;</a></h2>
+<p>After building an OPL model in docplex, you can export the associated data to a <code class="docutils literal notranslate"><span class="pre">.dat</span></code> file for reuse or sharing. This is particularly useful when you have provided data as Python dictionaries or variables and want to generate a standard OPL <code class="docutils literal notranslate"><span class="pre">.dat</span></code> file.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mdl</span><span class="o">.</span><span class="n">export_dat</span><span class="p">(</span><span class="s1">&#39;./file.dat&#39;</span><span class="p">)</span> <span class="c1"># Export the data used in the model to a .dat file</span>
+
+<span class="n">mdl</span><span class="o">.</span><span class="n">export_dat</span><span class="p">()</span> <span class="c1"># Print the generated .dat content to the console</span>
+</pre></div>
+</div>
+<p>Key Points:</p>
+<ul class="simple">
+<li><p>The exported file contains all the data used in the model in OPL .dat format.</p></li>
+<li><p>This allows the same data to be reused with OPL models outside Python or shared with other users.</p></li>
+<li><p>Works for both CPO (CpoModel) and CPLEX (ModelReader) models built from Python data structures.</p></li>
+</ul>
+</section>
+<section id="solving-the-model">
+<h2>5. Solving the Model<a class="headerlink" href="#solving-the-model" title="Permalink to this heading">&para;</a></h2>
+<p>Once the OPL model is built, users can solve it directly from Python. To solve the model, simply call the <code class="docutils literal notranslate"><span class="pre">solve()</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sol</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This executes the OPL model and returns a solution object <code class="docutils literal notranslate"><span class="pre">sol</span></code> that can be used for further analysis.</p>
+</section>
+<section id="extracting-model-variables">
+<h2>6. Extracting Model Variables<a class="headerlink" href="#extracting-model-variables" title="Permalink to this heading">&para;</a></h2>
+<p>User can extract all OPL variables defined in the model using:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">all_Var</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">get_opl_var</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">all_Var</span></code> object contains structured access to all OPL variables and their data.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">all_Var</span><span class="o">.</span><span class="n">variable_names</span>     <span class="c1"># returns list of variable names</span>
+<span class="c1"># example output-&gt; [var1, var2, var3]</span>
+
+<span class="n">all_Var</span><span class="o">.</span><span class="n">var1</span>
+<span class="c1"># example output -&gt;</span>
+<span class="c1"># {</span>
+<span class="c1">#      5: {</span>
+<span class="c1">#         6: &lt;docplex.cp.expression.CpoIntervalVar at 0x127108820&gt;,</span>
+<span class="c1">#         5: &lt;docplex.cp.expression.CpoIntervalVar at 0x12710b450&gt;,</span>
+<span class="c1">#         4: &lt;docplex.cp.expression.CpoIntervalVar at 0x12710b370&gt;</span>
+<span class="c1">#      },</span>
+<span class="c1">#      ...</span>
+<span class="c1"># }</span>
+
+<span class="c1">#can extract each variable using proper indexing:</span>
+<span class="n">all_Var</span><span class="o">.</span><span class="n">var1</span><span class="p">[</span><span class="mi">5</span><span class="p">][</span><span class="mi">6</span><span class="p">]</span>
+<span class="c1"># -&gt; &lt;docplex.cp.expression.CpoIntervalVar at 0x127108820&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="extracting-variable-solutions">
+<h2>7. Extracting Variable Solutions<a class="headerlink" href="#extracting-variable-solutions" title="Permalink to this heading">&para;</a></h2>
+<p>Once the model is solved, you can map the variable objects to their corresponding solution values by passing the solution object <code class="docutils literal notranslate"><span class="pre">sol</span></code> to <code class="docutils literal notranslate"><span class="pre">from_solution()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">all_Var_sol</span> <span class="o">=</span> <span class="n">all_Var</span><span class="o">.</span><span class="n">from_solution</span><span class="p">(</span><span class="n">sol</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This creates a structured solution mapping between model variables and their solved values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">all_Var_sol</span><span class="o">.</span><span class="n">variable_names</span>   <span class="c1"># list variable names</span>
+<span class="c1"># example output-&gt; [var1, var2, var3]</span>
+
+<span class="n">all_Var_sol</span><span class="o">.</span><span class="n">var1</span>
+<span class="c1"># example output -&gt;</span>
+<span class="c1"># {</span>
+<span class="c1">#      5: {</span>
+<span class="c1">#         6: IntervalVarValue(start=101, end=110, size=9),</span>
+<span class="c1">#         5: IntervalVarValue(start=86, end=98, size=12),</span>
+<span class="c1">#         4: IntervalVarValue(start=65, end=71, size=6)</span>
+<span class="c1">#      },</span>
+<span class="c1">#      ...</span>
+<span class="c1"># }</span>
+
+<span class="c1">#can extract each variable solution using proper indexing:</span>
+<span class="n">all_Var_sol</span><span class="o">.</span><span class="n">var1</span><span class="p">[</span><span class="mi">5</span><span class="p">][</span><span class="mi">6</span><span class="p">]</span>
+<span class="c1"># output -&gt; IntervalVarValue(start=101, end=110, size=9)</span>
+</pre></div>
+</div>
+</section>
+<section id="downloading-the-examples">
+<h2>8. Downloading the Examples<a class="headerlink" href="#downloading-the-examples" title="Permalink to this heading">&para;</a></h2>
+<p>The examples can be downloaded from GitHub: <a class="reference external" href="https://github.com/IBMDecisionOptimization/docplex/tree/master/examples">docplex_examples</a></p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Supporting OPL Models in Python</a><ul>
+<li><a class="reference internal" href="#what-is-opl-mod-and-dat">1. What is OPL <code class="docutils literal notranslate"><span class="pre">.mod</span></code> and <code class="docutils literal notranslate"><span class="pre">.dat</span></code>?</a></li>
+<li><a class="reference internal" href="#creating-a-cpo-or-cplex-model-from-opl">2. Creating a CPO or CPLEX Model from OPL</a><ul>
+<li><a class="reference internal" href="#creating-a-cpo-model">2.1. Creating a CPO Model</a></li>
+<li><a class="reference internal" href="#creating-a-cplex-model">2.2. Creating a CPLEX Model</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#creating-opl-data-using-python-data-structures">3. Creating OPL Data Using Python Data Structures</a></li>
+<li><a class="reference internal" href="#exporting-data-to-a-dat-file">4. Exporting Data to a <code class="docutils literal notranslate"><span class="pre">.dat</span></code> File</a></li>
+<li><a class="reference internal" href="#solving-the-model">5. Solving the Model</a></li>
+<li><a class="reference internal" href="#extracting-model-variables">6. Extracting Model Variables</a></li>
+<li><a class="reference internal" href="#extracting-variable-solutions">7. Extracting Variable Solutions</a></li>
+<li><a class="reference internal" href="#downloading-the-examples">8. Downloading the Examples</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="index.html">IBM&reg; Decision Optimization CPLEX&reg; Modeling for Python (DOcplex) V2.32 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Supporting OPL Models in Python</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2016-2022, IBM&reg;.
+    </div>
+  </body>
+</html>
